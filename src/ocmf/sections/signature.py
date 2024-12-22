@@ -4,7 +4,7 @@ from ocmf.custom_types.hex_string import HexStr
 from enum import Enum
 
 
-class SignatureAlgorithm(str, Enum):
+class SignatureMethod(str, Enum):
     secp192k1 = "ECDSA-secp192k1-SHA256"
     secp256k1 = "ECDSA-secp256k1-SHA256"
     secp192r1 = "ECDSA-secp192r1-SHA256"
@@ -22,8 +22,8 @@ SignatureDataType = pydantic.Base64Str | type[HexStr]
 
 
 class Signature(pydantic.BaseModel):
-    SA: SignatureAlgorithm | None = pydantic.Field(
-        SignatureAlgorithm.secp256r1, description="Signature Algorithm"
+    SA: SignatureMethod | None = pydantic.Field(
+        SignatureMethod.secp256r1, description="Signature Algorithm"
     )
     SE: SignatureEncodingType | None = pydantic.Field(
         default="hex", description="Signature Encoding"

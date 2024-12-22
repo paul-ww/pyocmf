@@ -1,4 +1,4 @@
-from typing import Annotated, TypeAlias
+from typing import Annotated
 from pydantic import AfterValidator, WithJsonSchema
 import re
 

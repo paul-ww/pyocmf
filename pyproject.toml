@@ -24,10 +24,11 @@ dev = [
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 plugins = ['pydantic.mypy']
+mypy_path = "src"
 
 [tool.pytest.ini_options]
 addopts = "-x -v"
 testpaths = [
-    "tests",
+    "test",
 ]
 pythonpath = ["src", "test"]

@@ -9,6 +9,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "ciso8601>=2.3.2",
     "pydantic-extra-types>=2.10.1",
     "pydantic>=2.10.4",
 ]

@@ -1,7 +1,9 @@
 import pydantic
-from typing import Literal
+import enum
 
-ChargePointIdentificationType = Literal["EVSEID", "CBIDC"]
+class ChargePointIdentificationType(enum.StrEnum):
+    EVSEID = "EVSEID"
+    CBIDC = "CBIDC"
 
 
 class ChargePointAssignment(pydantic.BaseModel):

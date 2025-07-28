@@ -1,13 +1,11 @@
-from typing import Literal
+import enum
 
-ResistanceUnit = Literal[
-    "mOhm",
-    "Ohm",
-]
+class ResistanceUnit(enum.StrEnum):
+    MOHM = "mOhm"
+    OHM = "Ohm"
 
-EnergyUnit = Literal[
-    "kWh",
-    "Wh",
-]
+class EnergyUnit(enum.StrEnum):
+    KWH = "kWh"
+    WH = "Wh"
 
 OCMFUnit = ResistanceUnit | EnergyUnit

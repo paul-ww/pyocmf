@@ -7,7 +7,7 @@ name = "pyocmf"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "pydantic-extra-types>=2.10.1",
     "pydantic>=2.10.4",
@@ -16,16 +16,18 @@ dependencies = [
 [dependency-groups]
 dev = [
     "mypy>=1.13.0",
-    "pyocmf",
     "pytest>=8.3.4",
     "ruff>=0.8.4",
 ]
 
-[tool.uv.sources]
-pyocmf = { workspace = true }
-
 [tool.mypy]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
-namespace_packages = true
 plugins = ['pydantic.mypy']
+
+[tool.pytest.ini_options]
+addopts = "-x -v"
+testpaths = [
+    "tests",
+]
+pythonpath = ["src", "test"]

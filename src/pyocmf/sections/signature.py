@@ -1,10 +1,9 @@
 import pydantic
-from typing import Literal
 from pyocmf.custom_types.hex_string import HexStr
-from enum import Enum
+import enum
 
 
-class SignatureMethod(str, Enum):
+class SignatureMethod(enum.StrEnum):
     secp192k1 = "ECDSA-secp192k1-SHA256"
     secp256k1 = "ECDSA-secp256k1-SHA256"
     secp192r1 = "ECDSA-secp192r1-SHA256"
@@ -14,11 +13,14 @@ class SignatureMethod(str, Enum):
     brainpool384r1 = "ECDSA-brainpool384r1-SHA256"
 
 
-SignatureEncodingType = Literal["hex", "base64"]
+class SignatureEncodingType(enum.StrEnum):
+    HEX = "hex"
+    BASE64 = "base64"
 
-SignatureMimeType = Literal["application/x-der"]
+class SignatureMimeType(enum.StrEnum):
+    APPLICATION_X_DER = "application/x-der"
 
-SignatureDataType = pydantic.Base64Str | type[HexStr]
+SignatureDataType = pydantic.Base64Str | HexStr
 
 
 class Signature(pydantic.BaseModel):
@@ -26,9 +28,9 @@ class Signature(pydantic.BaseModel):
         SignatureMethod.secp256r1, description="Signature Algorithm"
     )
     SE: SignatureEncodingType | None = pydantic.Field(
-        default="hex", description="Signature Encoding"
+        default=SignatureEncodingType.HEX, description="Signature Encoding"
     )
     SM: SignatureMimeType | None = pydantic.Field(
-        default="application/x-der", description="Signature Mime Type"
+        default=SignatureMimeType.APPLICATION_X_DER, description="Signature Mime Type"
     )
     SD: HexStr = pydantic.Field(..., description="Signature Data (hex string)")

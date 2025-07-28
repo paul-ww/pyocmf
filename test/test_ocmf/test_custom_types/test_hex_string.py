@@ -11,10 +11,11 @@ class TestHexString:
         [
             ("1234567890abcdef", does_not_raise()),
             ("xyz", pytest.raises(pydantic.ValidationError)),
+            ("123", does_not_raise()),
             (123, pytest.raises(pydantic.ValidationError)),
         ],
     )
-    def test_hex_string(self, input: str, expectation: ContextManager):
+    def test_hex_string(self, input: str, expectation: ContextManager) -> None:
         with expectation:
             type_adapter = pydantic.TypeAdapter(HexStr)
             type_adapter.validate_python(input)

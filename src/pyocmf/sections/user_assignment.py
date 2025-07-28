@@ -1,6 +1,6 @@
 import pydantic
 from pydantic_extra_types import phone_numbers
-from typing import List, Literal
+from typing import List, Annotated
 import enum
 
 
@@ -51,26 +51,25 @@ class IdentificationFlagPLMN(str, enum.Enum):
     SHORT_MESSAGE = "PLMN_SMS"
 
 
-IdentificationType = Literal[
-    "NONE",
-    "DENIED",
-    "UNDEFINED",
-    "ISO14443",
-    "ISO15693",
-    "EMAID",
-    "EVCCID",
-    "EVCOID",
-    "ISO7812",
-    "CARD_TXN_NR",
-    "CENTRAL",
-    "CENTRAL_1",
-    "CENTRAL_2",
-    "LOCAL",
-    "LOCAL_1",
-    "LOCAL_2",
-    "PHONE_NUMBER",
-    "KEY_CODE",
-]
+class IdentificationType(enum.StrEnum):
+    NONE = "NONE"
+    DENIED = "DENIED"
+    UNDEFINED = "UNDEFINED"
+    ISO14443 = "ISO14443"
+    ISO15693 = "ISO15693"
+    EMAID = "EMAID"
+    EVCCID = "EVCCID"
+    EVCOID = "EVCOID"
+    ISO7812 = "ISO7812"
+    CARD_TXN_NR = "CARD_TXN_NR"
+    CENTRAL = "CENTRAL"
+    CENTRAL_1 = "CENTRAL_1"
+    CENTRAL_2 = "CENTRAL_2"
+    LOCAL = "LOCAL"
+    LOCAL_1 = "LOCAL_1"
+    LOCAL_2 = "LOCAL_2"
+    PHONE_NUMBER = "PHONE_NUMBER"
+    KEY_CODE = "KEY_CODE"
 
 
 IdentificationFlag = (
@@ -81,21 +80,13 @@ IdentificationFlag = (
 )
 
 # "ISO 14443 UID represented as 4 or 7 bytes in hexadecimal notation.",
-ISO14443 = pydantic.constr(
-    pattern=r"^[0-9a-fA-F]{8}$|^[0-9a-fA-F]{14}$",
-)
+ISO14443 = Annotated[str, pydantic.Field(pattern=r"^[0-9a-fA-F]{8}$|^[0-9a-fA-F]{14}$")]
 # "ISO 15693 UID represented as 8 bytes in hexadecimal notation.",
-ISO15693 = pydantic.constr(
-    pattern=r"^[0-9a-fA-F]{16}$",
-)
+ISO15693 = Annotated[str, pydantic.Field(pattern=r"^[0-9a-fA-F]{16}$")]
 # "Electro-Mobility-Account-ID according to ISO/IEC 15118 (string with length 14 or 15).",
-EMAID = pydantic.constr(
-    pattern=r"^[A-Za-z0-9]{14,15}$",
-)
+EMAID = Annotated[str, pydantic.Field(pattern=r"^[A-Za-z0-9]{14,15}$")]
 # "ID of an electric vehicle according to ISO/IEC 15118 (maximum length 6 characters).",
-EVCCID = pydantic.constr(
-    max_length=6,
-)
+EVCCID = Annotated[str, pydantic.Field(max_length=6)]
 # "EV Contract ID according to DIN 91286."
 EVCOID = str
 # "Identification card format according to ISO/IEC 7812 (credit and bank cards, etc.)."

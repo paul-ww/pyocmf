@@ -1,5 +1,5 @@
 import pytest
-from ocmf.custom_types.hex_string import HexStr
+from pyocmf.custom_types.hex_string import HexStr
 from contextlib import nullcontext as does_not_raise
 import pydantic
 from typing import ContextManager

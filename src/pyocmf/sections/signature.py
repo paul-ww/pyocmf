@@ -1,6 +1,6 @@
 import pydantic
 from typing import Literal
-from ocmf.custom_types.hex_string import HexStr
+from pyocmf.custom_types.hex_string import HexStr
 from enum import Enum
 
 
@@ -31,4 +31,4 @@ class Signature(pydantic.BaseModel):
     SM: SignatureMimeType | None = pydantic.Field(
         default="application/x-der", description="Signature Mime Type"
     )
-    SD: SignatureDataType = pydantic.Field(..., description="Signature Data")
+    SD: HexStr = pydantic.Field(..., description="Signature Data (hex string)")

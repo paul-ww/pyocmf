@@ -1,11 +1,11 @@
 import pydantic
-from ocmf.custom_types.units import ResistanceUnit
+from pyocmf.custom_types.units import ResistanceUnit
 
 
 class CableLossCompensation(pydantic.BaseModel):
     LN: str = pydantic.Field(description="Loss Compensation Naming")
     LI: int = pydantic.Field(description="Loss Compensation Identification")
-    LR: int = pydantic.Field(description="Loss Compensation cable Resistance")
+    LR: int = pydantic.Field(description="Loss Compensation Cable Resistance")
     LU: ResistanceUnit = pydantic.Field(description="Loss Compensation Unit")
 
 

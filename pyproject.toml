@@ -29,7 +29,7 @@ plugins = ['pydantic.mypy']
 mypy_path = "src"
 
 [tool.pytest.ini_options]
-addopts = "-x -v"
+addopts = "-v"
 testpaths = [
     "test",
 ]

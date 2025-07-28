@@ -25,7 +25,16 @@ class OCMF(pydantic.BaseModel):
             if sd is not None and sd.get("format") == "OCMF":
                 signed_data_elem = sd
                 break
-        
+
+        # Also check for encodedData with format="OCMF"
+        if signed_data_elem is None:
+            for value_elem in root.findall("value"):
+                ed = value_elem.find("encodedData")
+                if ed is not None and ed.get("format") == "OCMF":
+                    # For now, we don't support hex-encoded OCMF data
+                    # This would require additional decoding logic
+                    raise ValueError("Hex-encoded OCMF data is not yet supported.")
+
         # Fallback: if no signedData with format="OCMF" found, 
         # look for any signedData that contains OCMF data
         if signed_data_elem is None:

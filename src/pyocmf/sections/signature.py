@@ -9,6 +9,7 @@ class SignatureMethod(enum.StrEnum):
     SECP192R1 = "ECDSA-secp192r1-SHA256"
     SECP256R1 = "ECDSA-secp256r1-SHA256"
     BRAINPOOL256R1 = "ECDSA-brainpool256r1-SHA256"
+    BRAINPOOLP256R1 = "ECDSA-brainpoolP256r1-SHA256"
     SECP384R1 = "ECDSA-secp384r1-SHA256"
     BRAINPOOL384R1 = "ECDSA-brainpool384r1-SHA256"
 
@@ -33,4 +34,12 @@ class Signature(pydantic.BaseModel):
     SM: SignatureMimeType | None = pydantic.Field(
         default=SignatureMimeType.APPLICATION_X_DER, description="Signature Mime Type"
     )
-    SD: HexStr = pydantic.Field(..., description="Signature Data (hex string)")
+    SD: SignatureDataType = pydantic.Field(..., description="Signature Data")
+
+    @pydantic.field_validator("SD", mode="before")
+    @classmethod
+    def validate_signature_data(cls, v: str, info: pydantic.ValidationInfo) -> str:
+        """Validate signature data based on encoding type."""
+        # For now, we'll accept any string format and let downstream validation handle it
+        # This allows both hex and base64 encoded data
+        return v

@@ -59,6 +59,24 @@ class Payload(pydantic.BaseModel):
 
     RD: List[Reading] = pydantic.Field(description="Readings")
 
+    @pydantic.field_validator("FV", mode="before")
+    @classmethod
+    def convert_fv_to_string(cls, v: int | float | str | None) -> str | None:
+        """Convert FV (Format Version) from float/int to string if needed."""
+        if isinstance(v, (int, float)):
+            return str(v)
+        return v
+
+    @pydantic.field_validator("CT", mode="before")
+    @classmethod
+    def convert_ct_empty_to_none(cls, v: str | int | None) -> str | None:
+        """Convert empty CT (Charge Point Identification Type) values to None."""
+        if v == "" or v == 0:
+            return None
+        if isinstance(v, int):
+            return str(v)
+        return v
+
     @pydantic.model_validator(mode="after")
     def validate_serial_numbers(self) -> Payload:
         """Either GS or MS must be present for signature component identification"""
@@ -70,9 +88,29 @@ class Payload(pydantic.BaseModel):
 
     @classmethod
     def from_flat_dict(cls, data: dict) -> Payload:
-        # Extract readings
+        # Extract readings and apply field inheritance
         readings_data = data.get("RD", [])
-        readings = [Reading(**rd) for rd in readings_data]
+        readings = []
+
+        # Fields that can be inherited from previous readings
+        inheritable_fields = ["TM", "TX", "RI", "RU", "RT", "EF", "ST"]
+        last_values: dict[str, str] = {}
+
+        for rd in readings_data:
+            # Create a copy of the reading data
+            reading_dict = rd.copy()
+
+            # Apply inheritance for missing fields
+            for field in inheritable_fields:
+                if field not in reading_dict and field in last_values:
+                    reading_dict[field] = last_values[field]
+
+            # Update last_values with current reading's values
+            for field in inheritable_fields:
+                if field in reading_dict:
+                    last_values[field] = reading_dict[field]
+
+            readings.append(Reading(**reading_dict))
 
         # Create payload with all fields from the flat dict
         payload_data = {k: v for k, v in data.items() if k != "RD"}

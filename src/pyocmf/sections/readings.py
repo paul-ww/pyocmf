@@ -65,13 +65,17 @@ ObisCode = Annotated[
 
 
 class Reading(pydantic.BaseModel):
-    TM: OCMFTimeFormat = pydantic.Field(description="Time (ISO 8601 + time status)")
+    TM: OCMFTimeFormat | None = pydantic.Field(
+        default=None, description="Time (ISO 8601 + time status)"
+    )
     TX: MeterReadingReason | None = pydantic.Field(
         default=None, description="Transaction"
     )
     RV: decimal.Decimal = pydantic.Field(description="Reading Value")
-    RI: ObisCode = pydantic.Field(description="Reading Identification (OBIS code)")
-    RU: EnergyUnit = pydantic.Field(description="Reading Unit")
+    RI: ObisCode | None = pydantic.Field(
+        default=None, description="Reading Identification (OBIS code)"
+    )
+    RU: EnergyUnit | None = pydantic.Field(default=None, description="Reading Unit")
     RT: ReadingType | None = pydantic.Field(
         default=None, description="Reading Current Type"
     )
@@ -81,7 +85,7 @@ class Reading(pydantic.BaseModel):
     EF: ErrorFlags | None = pydantic.Field(
         default=None, description="Error Flags (can contain 'E', 't', or both)"
     )
-    ST: MeterStatus = pydantic.Field(description="Status")
+    ST: MeterStatus | None = pydantic.Field(default=None, description="Status")
 
     @pydantic.field_validator("EF", mode="before")
     def ef_empty_string_to_none(cls, v: str | None) -> ErrorFlags | None:

@@ -25,13 +25,25 @@ class OCMF(pydantic.BaseModel):
             if sd is not None and sd.get("format") == "OCMF":
                 signed_data_elem = sd
                 break
+        
+        # Fallback: if no signedData with format="OCMF" found, 
+        # look for any signedData that contains OCMF data
         if signed_data_elem is None:
-            raise ValueError("No signedData element with format='OCMF' found.")
+            for value_elem in root.findall("value"):
+                sd = value_elem.find("signedData")
+                if sd is not None and sd.text is not None and sd.text.strip().startswith("OCMF|"):
+                    signed_data_elem = sd
+                    break
+        
+        if signed_data_elem is None:
+            raise ValueError("No signedData element with OCMF content found.")
 
         if signed_data_elem.text is None:
             raise ValueError("signedData element is empty.")
-        # Parse the signedData string: OCMF|{payload_json}|{signature_json}
-        parts = signed_data_elem.text.split("|", 2)
+        
+        # Clean and parse the signedData string: OCMF|{payload_json}|{signature_json}
+        ocmf_text = signed_data_elem.text.strip()
+        parts = ocmf_text.split("|", 2)
         if len(parts) != 3 or parts[0] != "OCMF":
             raise ValueError("signedData does not match expected OCMF format.")
         header = parts[0]

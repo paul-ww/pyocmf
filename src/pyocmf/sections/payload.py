@@ -8,52 +8,65 @@ FiscalContext = Annotated[str, pydantic.constr(pattern=r"^F[1-9]*$")]
 PaginationString = TransactionContext | FiscalContext
 
 
-class GeneralInformation(pydantic.BaseModel):
-    FV: str | None = pydantic.Field(description="Format Version")
-    GI: str | None = pydantic.Field(description="Gateway Identification")
-    GS: str | None = pydantic.Field(description="Gateway Serial")
-    GV: str | None = pydantic.Field(description="Gateway Version")
-
-
-class Pagination(pydantic.BaseModel):
-    PG: PaginationString | None = pydantic.Field(description="Pagination")
-
-
-class MeterIdentification(pydantic.BaseModel):
-    MV: str | None = pydantic.Field(description="Meter Vendor")
-    MM: str | None = pydantic.Field(description="Meter Model")
-    MS: str | None = pydantic.Field(description="Meter Serial")
-    MF: str | None = pydantic.Field(description="Meter Firmware")
-
-
 class Payload(pydantic.BaseModel):
-    general_information: GeneralInformation
-    pagination: Pagination
-    meter_identification: MeterIdentification
-    readings: List[Reading]
+    # Flattened structure to match OCMF JSON format
+    FV: str | None = pydantic.Field(default=None, description="Format Version")
+    GI: str | None = pydantic.Field(default=None, description="Gateway Identification")
+    GS: str | None = pydantic.Field(default=None, description="Gateway Serial")
+    GV: str | None = pydantic.Field(default=None, description="Gateway Version")
+
+    PG: PaginationString = pydantic.Field(description="Pagination")
+
+    MV: str | None = pydantic.Field(default=None, description="Meter Vendor")
+    MM: str | None = pydantic.Field(default=None, description="Meter Model")
+    MS: str = pydantic.Field(description="Meter Serial")
+    MF: str | None = pydantic.Field(default=None, description="Meter Firmware")
+
+    # User Assignment fields (optional, transaction reference dependent)
+    IS: bool | None = pydantic.Field(default=None, description="Identification Status")
+    IL: str | None = pydantic.Field(default=None, description="Identification Level")
+    IF: List[str] | None = pydantic.Field(
+        default=None, max_length=4, description="Identification Flags"
+    )
+    IT: str | None = pydantic.Field(default=None, description="Identification Type")
+    ID: str | None = pydantic.Field(default=None, description="Identification Data")
+    TT: str | None = pydantic.Field(
+        default=None, max_length=250, description="Tariff Text"
+    )
+
+    # EVSE Metrologic parameters (optional)
+    CF: str | None = pydantic.Field(
+        default=None, max_length=25, description="Charge Controller Firmware Version"
+    )
+    LC: dict | None = pydantic.Field(default=None, description="Loss Compensation")
+
+    # Charge Point Assignment (optional)
+    CT: str | None = pydantic.Field(
+        default=None, description="Charge Point Identification Type"
+    )
+    CI: str | None = pydantic.Field(
+        default=None, description="Charge Point Identification"
+    )
+
+    RD: List[Reading] = pydantic.Field(description="Readings")
+
+    @pydantic.model_validator(mode="after")
+    def validate_serial_numbers(self) -> "Payload":
+        """Either GS or MS must be present for signature component identification"""
+        if not self.GS and not self.MS:
+            raise ValueError(
+                "Either Gateway Serial (GS) or Meter Serial (MS) must be provided"
+            )
+        return self
 
     @classmethod
     def from_flat_dict(cls, data: dict) -> "Payload":
-        # General Information
-        gi_fields = {k: data.get(k) for k in ["FV", "GI", "GS", "GV"]}
-        general_information = GeneralInformation(**gi_fields)
-
-        # Pagination
-        pagination_fields = {"PG": data.get("PG")}
-        pagination = Pagination(**pagination_fields)
-
-        # Meter Identification
-        meter_fields = {k: data.get(k) for k in ["MV", "MM", "MS", "MF"]}
-        meter_identification = MeterIdentification(**meter_fields)
-
-        # Readings
+        # Extract readings
         readings_data = data.get("RD", [])
         readings = [Reading(**rd) for rd in readings_data]
 
-        # Extend here for metrologic parameters, user assignment, etc.
-        return cls(
-            general_information=general_information,
-            pagination=pagination,
-            meter_identification=meter_identification,
-            readings=readings,
-        )
+        # Create payload with all fields from the flat dict
+        payload_data = {k: v for k, v in data.items() if k != "RD"}
+        payload_data["RD"] = readings
+
+        return cls(**payload_data)

@@ -24,18 +24,22 @@ class Payload(pydantic.BaseModel):
 
     MV: str | None = pydantic.Field(default=None, description="Meter Vendor")
     MM: str | None = pydantic.Field(default=None, description="Meter Model")
-    MS: str | None = pydantic.Field(description="Meter Serial")
+    MS: str | None = pydantic.Field(default=None, description="Meter Serial")
     MF: str | None = pydantic.Field(default=None, description="Meter Firmware")
 
     # User Assignment fields (optional, transaction reference dependent)
     IS: bool = pydantic.Field(description="Identification Status")
-    IL: UserAssignmentStatus | None = pydantic.Field(description="Identification Level")
+    IL: UserAssignmentStatus | None = pydantic.Field(
+        default=None, description="Identification Level"
+    )
     IF: List[IdentificationFlag] = pydantic.Field(
         default=[], description="Identification Flags"
     )
     IT: IdentificationType = pydantic.Field(description="Identification Type")
-    ID: IdentificationData = pydantic.Field(description="Identification Data")
-    TT: str = pydantic.Field(description="Tariff Text")
+    ID: IdentificationData | None = pydantic.Field(
+        default=None, description="Identification Data"
+    )
+    TT: str | None = pydantic.Field(default=None, description="Tariff Text")
 
     # EVSE Metrologic parameters (optional)
     CF: str | None = pydantic.Field(

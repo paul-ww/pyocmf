@@ -1,8 +1,11 @@
 import pydantic
-from pydantic_extra_types import phone_numbers
-from typing import List, Annotated
+from typing import Annotated
 import enum
+from pydantic_extra_types import phone_numbers
 
+TransactionContext = Annotated[str, pydantic.constr(pattern=r"^T[1-9]*$")]
+FiscalContext = Annotated[str, pydantic.constr(pattern=r"^F[1-9]*$")]
+PaginationString = TransactionContext | FiscalContext
 
 class UserAssignmentStatus(str, enum.Enum):
     # status without assignment
@@ -100,12 +103,6 @@ IdentificationData = (
 )
 
 
-class UserAssignment(pydantic.BaseModel):
-    IS: bool = pydantic.Field(description="Identification Status")
-    IL: UserAssignmentStatus | None = pydantic.Field(description="Identification Level")
-    IF: List[IdentificationFlag] = pydantic.Field(
-        default=[], description="Identification Flags"
-    )
-    IT: IdentificationType = pydantic.Field(description="Identification Type")
-    ID: IdentificationData = pydantic.Field(description="Identification Data")
-    TT: str = pydantic.Field(description="Tariff Text")
+class ChargePointIdentificationType(enum.StrEnum):
+    EVSEID = "EVSEID"
+    CBIDC = "CBIDC"

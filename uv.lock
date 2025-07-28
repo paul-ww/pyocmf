@@ -100,6 +100,15 @@ wheels = [
 ]
 
 [[package]]
+name = "phonenumbers"
+version = "9.0.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/b3/0092ef7813f663a06cc0474adfaee5e9c327a2fde416a7926d958fd6cd8a/phonenumbers-9.0.10.tar.gz", hash = "sha256:c2d15a6a9d0534b14a7764f51246ada99563e263f65b80b0251d1a760ac4a1ba", size = 2297752, upload-time = "2025-07-18T08:47:39.477Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/93/44/4a200f2e06f6ece2de33ff09978cdccc03e2df8007fadcc706f846167dec/phonenumbers-9.0.10-py2.py3-none-any.whl", hash = "sha256:13b12d269be1f2b363c9bc2868656a7e2e8b50f1a1cef629c75005da6c374c6b", size = 2583494, upload-time = "2025-07-18T08:47:35.808Z" },
+]
+
+[[package]]
 name = "pluggy"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -194,6 +203,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "ciso8601" },
+    { name = "phonenumbers" },
     { name = "pydantic" },
     { name = "pydantic-extra-types" },
 ]
@@ -208,6 +218,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ciso8601", specifier = ">=2.3.2" },
+    { name = "phonenumbers", specifier = ">=9.0.10" },
     { name = "pydantic", specifier = ">=2.10.4" },
     { name = "pydantic-extra-types", specifier = ">=2.10.1" },
 ]

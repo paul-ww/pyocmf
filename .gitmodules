@@ -1,0 +1,3 @@
+[submodule "test/resources/transparenzsoftware"]
+	path = test/resources/transparenzsoftware
+	url = https://github.com/SAFE-eV/transparenzsoftware.git

@@ -7,7 +7,15 @@ from pyocmf.ocmf import OCMF
 @pytest.fixture
 def transparency_xml_dir() -> pathlib.Path:
     """Return the path to the transparency XML test files directory."""
-    return pathlib.Path(__file__).parent.parent / "resources" / "transparency_xml"
+    return (
+        pathlib.Path(__file__).parent.parent
+        / "resources"
+        / "transparenzsoftware"
+        / "src"
+        / "test"
+        / "resources"
+        / "xml"
+    )
 
 
 @pytest.fixture
@@ -30,12 +38,22 @@ def transparency_xml_files(transparency_xml_dir: pathlib.Path) -> List[pathlib.P
                 xml_file.relative_to(
                     pathlib.Path(__file__).parent.parent
                     / "resources"
-                    / "transparency_xml"
+                    / "transparenzsoftware"
+                    / "src"
+                    / "test"
+                    / "resources"
+                    / "xml"
                 )
             ),
         )
         for xml_file in (
-            pathlib.Path(__file__).parent.parent / "resources" / "transparency_xml"
+            pathlib.Path(__file__).parent.parent
+            / "resources"
+            / "transparenzsoftware"
+            / "src"
+            / "test"
+            / "resources"
+            / "xml"
         ).rglob("*.xml")
         if xml_file.is_file()
     ],
@@ -51,7 +69,13 @@ def test_transparency_xml_file_parsing(xml_file: pathlib.Path) -> None:
 
     # Get relative path for better error messages
     rel_path = xml_file.relative_to(
-        pathlib.Path(__file__).parent.parent / "resources" / "transparency_xml"
+        pathlib.Path(__file__).parent.parent
+        / "resources"
+        / "transparenzsoftware"
+        / "src"
+        / "test"
+        / "resources"
+        / "xml"
     )
 
     try:
@@ -85,7 +109,15 @@ def test_all_transparency_files_exist(transparency_xml_files: List[pathlib.Path]
     """Verify that we have transparency XML files to test."""
     assert len(transparency_xml_files) > 0, "No XML files found in transparency_xml directory"
 
-    base_dir = pathlib.Path(__file__).parent.parent / "resources" / "transparency_xml"
+    base_dir = (
+        pathlib.Path(__file__).parent.parent
+        / "resources"
+        / "transparenzsoftware"
+        / "src"
+        / "test"
+        / "resources"
+        / "xml"
+    )
 
     print(f"Found {len(transparency_xml_files)} XML files to test:")
 
@@ -115,7 +147,15 @@ def test_transparency_files_summary(transparency_xml_files: List[pathlib.Path]) 
     failed_files = []
     skipped_files = []
 
-    base_dir = pathlib.Path(__file__).parent.parent / "resources" / "transparency_xml"
+    base_dir = (
+        pathlib.Path(__file__).parent.parent
+        / "resources"
+        / "transparenzsoftware"
+        / "src"
+        / "test"
+        / "resources"
+        / "xml"
+    )
     
     for xml_file in transparency_xml_files:
         rel_path = xml_file.relative_to(base_dir)

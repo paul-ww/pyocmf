@@ -35,7 +35,9 @@ class Payload(pydantic.BaseModel):
     IF: List[IdentificationFlag] = pydantic.Field(
         default=[], description="Identification Flags"
     )
-    IT: IdentificationType = pydantic.Field(description="Identification Type")
+    IT: IdentificationType | None = pydantic.Field(
+        default=IdentificationType.NONE, description="Identification Type"
+    )
     ID: IdentificationData | None = pydantic.Field(
         default=None, description="Identification Data"
     )

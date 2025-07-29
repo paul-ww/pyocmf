@@ -31,9 +31,36 @@ class OCMF(pydantic.BaseModel):
             for value_elem in root.findall("value"):
                 ed = value_elem.find("encodedData")
                 if ed is not None and ed.get("format") == "OCMF":
-                    # For now, we don't support hex-encoded OCMF data
-                    # This would require additional decoding logic
-                    raise ValueError("Hex-encoded OCMF data is not yet supported.")
+                    # Try to decode hex-encoded OCMF data
+                    encoding = ed.get("encoding", "").lower()
+                    if encoding == "hex":
+                        if ed.text is None:
+                            raise ValueError("encodedData element is empty.")
+                        try:
+                            # Decode hex to bytes
+                            decoded_bytes = bytes.fromhex(ed.text.strip())
+                            # Try to decode as UTF-8 text
+                            decoded_text = decoded_bytes.decode("utf-8")
+                            # Check if it contains OCMF format
+                            if decoded_text.strip().startswith("OCMF|"):
+                                # Create a temporary element for the decoded text
+                                signed_data_elem = ET.Element("signedData")
+                                signed_data_elem.text = decoded_text.strip()
+                                break
+                            else:
+                                raise ValueError(
+                                    "Hex-decoded data does not contain valid OCMF format."
+                                )
+                        except (ValueError, UnicodeDecodeError) as e:
+                            # If hex decoding fails or the result isn't valid OCMF text,
+                            # this might be a more complex encoding (e.g., ASN.1/DER wrapped)
+                            raise ValueError(
+                                f"Failed to decode hex-encoded OCMF data: {e}. This may be ASN.1/DER encoded data which requires specialized parsing."
+                            )
+                    else:
+                        raise ValueError(
+                            f"Unsupported encoding for OCMF data: {encoding}"
+                        )
 
         # Fallback: if no signedData with format="OCMF" found, 
         # look for any signedData that contains OCMF data
@@ -55,11 +82,10 @@ class OCMF(pydantic.BaseModel):
         parts = ocmf_text.split("|", 2)
         if len(parts) != 3 or parts[0] != "OCMF":
             raise ValueError("signedData does not match expected OCMF format.")
-        header = parts[0]
         payload_json = parts[1]
         signature_json = parts[2]
 
         payload = Payload.from_flat_dict(json.loads(payload_json))
         signature = Signature.model_validate_json(signature_json)
 
-        return cls(header=header, payload=payload, signature=signature)
+        return cls(header="OCMF", payload=payload, signature=signature)

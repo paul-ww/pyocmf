@@ -1,5 +1,5 @@
 import pydantic
-from pyocmf.custom_types.hex_string import HexStr
+from pyocmf.custom_types.strings import HexStr, Base64Str
 import enum
 
 
@@ -18,15 +18,17 @@ class SignatureEncodingType(enum.StrEnum):
     HEX = "hex"
     BASE64 = "base64"
 
+
 class SignatureMimeType(enum.StrEnum):
     APPLICATION_X_DER = "application/x-der"
 
-SignatureDataType = pydantic.Base64Str | HexStr
+
+SignatureDataType = HexStr | Base64Str
 
 
 class Signature(pydantic.BaseModel):
     SA: SignatureMethod | None = pydantic.Field(
-        SignatureMethod.SECP256R1, description="Signature Algorithm"
+        default=SignatureMethod.SECP256R1, description="Signature Algorithm"
     )
     SE: SignatureEncodingType | None = pydantic.Field(
         default=SignatureEncodingType.HEX, description="Signature Encoding"
@@ -34,12 +36,4 @@ class Signature(pydantic.BaseModel):
     SM: SignatureMimeType | None = pydantic.Field(
         default=SignatureMimeType.APPLICATION_X_DER, description="Signature Mime Type"
     )
-    SD: SignatureDataType = pydantic.Field(..., description="Signature Data")
-
-    @pydantic.field_validator("SD", mode="before")
-    @classmethod
-    def validate_signature_data(cls, v: str, info: pydantic.ValidationInfo) -> str:
-        """Validate signature data based on encoding type."""
-        # For now, we'll accept any string format and let downstream validation handle it
-        # This allows both hex and base64 encoded data
-        return v
+    SD: SignatureDataType = pydantic.Field(description="Signature Data")

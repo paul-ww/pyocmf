@@ -2,6 +2,42 @@ import pydantic
 from typing import Annotated
 import enum
 from pydantic_extra_types import phone_numbers
+from pydantic import AfterValidator, WithJsonSchema
+import re
+import base64
+
+
+def validate_hex_string(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError("string required")
+    if not re.fullmatch(r"^[0-9a-fA-F]+$", value):
+        raise ValueError("invalid hexadecimal string")
+    return value
+
+
+HexStr = Annotated[
+    str,
+    AfterValidator(validate_hex_string),
+    WithJsonSchema({"type": "string", "pattern": "^[0-9a-fA-F]+$"}, mode="validation"),
+]
+
+
+def validate_base64_string(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError("string required")
+    try:
+        base64.b64decode(value, validate=True)
+    except Exception:
+        raise ValueError("invalid base64 string")
+    return value
+
+
+Base64Str = Annotated[
+    str,
+    AfterValidator(validate_base64_string),
+    WithJsonSchema({"type": "string", "format": "base64"}, mode="validation"),
+]
+
 
 TransactionContext = Annotated[str, pydantic.constr(pattern=r"^T[1-9]*$")]
 FiscalContext = Annotated[str, pydantic.constr(pattern=r"^F[1-9]*$")]

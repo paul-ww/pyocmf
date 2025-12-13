@@ -35,9 +35,7 @@ class OCMF(pydantic.BaseModel):
 
         if len(parts) != 3 or parts[0] != "OCMF":
             msg = "String does not match expected OCMF format 'OCMF|{payload}|{signature}'."
-            raise OcmfFormatError(
-                msg
-            )
+            raise OcmfFormatError(msg)
 
         payload_json = parts[1]
         signature_json = parts[2]
@@ -66,28 +64,3 @@ class OCMF(pydantic.BaseModel):
         signature_json = self.signature.model_dump_json()
 
         return f"OCMF|{payload_json}|{signature_json}"
-
-    @classmethod
-    def from_xml(cls, xml_path) -> OCMF:
-        """Parse an OCMF model from an XML file.
-
-        This method is deprecated. Use xml_parser.parse_ocmf_from_xml() instead.
-
-        Args:
-            xml_path: Path to the XML file
-
-        Returns:
-            OCMF: The parsed OCMF model
-        """
-        import warnings
-        from pathlib import Path
-
-        from pyocmf.utils.xml import parse_ocmf_from_xml
-
-        warnings.warn(
-            "OCMF.from_xml() is deprecated. Use pyocmf.utils.xml.parse_ocmf_from_xml() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        return parse_ocmf_from_xml(Path(xml_path))

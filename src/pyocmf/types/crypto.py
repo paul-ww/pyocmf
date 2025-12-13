@@ -13,7 +13,6 @@ class SignatureMethod(enum.StrEnum):
     SECP384R1_SHA256 = "ECDSA-secp384r1-SHA256"
     BRAINPOOL384R1_SHA256 = "ECDSA-brainpool384r1-SHA256"
     SECP521R1_SHA256 = "ECDSA-secp521r1-SHA256"
-    # SHA-512 variants
     SECP192K1_SHA512 = "ECDSA-secp192k1-SHA512"
     SECP256K1_SHA512 = "ECDSA-secp256k1-SHA512"
     SECP192R1_SHA512 = "ECDSA-secp192r1-SHA512"
@@ -35,8 +34,6 @@ class SignatureMimeType(enum.StrEnum):
 
 
 class KeyType(enum.StrEnum):
-    """Elliptic curve identification types"""
-
     SECP192K1 = "secp192k1"
     SECP256K1 = "secp256k1"
     SECP192R1 = "secp192r1"

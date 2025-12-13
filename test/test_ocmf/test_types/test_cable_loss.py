@@ -67,10 +67,8 @@ class TestCableLossCompensation:
 
     def test_missing_required_fields(self) -> None:
         """Test that missing required fields raise ValidationError."""
-        # Missing LR
         with pytest.raises(pydantic.ValidationError):
             CableLossCompensation.model_validate({"LU": "mOhm"})
 
-        # Missing LU
         with pytest.raises(pydantic.ValidationError):
             CableLossCompensation.model_validate({"LR": "1.5"})

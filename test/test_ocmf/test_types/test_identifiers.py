@@ -19,9 +19,9 @@ class TestHexString:
             ("ABCDEF", does_not_raise()),
             ("abc123", does_not_raise()),
             ("xyz", pytest.raises(pydantic.ValidationError)),
-            ("12G4", pytest.raises(pydantic.ValidationError)),  # G is not hex
-            ("", pytest.raises(pydantic.ValidationError)),  # Empty string invalid
-            (123, pytest.raises(pydantic.ValidationError)),  # Non-string
+            ("12G4", pytest.raises(pydantic.ValidationError)),
+            ("", pytest.raises(pydantic.ValidationError)),
+            (123, pytest.raises(pydantic.ValidationError)),
         ],
     )
     def test_hex_string(self, input: str, expectation: ContextManager) -> None:
@@ -46,13 +46,13 @@ class TestBase64String:
     @pytest.mark.parametrize(
         ("input", "expectation"),
         [
-            ("SGVsbG8gV29ybGQ=", does_not_raise()),  # "Hello World"
-            ("YWJjMTIz", does_not_raise()),  # "abc123"
-            ("", does_not_raise()),  # Empty string valid for base64
-            ("VGVzdA==", does_not_raise()),  # "Test"
+            ("SGVsbG8gV29ybGQ=", does_not_raise()),
+            ("YWJjMTIz", does_not_raise()),
+            ("", does_not_raise()),
+            ("VGVzdA==", does_not_raise()),
             ("NotValidBase64!", pytest.raises(pydantic.ValidationError)),
             ("xyz", pytest.raises(pydantic.ValidationError)),
-            (123, pytest.raises(pydantic.ValidationError)),  # Non-string
+            (123, pytest.raises(pydantic.ValidationError)),
         ],
     )
     def test_base64_string(self, input: str, expectation: ContextManager) -> None:

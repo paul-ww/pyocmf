@@ -52,17 +52,12 @@ PaginationString = TransactionContext | FiscalContext
 
 
 class UserAssignmentStatus(str, enum.Enum):
-    # status without assignment
     NO_ASSIGNMENT = "NONE"
-
-    # status with assignment
     UNSECURED = "HEARSAY"
     TRUSTED = "TRUSTED"
     VERIFIED = "VERIFIED"
     CERTIFIED = "CERTIFIED"
     SECURE = "SECURE"
-
-    # errors
     UID_MISMATCH = "MISMATCH"
     CERT_INCORRECT = "INVALID"
     CERT_EXPIRED = "OUTDATED"
@@ -126,22 +121,15 @@ IdentificationFlag = (
     | IdentificationFlagPLMN
 )
 
-# ISO 14443 UID represented as 4 or 7 bytes in hexadecimal notation
 ISO14443 = Annotated[str, pydantic.Field(pattern=r"^[0-9a-fA-F]{8}$|^[0-9a-fA-F]{14}$")]
-# ISO 15693 UID represented as 8 bytes in hexadecimal notation
 ISO15693 = Annotated[str, pydantic.Field(pattern=r"^[0-9a-fA-F]{16}$")]
-# Electro-Mobility-Account-ID according to ISO/IEC 15118 (string with length 14 or 15)
 EMAID = Annotated[str, pydantic.Field(pattern=r"^[A-Za-z0-9]{14,15}$")]
-# ID of an electric vehicle according to ISO/IEC 15118 (maximum length 6 characters)
 EVCCID = Annotated[str, pydantic.Field(max_length=6)]
-# EV Contract ID according to DIN 91286
 EVCOID = str
-# Identification card format according to ISO/IEC 7812 (credit and bank cards, etc.)
 ISO7812 = str
 
 PHONE_NUMBER = phone_numbers.PhoneNumber
 
-# Union of all possible IdentificationData types
 IdentificationData = ISO14443 | ISO15693 | EMAID | EVCCID | EVCOID | ISO7812 | PHONE_NUMBER
 
 

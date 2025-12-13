@@ -47,16 +47,13 @@ class TimeStatus(enum.StrEnum):
     RELATIVE = "R"
 
 
-# Time format: ISO 8601 with time status suffix
 OCMFTimeFormat = Annotated[
     str,
     pydantic.constr(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2},\d{3}[+-]\d{4} [UISR]$"),
 ]
 
-# Error flags can be a string containing 'E' and/or 't' characters
 ErrorFlags = Annotated[str, pydantic.constr(pattern=r"^[Et]*$")]
 
-# OBIS Code validation pattern according to spec
 ObisCode = Annotated[
     str,
     pydantic.constr(
@@ -84,7 +81,8 @@ class Reading(pydantic.BaseModel):
     ST: MeterStatus = pydantic.Field(description="Status - REQUIRED")
 
     @pydantic.field_validator("EF", mode="before")
-    def ef_empty_string_to_none(self, v: str | None) -> ErrorFlags | None:
+    @classmethod
+    def ef_empty_string_to_none(cls, v: str | None) -> ErrorFlags | None:
         if v == "":
             return None
         return v

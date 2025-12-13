@@ -44,7 +44,7 @@ class TestCableLossCompensation:
         "lr_value",
         ["0.001", "1.5", "100", "0.0", "999.999", 1.5, 5],
     )
-    def test_lr_accepts_various_numeric_types(self, lr_value) -> None:
+    def test_lr_accepts_various_numeric_types(self, lr_value: str | float | int) -> None:
         """Test that LR field accepts string, float, and int values."""
         data = {"LR": lr_value, "LU": "mOhm"}
         cable_loss = CableLossCompensation.model_validate(data)

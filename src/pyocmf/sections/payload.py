@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import decimal
+import json
+from typing import Any
+
 import pydantic
 
 from pyocmf.exceptions import ValidationError
@@ -103,10 +107,15 @@ class Payload(pydantic.BaseModel):
 
         return cls(**payload_data)
 
-    def _serialize_field_value(self, value) -> any:
-        """Serialize a field value for JSON conversion."""
-        import decimal
+    def _serialize_field_value(self, value: Any) -> str | int | float | list[Any] | None:
+        """Serialize a field value for JSON conversion.
 
+        Converts Pydantic model field values to JSON-serializable types:
+        - Enums/objects with .value → extract the value
+        - Lists → recursively extract values from items
+        - Decimal → convert to float
+        - Other types → return as-is
+        """
         if hasattr(value, "value"):
             return value.value
         if isinstance(value, list):
@@ -117,7 +126,6 @@ class Payload(pydantic.BaseModel):
 
     def _serialize_reading(self, reading: Reading) -> dict:
         """Serialize a reading to a dictionary with floats instead of Decimals."""
-        import decimal
 
         reading_dict = reading.model_dump(exclude_none=True)
         for key, val in reading_dict.items():
@@ -146,6 +154,5 @@ class Payload(pydantic.BaseModel):
 
     def to_flat_dict_json(self) -> str:
         """Convert the Payload to a flat dictionary and return as JSON string."""
-        import json
 
         return json.dumps(self.to_flat_dict(), separators=(",", ":"))

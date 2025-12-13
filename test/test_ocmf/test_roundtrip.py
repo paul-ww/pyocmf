@@ -116,9 +116,9 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
         ocmf_model_2 = OCMF.from_string(reconstructed_string)
 
         # Verify models are identical
-        assert (
-            ocmf_model.model_dump() == ocmf_model_2.model_dump()
-        ), f"Roundtrip failed for OCMF string {i+1} in {xml_file.name}"
+        assert ocmf_model.model_dump() == ocmf_model_2.model_dump(), (
+            f"Roundtrip failed for OCMF string {i + 1} in {xml_file.name}"
+        )
 
 
 def test_ocmf_summary(transparency_xml_files: List[pathlib.Path]) -> None:

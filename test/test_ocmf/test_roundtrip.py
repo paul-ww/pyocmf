@@ -9,7 +9,7 @@ from pyocmf.exceptions import (
     PyOCMFError,
 )
 from pyocmf.ocmf import OCMF
-from pyocmf.utils.xml import extract_ocmf_strings_from_xml, parse_ocmf_from_xml
+from pyocmf.utils.xml import extract_ocmf_strings_from_file, parse_ocmf_from_xml
 
 
 @pytest.fixture
@@ -94,7 +94,7 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
         return
 
     # Valid OCMF files - test parsing and roundtripping
-    ocmf_strings = extract_ocmf_strings_from_xml(xml_file)
+    ocmf_strings = extract_ocmf_strings_from_file(xml_file)
     assert len(ocmf_strings) > 0, f"Expected OCMF data in {xml_file.name}"
 
     for i, ocmf_string in enumerate(ocmf_strings):
@@ -111,9 +111,9 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
         ocmf_model_2 = OCMF.from_string(reconstructed_string)
 
         # Verify models are identical
-        assert ocmf_model.model_dump() == ocmf_model_2.model_dump(), (
-            f"Roundtrip failed for OCMF string {i + 1} in {xml_file.name}"
-        )
+        assert (
+            ocmf_model.model_dump() == ocmf_model_2.model_dump()
+        ), f"Roundtrip failed for OCMF string {i + 1} in {xml_file.name}"
 
 
 def test_ocmf_summary(transparency_xml_files: list[pathlib.Path]) -> None:
@@ -124,7 +124,7 @@ def test_ocmf_summary(transparency_xml_files: list[pathlib.Path]) -> None:
 
     for xml_file in transparency_xml_files:
         try:
-            ocmf_strings = extract_ocmf_strings_from_xml(xml_file)
+            ocmf_strings = extract_ocmf_strings_from_file(xml_file)
             if ocmf_strings:
                 total_files += 1
                 total_ocmf_strings += len(ocmf_strings)

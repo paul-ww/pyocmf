@@ -9,7 +9,7 @@ from pyocmf.exceptions import DataNotFoundError, XmlParsingError
 from pyocmf.ocmf import OCMF
 
 
-def extract_ocmf_strings_from_xml(xml_path: pathlib.Path) -> list[str]:
+def extract_ocmf_strings_from_file(xml_path: pathlib.Path) -> list[str]:
     """Extract all OCMF strings from an XML file.
 
     Args:
@@ -81,7 +81,7 @@ def parse_ocmf_from_xml(xml_path: pathlib.Path) -> OCMF:
         DataNotFoundError: If no OCMF data is found
         XmlParsingError: If XML parsing fails
     """
-    ocmf_strings = extract_ocmf_strings_from_xml(xml_path)
+    ocmf_strings = extract_ocmf_strings_from_file(xml_path)
 
     if not ocmf_strings:
         msg = "No OCMF data found in XML file."
@@ -104,7 +104,7 @@ def parse_all_ocmf_from_xml(xml_path: pathlib.Path) -> list[OCMF]:
         DataNotFoundError: If no OCMF data is found
         XmlParsingError: If XML parsing fails
     """
-    ocmf_strings = extract_ocmf_strings_from_xml(xml_path)
+    ocmf_strings = extract_ocmf_strings_from_file(xml_path)
 
     if not ocmf_strings:
         msg = "No OCMF data found in XML file."

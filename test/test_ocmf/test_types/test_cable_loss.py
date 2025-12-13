@@ -62,8 +62,7 @@ class TestCableLossCompensation:
 
         errors = exc_info.value.errors()
         assert any(
-            "max_length" in str(error) or "string_too_long" in str(error)
-            for error in errors
+            "max_length" in str(error) or "string_too_long" in str(error) for error in errors
         )
 
     def test_missing_required_fields(self) -> None:

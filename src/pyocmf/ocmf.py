@@ -34,8 +34,9 @@ class OCMF(pydantic.BaseModel):
         parts = ocmf_text.split("|", 2)
 
         if len(parts) != 3 or parts[0] != "OCMF":
+            msg = "String does not match expected OCMF format 'OCMF|{payload}|{signature}'."
             raise OcmfFormatError(
-                "String does not match expected OCMF format 'OCMF|{payload}|{signature}'."
+                msg
             )
 
         payload_json = parts[1]
@@ -44,12 +45,14 @@ class OCMF(pydantic.BaseModel):
         try:
             payload = Payload.from_flat_dict(json.loads(payload_json))
         except (json.JSONDecodeError, ValueError) as e:
-            raise OcmfPayloadError(f"Invalid payload JSON: {e}") from e
+            msg = f"Invalid payload JSON: {e}"
+            raise OcmfPayloadError(msg) from e
 
         try:
             signature = Signature.model_validate_json(signature_json)
         except (json.JSONDecodeError, pydantic.ValidationError) as e:
-            raise OcmfSignatureError(f"Invalid signature JSON: {e}") from e
+            msg = f"Invalid signature JSON: {e}"
+            raise OcmfSignatureError(msg) from e
 
         return cls(header="OCMF", payload=payload, signature=signature)
 

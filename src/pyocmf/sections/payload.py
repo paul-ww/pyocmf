@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List
-
 import pydantic
 
 from pyocmf.exceptions import ValidationError
@@ -18,9 +16,7 @@ from pyocmf.types.identifiers import (
 
 
 class Payload(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(
-        extra="allow"
-    )  # Allow extension fields U, V, W, X, Y, Z
+    model_config = pydantic.ConfigDict(extra="allow")  # Allow extension fields U, V, W, X, Y, Z
 
     FV: str | None = pydantic.Field(default=None, description="Format Version")
     GI: str | None = pydantic.Field(default=None, description="Gateway Identification")
@@ -31,9 +27,7 @@ class Payload(pydantic.BaseModel):
 
     MV: str | None = pydantic.Field(default=None, description="Meter Vendor")
     MM: str | None = pydantic.Field(default=None, description="Meter Model")
-    MS: str | None = pydantic.Field(
-        default=None, description="Meter Serial - Mandatory per spec"
-    )
+    MS: str | None = pydantic.Field(default=None, description="Meter Serial - Mandatory per spec")
     MF: str | None = pydantic.Field(default=None, description="Meter Firmware")
 
     # User Assignment fields (optional, transaction reference dependent)
@@ -41,42 +35,35 @@ class Payload(pydantic.BaseModel):
     IL: UserAssignmentStatus | None = pydantic.Field(
         default=None, description="Identification Level"
     )
-    IF: List[IdentificationFlag] = pydantic.Field(
-        default=[], description="Identification Flags"
-    )
+    IF: list[IdentificationFlag] = pydantic.Field(default=[], description="Identification Flags")
     IT: IdentificationType | None = pydantic.Field(
         default=IdentificationType.NONE, description="Identification Type"
     )
-    ID: IdentificationData | None = pydantic.Field(
-        default=None, description="Identification Data"
-    )
+    ID: IdentificationData | None = pydantic.Field(default=None, description="Identification Data")
     TT: str | None = pydantic.Field(default=None, description="Tariff Text")
 
     # EVSE Metrologic parameters (optional)
     CF: str | None = pydantic.Field(
         default=None, max_length=25, description="Charge Controller Firmware Version"
     )
-    LC: CableLossCompensation | None = pydantic.Field(
-        default=None, description="Loss Compensation"
-    )
+    LC: CableLossCompensation | None = pydantic.Field(default=None, description="Loss Compensation")
 
     # Charge Point Assignment (optional)
     # Note: CT can be enum or free text in practice (spec shows enum but implementations vary)
     CT: ChargePointIdentificationType | str | None = pydantic.Field(
         default=None, description="Charge Point Identification Type"
     )
-    CI: str | None = pydantic.Field(
-        default=None, description="Charge Point Identification"
-    )
+    CI: str | None = pydantic.Field(default=None, description="Charge Point Identification")
 
-    RD: List[Reading] = pydantic.Field(description="Readings")
+    RD: list[Reading] = pydantic.Field(description="Readings")
 
     @pydantic.model_validator(mode="after")
     def validate_serial_numbers(self) -> Payload:
         """Either GS or MS must be present for signature component identification"""
         if not self.GS and not self.MS:
+            msg = "Either Gateway Serial (GS) or Meter Serial (MS) must be provided"
             raise ValidationError(
-                "Either Gateway Serial (GS) or Meter Serial (MS) must be provided"
+                msg
             )
         return self
 
@@ -137,7 +124,7 @@ class Payload(pydantic.BaseModel):
         result = {}
 
         # Add all defined model fields
-        for field_name, field_info in self.__class__.model_fields.items():
+        for field_name, _field_info in self.__class__.model_fields.items():
             if field_name != "RD":  # Handle readings separately
                 value = getattr(self, field_name)
                 if value is not None:
@@ -147,8 +134,7 @@ class Payload(pydantic.BaseModel):
                     elif isinstance(value, list):
                         # Handle list fields like IF (IdentificationFlags)
                         result[field_name] = [
-                            item.value if hasattr(item, "value") else item
-                            for item in value
+                            item.value if hasattr(item, "value") else item for item in value
                         ]
                     elif isinstance(value, decimal.Decimal):
                         # Convert Decimal to float for JSON serialization

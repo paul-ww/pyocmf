@@ -2,7 +2,6 @@
 
 import pathlib
 import xml.etree.ElementTree as ET
-from typing import List
 
 import pytest
 
@@ -28,7 +27,7 @@ def transparency_xml_dir() -> pathlib.Path:
 
 
 @pytest.fixture
-def transparency_xml_files(transparency_xml_dir: pathlib.Path) -> List[pathlib.Path]:
+def transparency_xml_files(transparency_xml_dir: pathlib.Path) -> list[pathlib.Path]:
     """Return a list of all XML files in the transparency XML directory."""
     return sorted([f for f in transparency_xml_dir.rglob("*.xml") if f.is_file()])
 
@@ -117,7 +116,7 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
         )
 
 
-def test_ocmf_summary(transparency_xml_files: List[pathlib.Path]) -> None:
+def test_ocmf_summary(transparency_xml_files: list[pathlib.Path]) -> None:
     """Summary test that counts all OCMF strings found across all files."""
     total_files = 0
     total_ocmf_strings = 0

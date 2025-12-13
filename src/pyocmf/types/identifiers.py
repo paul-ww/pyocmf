@@ -12,9 +12,11 @@ from pyocmf.exceptions import Base64DecodingError, HexDecodingError
 
 def validate_hex_string(value: str) -> str:
     if not isinstance(value, str):
-        raise TypeError("string required")
+        msg = "string required"
+        raise TypeError(msg)
     if not re.fullmatch(r"^[0-9a-fA-F]+$", value):
-        raise HexDecodingError("invalid hexadecimal string")
+        msg = "invalid hexadecimal string"
+        raise HexDecodingError(msg)
     return value
 
 
@@ -27,11 +29,13 @@ HexStr = Annotated[
 
 def validate_base64_string(value: str) -> str:
     if not isinstance(value, str):
-        raise TypeError("string required")
+        msg = "string required"
+        raise TypeError(msg)
     try:
         base64.b64decode(value, validate=True)
     except Exception as e:
-        raise Base64DecodingError("invalid base64 string") from e
+        msg = "invalid base64 string"
+        raise Base64DecodingError(msg) from e
     return value
 
 
@@ -138,9 +142,7 @@ ISO7812 = str
 PHONE_NUMBER = phone_numbers.PhoneNumber
 
 # Union of all possible IdentificationData types
-IdentificationData = (
-    ISO14443 | ISO15693 | EMAID | EVCCID | EVCOID | ISO7812 | PHONE_NUMBER
-)
+IdentificationData = ISO14443 | ISO15693 | EMAID | EVCCID | EVCOID | ISO7812 | PHONE_NUMBER
 
 
 class ChargePointIdentificationType(enum.StrEnum):

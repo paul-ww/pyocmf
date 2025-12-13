@@ -50,9 +50,7 @@ class TimeStatus(enum.StrEnum):
 # Time format: ISO 8601 with time status suffix
 OCMFTimeFormat = Annotated[
     str,
-    pydantic.constr(
-        pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2},\d{3}[+-]\d{4} [UISR]$"
-    ),
+    pydantic.constr(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2},\d{3}[+-]\d{4} [UISR]$"),
 ]
 
 # Error flags can be a string containing 'E' and/or 't' characters
@@ -68,12 +66,8 @@ ObisCode = Annotated[
 
 
 class Reading(pydantic.BaseModel):
-    TM: OCMFTimeFormat = pydantic.Field(
-        description="Time (ISO 8601 + time status) - REQUIRED"
-    )
-    TX: MeterReadingReason | None = pydantic.Field(
-        default=None, description="Transaction"
-    )
+    TM: OCMFTimeFormat = pydantic.Field(description="Time (ISO 8601 + time status) - REQUIRED")
+    TX: MeterReadingReason | None = pydantic.Field(default=None, description="Transaction")
     RV: decimal.Decimal | None = pydantic.Field(
         default=None,
         description="Reading Value - Conditional (required when RI present)",
@@ -82,19 +76,15 @@ class Reading(pydantic.BaseModel):
         default=None, description="Reading Identification (OBIS code) - Conditional"
     )
     RU: OCMFUnit = pydantic.Field(description="Reading Unit - REQUIRED")
-    RT: ReadingType | None = pydantic.Field(
-        default=None, description="Reading Current Type"
-    )
-    CL: decimal.Decimal | None = pydantic.Field(
-        default=None, description="Cumulated Losses"
-    )
+    RT: ReadingType | None = pydantic.Field(default=None, description="Reading Current Type")
+    CL: decimal.Decimal | None = pydantic.Field(default=None, description="Cumulated Losses")
     EF: ErrorFlags | None = pydantic.Field(
         default=None, description="Error Flags (can contain 'E', 't', or both)"
     )
     ST: MeterStatus = pydantic.Field(description="Status - REQUIRED")
 
     @pydantic.field_validator("EF", mode="before")
-    def ef_empty_string_to_none(cls, v: str | None) -> ErrorFlags | None:
+    def ef_empty_string_to_none(self, v: str | None) -> ErrorFlags | None:
         if v == "":
             return None
         return v

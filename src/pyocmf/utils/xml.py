@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import pathlib
 import xml.etree.ElementTree as ET
-from typing import List
 
 from pyocmf.exceptions import DataNotFoundError, XmlParsingError
 from pyocmf.ocmf import OCMF
 
 
-def extract_ocmf_strings_from_xml(xml_path: pathlib.Path) -> List[str]:
+def extract_ocmf_strings_from_xml(xml_path: pathlib.Path) -> list[str]:
     """Extract all OCMF strings from an XML file.
 
     Args:
@@ -26,7 +25,8 @@ def extract_ocmf_strings_from_xml(xml_path: pathlib.Path) -> List[str]:
         tree = ET.parse(xml_path)
         root = tree.getroot()
     except ET.ParseError as e:
-        raise XmlParsingError(f"Failed to parse XML file: {e}") from e
+        msg = f"Failed to parse XML file: {e}"
+        raise XmlParsingError(msg) from e
 
     ocmf_strings = []
 
@@ -84,13 +84,14 @@ def parse_ocmf_from_xml(xml_path: pathlib.Path) -> OCMF:
     ocmf_strings = extract_ocmf_strings_from_xml(xml_path)
 
     if not ocmf_strings:
-        raise DataNotFoundError("No OCMF data found in XML file.")
+        msg = "No OCMF data found in XML file."
+        raise DataNotFoundError(msg)
 
     # Use the first OCMF string found
     return OCMF.from_string(ocmf_strings[0])
 
 
-def parse_all_ocmf_from_xml(xml_path: pathlib.Path) -> List[OCMF]:
+def parse_all_ocmf_from_xml(xml_path: pathlib.Path) -> list[OCMF]:
     """Parse all OCMF strings found in an XML file.
 
     Args:
@@ -106,10 +107,11 @@ def parse_all_ocmf_from_xml(xml_path: pathlib.Path) -> List[OCMF]:
     ocmf_strings = extract_ocmf_strings_from_xml(xml_path)
 
     if not ocmf_strings:
-        raise DataNotFoundError("No OCMF data found in XML file.")
+        msg = "No OCMF data found in XML file."
+        raise DataNotFoundError(msg)
 
     results = []
-    for i, ocmf_string in enumerate(ocmf_strings):
+    for _i, ocmf_string in enumerate(ocmf_strings):
         results.append(OCMF.from_string(ocmf_string))
 
     return results

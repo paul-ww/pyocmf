@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from typing import List
+
 import pydantic
+
 from pyocmf.custom_types.cable_loss import CableLossCompensation
 from pyocmf.custom_types.strings import (
     ChargePointIdentificationType,
@@ -11,10 +14,13 @@ from pyocmf.custom_types.strings import (
     UserAssignmentStatus,
 )
 from pyocmf.sections.readings import Reading
-from typing import List
 
 
 class Payload(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(
+        extra="allow"
+    )  # Allow extension fields U, V, W, X, Y, Z
+
     FV: str | None = pydantic.Field(default=None, description="Format Version")
     GI: str | None = pydantic.Field(default=None, description="Gateway Identification")
     GS: str | None = pydantic.Field(default=None, description="Gateway Serial")
@@ -24,7 +30,9 @@ class Payload(pydantic.BaseModel):
 
     MV: str | None = pydantic.Field(default=None, description="Meter Vendor")
     MM: str | None = pydantic.Field(default=None, description="Meter Model")
-    MS: str | None = pydantic.Field(default=None, description="Meter Serial")
+    MS: str | None = pydantic.Field(
+        default=None, description="Meter Serial - Mandatory per spec"
+    )
     MF: str | None = pydantic.Field(default=None, description="Meter Firmware")
 
     # User Assignment fields (optional, transaction reference dependent)
@@ -52,7 +60,8 @@ class Payload(pydantic.BaseModel):
     )
 
     # Charge Point Assignment (optional)
-    CT: ChargePointIdentificationType | None = pydantic.Field(
+    # Note: CT can be enum or free text in practice (spec shows enum but implementations vary)
+    CT: ChargePointIdentificationType | str | None = pydantic.Field(
         default=None, description="Charge Point Identification Type"
     )
     CI: str | None = pydantic.Field(
@@ -60,6 +69,15 @@ class Payload(pydantic.BaseModel):
     )
 
     RD: List[Reading] = pydantic.Field(description="Readings")
+
+    @pydantic.model_validator(mode="after")
+    def validate_serial_numbers(self) -> Payload:
+        """Either GS or MS must be present for signature component identification"""
+        if not self.GS and not self.MS:
+            raise ValueError(
+                "Either Gateway Serial (GS) or Meter Serial (MS) must be provided"
+            )
+        return self
 
     @pydantic.field_validator("FV", mode="before")
     @classmethod
@@ -78,15 +96,6 @@ class Payload(pydantic.BaseModel):
         if isinstance(v, int):
             return str(v)
         return v
-
-    @pydantic.model_validator(mode="after")
-    def validate_serial_numbers(self) -> Payload:
-        """Either GS or MS must be present for signature component identification"""
-        if not self.GS and not self.MS:
-            raise ValueError(
-                "Either Gateway Serial (GS) or Meter Serial (MS) must be provided"
-            )
-        return self
 
     @classmethod
     def from_flat_dict(cls, data: dict) -> Payload:
@@ -123,26 +132,29 @@ class Payload(pydantic.BaseModel):
     def to_flat_dict(self) -> dict:
         """Convert the Payload back to a flat dictionary format."""
         import decimal
-        
+
         result = {}
-        
+
         # Add all scalar fields
         for field_name, field_info in self.model_fields.items():
             if field_name != "RD":  # Handle readings separately
                 value = getattr(self, field_name)
                 if value is not None:
                     # Convert enums and custom types to their string representation
-                    if hasattr(value, 'value'):
+                    if hasattr(value, "value"):
                         result[field_name] = value.value
                     elif isinstance(value, list):
                         # Handle list fields like IF (IdentificationFlags)
-                        result[field_name] = [item.value if hasattr(item, 'value') else item for item in value]
+                        result[field_name] = [
+                            item.value if hasattr(item, "value") else item
+                            for item in value
+                        ]
                     elif isinstance(value, decimal.Decimal):
                         # Convert Decimal to float for JSON serialization
                         result[field_name] = float(value)
                     else:
                         result[field_name] = value
-        
+
         # Add readings - convert them using pydantic's model_dump which handles Decimals
         readings_list = []
         for reading in self.RD:
@@ -152,12 +164,16 @@ class Payload(pydantic.BaseModel):
                 if isinstance(val, decimal.Decimal):
                     reading_dict[key] = float(val)
             readings_list.append(reading_dict)
-        
+
         result["RD"] = readings_list
-        
+
         return result
-    
+
     def to_flat_dict_json(self) -> str:
         """Convert the Payload to a flat dictionary and return as JSON string."""
         import json
-        return json.dumps(self.to_flat_dict(), separators=(',', ':'))
+
+        return json.dumps(self.to_flat_dict(), separators=(",", ":"))
+        import json
+
+        return json.dumps(self.to_flat_dict(), separators=(",", ":"))

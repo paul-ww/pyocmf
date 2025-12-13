@@ -1,8 +1,10 @@
-import pydantic
-import enum
 import decimal
+import enum
 from typing import Annotated
-from pyocmf.custom_types.units import EnergyUnit
+
+import pydantic
+
+from pyocmf.custom_types.units import OCMFUnit
 
 
 class ReadingType(enum.StrEnum):
@@ -44,6 +46,7 @@ class TimeStatus(enum.StrEnum):
     SYNCHRONIZED = "S"
     RELATIVE = "R"
 
+
 # Time format: ISO 8601 with time status suffix
 OCMFTimeFormat = Annotated[
     str,
@@ -65,17 +68,20 @@ ObisCode = Annotated[
 
 
 class Reading(pydantic.BaseModel):
-    TM: OCMFTimeFormat | None = pydantic.Field(
-        default=None, description="Time (ISO 8601 + time status)"
+    TM: OCMFTimeFormat = pydantic.Field(
+        description="Time (ISO 8601 + time status) - REQUIRED"
     )
     TX: MeterReadingReason | None = pydantic.Field(
         default=None, description="Transaction"
     )
-    RV: decimal.Decimal = pydantic.Field(description="Reading Value")
-    RI: ObisCode | None = pydantic.Field(
-        default=None, description="Reading Identification (OBIS code)"
+    RV: decimal.Decimal | None = pydantic.Field(
+        default=None,
+        description="Reading Value - Conditional (required when RI present)",
     )
-    RU: EnergyUnit | None = pydantic.Field(default=None, description="Reading Unit")
+    RI: ObisCode | None = pydantic.Field(
+        default=None, description="Reading Identification (OBIS code) - Conditional"
+    )
+    RU: OCMFUnit = pydantic.Field(description="Reading Unit - REQUIRED")
     RT: ReadingType | None = pydantic.Field(
         default=None, description="Reading Current Type"
     )
@@ -85,7 +91,7 @@ class Reading(pydantic.BaseModel):
     EF: ErrorFlags | None = pydantic.Field(
         default=None, description="Error Flags (can contain 'E', 't', or both)"
     )
-    ST: MeterStatus | None = pydantic.Field(default=None, description="Status")
+    ST: MeterStatus = pydantic.Field(description="Status - REQUIRED")
 
     @pydantic.field_validator("EF", mode="before")
     def ef_empty_string_to_none(cls, v: str | None) -> ErrorFlags | None:

@@ -1,6 +1,9 @@
 import pathlib
-import pytest
+import xml.etree.ElementTree as ET
 from typing import List
+
+import pytest
+
 from pyocmf.xml_parser import parse_ocmf_from_xml
 
 
@@ -78,44 +81,47 @@ def test_transparency_xml_file_parsing(xml_file: pathlib.Path) -> None:
         / "xml"
     )
 
-    try:
+    file_name_lower = xml_file.name.lower()
+    parent_dir = xml_file.parent.name
+
+    # Known non-OCMF file patterns - verify they raise appropriate exceptions
+    if (
+        any(keyword in file_name_lower for keyword in ["metra", "edl", "isa-edl"])
+        or parent_dir == "emh-emoc"
+        or "invalid" in file_name_lower
+        or "mennekes" in file_name_lower  # Mennekes proprietary format
+        or "wirelane" in file_name_lower  # Wirelane proprietary format
+        or "template" in file_name_lower  # Empty template files
+        or "test_input_xml_two_values" in file_name_lower  # Non-OCMF test file
+    ):
+        # These files should raise ValueError or ParseError when parsing
+        with pytest.raises((ValueError, ET.ParseError)):
+            parse_ocmf_from_xml(xml_file)
+        print(f"✓ Correctly rejected non-OCMF file {rel_path}")
+    elif (
+        "rsa" in file_name_lower  # cannot deal with RSA yet
+        or "ocmf-receipt-with_import_and_export" in file_name_lower
+        or "ocmf-receipt-with_publickey_and_data" in file_name_lower
+    ):
+        # These are OCMF files but have unsupported features
+        pytest.skip(f"Skipping unsupported content file {rel_path}")
+    else:
+        # These should be valid OCMF files
         result = parse_ocmf_from_xml(xml_file)
         assert result is not None, f"Parsing {rel_path} returned None"
         assert result.header == "OCMF", f"Expected header 'OCMF', got '{result.header}'"
         assert result.payload is not None, f"Payload is None for {rel_path}"
         assert result.signature is not None, f"Signature is None for {rel_path}"
         print(f"✓ Successfully parsed {rel_path}")
-        
-    except Exception as e:
-        # Some files might not be OCMF format, so we'll mark them as expected failures
-        # if they contain certain keywords or are in specific directories
-        file_name_lower = xml_file.name.lower()
-        parent_dir = xml_file.parent.name
-
-        # Known non-OCMF file patterns
-        if (
-            any(keyword in file_name_lower for keyword in ["metra", "edl", "isa-edl"])
-            or parent_dir == "emh-emoc"
-            or "invalid" in file_name_lower
-        ):
-            pytest.skip(f"Skipping non-OCMF file {rel_path}: {type(e).__name__}: {e}")
-        elif (
-            "rsa" in file_name_lower  # cannot deal with RSA yet
-            or "ocmf-receipt-with_import_and_export" in file_name_lower
-            or "ocmf-receipt-with_publickey_and_data" in file_name_lower
-        ):  # wrong CT field
-            pytest.skip(
-                f"Skipping unsupported content file {rel_path}: {type(e).__name__}: {e}"
-            )
-        else:
-            pytest.fail(
-                f"Failed to parse expected OCMF file {rel_path}: {type(e).__name__}: {e}"
-            )
 
 
-def test_all_transparency_files_exist(transparency_xml_files: List[pathlib.Path]) -> None:
+def test_all_transparency_files_exist(
+    transparency_xml_files: List[pathlib.Path],
+) -> None:
     """Verify that we have transparency XML files to test."""
-    assert len(transparency_xml_files) > 0, "No XML files found in transparency_xml directory"
+    assert (
+        len(transparency_xml_files) > 0
+    ), "No XML files found in transparency_xml directory"
 
     base_dir = (
         pathlib.Path(__file__).parent.parent
@@ -164,7 +170,7 @@ def test_transparency_files_summary(transparency_xml_files: List[pathlib.Path]) 
         / "resources"
         / "xml"
     )
-    
+
     for xml_file in transparency_xml_files:
         rel_path = xml_file.relative_to(base_dir)
         file_name_lower = xml_file.name.lower()
@@ -191,18 +197,18 @@ def test_transparency_files_summary(transparency_xml_files: List[pathlib.Path]) 
                 )
             else:
                 failed_files.append((str(rel_path), f"{type(e).__name__}: {e}"))
-    
+
     print("\n=== PARSING SUMMARY ===")
     print(f"Total files: {len(transparency_xml_files)}")
     print(f"Successful: {len(successful_files)}")
     print(f"Failed: {len(failed_files)}")
     print(f"Skipped (non-OCMF): {len(skipped_files)}")
-    
+
     if successful_files:
         print("\n✓ Successfully parsed files:")
         for filename in successful_files:
             print(f"  - {filename}")
-    
+
     if failed_files:
         print("\n✗ Failed to parse files:")
         for filename, error in failed_files:

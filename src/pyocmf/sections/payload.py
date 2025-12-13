@@ -135,7 +135,7 @@ class Payload(pydantic.BaseModel):
 
         result = {}
 
-        # Add all scalar fields
+        # Add all defined model fields
         for field_name, field_info in self.model_fields.items():
             if field_name != "RD":  # Handle readings separately
                 value = getattr(self, field_name)
@@ -154,6 +154,12 @@ class Payload(pydantic.BaseModel):
                         result[field_name] = float(value)
                     else:
                         result[field_name] = value
+
+        # Add extension fields (U, V, W, X, Y, Z, etc.) stored in __pydantic_extra__
+        if hasattr(self, "__pydantic_extra__") and self.__pydantic_extra__:
+            for field_name, value in self.__pydantic_extra__.items():
+                if value is not None:
+                    result[field_name] = value
 
         # Add readings - convert them using pydantic's model_dump which handles Decimals
         readings_list = []

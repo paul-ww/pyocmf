@@ -137,7 +137,7 @@ class Payload(pydantic.BaseModel):
         result = {}
 
         # Add all defined model fields
-        for field_name, field_info in self.model_fields.items():
+        for field_name, field_info in self.__class__.model_fields.items():
             if field_name != "RD":  # Handle readings separately
                 value = getattr(self, field_name)
                 if value is not None:

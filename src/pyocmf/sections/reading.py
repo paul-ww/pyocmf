@@ -4,7 +4,7 @@ from typing import Annotated
 
 import pydantic
 
-from pyocmf.custom_types.units import OCMFUnit
+from pyocmf.types.units import OCMFUnit
 
 
 class ReadingType(enum.StrEnum):

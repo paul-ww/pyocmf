@@ -1,7 +1,6 @@
-"""Python library for parsing and creating Open Charge Metering Format (OCMF) data."""
+"""Python library for parsing and validating Open Charge Metering Format (OCMF) data."""
 
-from . import xml_parser
-from .exceptions import (
+from pyocmf.exceptions import (
     Base64DecodingError,
     DataNotFoundError,
     EncodingError,
@@ -13,21 +12,20 @@ from .exceptions import (
     ValidationError,
     XmlParsingError,
 )
-from .ocmf import OCMF
-from .transparency import TransparencyXML
+from pyocmf.ocmf import OCMF
 
 __all__ = [
+    # Core
     "OCMF",
-    "TransparencyXML",
-    "xml_parser",
+    # Exceptions
     "PyOCMFError",
-    "XmlParsingError",
-    "DataNotFoundError",
     "OcmfFormatError",
     "OcmfPayloadError",
     "OcmfSignatureError",
+    "ValidationError",
     "EncodingError",
     "HexDecodingError",
     "Base64DecodingError",
-    "ValidationError",
+    "DataNotFoundError",
+    "XmlParsingError",
 ]

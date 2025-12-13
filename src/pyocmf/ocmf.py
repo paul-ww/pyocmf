@@ -16,7 +16,7 @@ class OCMF(pydantic.BaseModel):
     signature: Signature
 
     @classmethod
-    def from_string(cls, ocmf_string: str) -> "OCMF":
+    def from_string(cls, ocmf_string: str) -> OCMF:
         """Parse an OCMF string into an OCMF model.
 
         Args:
@@ -65,7 +65,7 @@ class OCMF(pydantic.BaseModel):
         return f"OCMF|{payload_json}|{signature_json}"
 
     @classmethod
-    def from_xml(cls, xml_path) -> "OCMF":
+    def from_xml(cls, xml_path) -> OCMF:
         """Parse an OCMF model from an XML file.
 
         This method is deprecated. Use xml_parser.parse_ocmf_from_xml() instead.
@@ -79,10 +79,10 @@ class OCMF(pydantic.BaseModel):
         import warnings
         from pathlib import Path
 
-        from pyocmf.xml_parser import parse_ocmf_from_xml
+        from pyocmf.utils.xml import parse_ocmf_from_xml
 
         warnings.warn(
-            "OCMF.from_xml() is deprecated. Use pyocmf.xml_parser.parse_ocmf_from_xml() instead.",
+            "OCMF.from_xml() is deprecated. Use pyocmf.utils.xml.parse_ocmf_from_xml() instead.",
             DeprecationWarning,
             stacklevel=2,
         )

@@ -1,6 +1,6 @@
 """Tests for custom unit enums - just basic smoke tests since these are standard enums."""
 
-from pyocmf.custom_types.units import EnergyUnit, ResistanceUnit, TimeUnit
+from pyocmf.types.units import EnergyUnit, ResistanceUnit, TimeUnit
 
 
 class TestUnitEnums:

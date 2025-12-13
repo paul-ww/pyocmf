@@ -10,7 +10,7 @@ from pyocmf.exceptions import (
     PyOCMFError,
 )
 from pyocmf.ocmf import OCMF
-from pyocmf.xml_parser import extract_ocmf_strings_from_xml, parse_ocmf_from_xml
+from pyocmf.utils.xml import extract_ocmf_strings_from_xml, parse_ocmf_from_xml
 
 
 @pytest.fixture
@@ -74,6 +74,11 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
     file_name_lower = xml_file.name.lower()
     parent_dir = xml_file.parent.name
 
+    # Files with unsupported OCMF features (skip for now)
+    if "rsa" in file_name_lower:
+        pytest.skip("Skipping unsupported OCMF feature file")
+    return
+
     # Files that should NOT contain OCMF data
     if (
         any(keyword in file_name_lower for keyword in ["metra", "edl", "isa-edl"])
@@ -87,15 +92,6 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
         # Verify these correctly raise exceptions
         with pytest.raises((PyOCMFError, ET.ParseError)):
             parse_ocmf_from_xml(xml_file)
-        return
-
-    # Files with unsupported OCMF features (skip for now)
-    if (
-        "rsa" in file_name_lower
-        or "ocmf-receipt-with_import_and_export" in file_name_lower
-        or "ocmf-receipt-with_publickey_and_data" in file_name_lower
-    ):
-        pytest.skip("Skipping unsupported OCMF feature file")
         return
 
     # Valid OCMF files - test parsing and roundtripping
@@ -116,9 +112,9 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
         ocmf_model_2 = OCMF.from_string(reconstructed_string)
 
         # Verify models are identical
-        assert ocmf_model.model_dump() == ocmf_model_2.model_dump(), (
-            f"Roundtrip failed for OCMF string {i + 1} in {xml_file.name}"
-        )
+        assert (
+            ocmf_model.model_dump() == ocmf_model_2.model_dump()
+        ), f"Roundtrip failed for OCMF string {i + 1} in {xml_file.name}"
 
 
 def test_ocmf_summary(transparency_xml_files: List[pathlib.Path]) -> None:

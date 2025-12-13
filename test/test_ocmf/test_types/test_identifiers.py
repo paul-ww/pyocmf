@@ -6,7 +6,7 @@ from typing import ContextManager
 import pydantic
 import pytest
 
-from pyocmf.custom_types.strings import Base64Str, HexStr
+from pyocmf.types.identifiers import Base64Str, HexStr
 
 
 class TestHexString:

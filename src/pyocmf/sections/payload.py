@@ -4,8 +4,10 @@ from typing import List
 
 import pydantic
 
-from pyocmf.custom_types.cable_loss import CableLossCompensation
-from pyocmf.custom_types.strings import (
+from pyocmf.exceptions import ValidationError
+from pyocmf.sections.reading import Reading
+from pyocmf.types.cable_loss import CableLossCompensation
+from pyocmf.types.identifiers import (
     ChargePointIdentificationType,
     IdentificationData,
     IdentificationFlag,
@@ -13,8 +15,6 @@ from pyocmf.custom_types.strings import (
     PaginationString,
     UserAssignmentStatus,
 )
-from pyocmf.exceptions import ValidationError
-from pyocmf.sections.readings import Reading
 
 
 class Payload(pydantic.BaseModel):

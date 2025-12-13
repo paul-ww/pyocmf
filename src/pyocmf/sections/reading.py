@@ -47,13 +47,18 @@ class TimeStatus(enum.StrEnum):
     RELATIVE = "R"
 
 
+# OCMF time format: ISO 8601 with milliseconds, timezone, and status flag
+# (e.g., "2023-06-15T14:30:45,123+0200 S" where S=Synchronized, U=Unknown, I=Informative, R=Relative)
 OCMFTimeFormat = Annotated[
     str,
     pydantic.constr(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2},\d{3}[+-]\d{4} [UISR]$"),
 ]
 
+# Error flags: Empty string or combination of 'E' (error) and 't' (test/tariff change)
+# (e.g., "", "E", "t", "Et")
 ErrorFlags = Annotated[str, pydantic.constr(pattern=r"^[Et]*$")]
 
+# OBIS code: 6 hex byte pairs with specific separators (e.g., "01-00:01.08.00*FF")
 ObisCode = Annotated[
     str,
     pydantic.constr(

@@ -46,7 +46,9 @@ Base64Str = Annotated[
 ]
 
 
+# Transaction context: "T" followed by optional digits (e.g., "T", "T1", "T123")
 TransactionContext = Annotated[str, pydantic.constr(pattern=r"^T[1-9]*$")]
+# Fiscal context: "F" followed by optional digits (e.g., "F", "F1", "F456")
 FiscalContext = Annotated[str, pydantic.constr(pattern=r"^F[1-9]*$")]
 PaginationString = TransactionContext | FiscalContext
 
@@ -121,12 +123,18 @@ IdentificationFlag = (
     | IdentificationFlagPLMN
 )
 
+# ISO14443 RFID card UID: 4 or 7 bytes in hex (e.g., "1A2B3C4D" or "1A2B3C4D5E6F70")
 ISO14443 = Annotated[str, pydantic.Field(pattern=r"^[0-9a-fA-F]{8}$|^[0-9a-fA-F]{14}$")]
+# ISO15693 RFID card UID: 8 bytes in hex (e.g., "E007000012345678")
 ISO15693 = Annotated[str, pydantic.Field(pattern=r"^[0-9a-fA-F]{16}$")]
+# EMAID: Electro-Mobility Account ID, 14-15 alphanumeric chars (e.g., "DETNME12345678X")
 EMAID = Annotated[str, pydantic.Field(pattern=r"^[A-Za-z0-9]{14,15}$")]
+# EVCCID: Electric Vehicle ID, max 6 characters (e.g., "ABC123")
 EVCCID = Annotated[str, pydantic.Field(max_length=6)]
-EVCOID = str
-ISO7812 = str
+# EVCOID per DIN 91286: format like "NL-TNM-012204-5" (Country-Provider-Instance-CheckDigit)
+EVCOID = Annotated[str, pydantic.Field(pattern=r"^[A-Z]{2,3}-[A-Z0-9]{2,3}-[0-9]{6}-[0-9]$")]
+# ISO7812: Card numbers 8-19 digits (e.g., "4111111111111111" for credit/bank cards)
+ISO7812 = Annotated[str, pydantic.Field(pattern=r"^[0-9]{8,19}$")]
 
 PHONE_NUMBER = phone_numbers.PhoneNumber
 

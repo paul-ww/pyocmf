@@ -9,6 +9,38 @@ from pyocmf.exceptions import DataNotFoundError, XmlParsingError
 from pyocmf.ocmf import OCMF
 
 
+def _extract_from_signed_data(value_elem: ET.Element) -> str | None:
+    """Extract OCMF string from signedData element with format='OCMF'."""
+    sd = value_elem.find("signedData")
+    if sd is not None and sd.get("format") == "OCMF" and sd.text:
+        return sd.text.strip()
+    return None
+
+
+def _extract_from_encoded_data(value_elem: ET.Element) -> str | None:
+    """Extract OCMF string from hex-encoded encodedData element."""
+    ed = value_elem.find("encodedData")
+    if ed is not None and ed.get("format") == "OCMF" and ed.text:
+        encoding = ed.get("encoding", "").lower()
+        if encoding == "hex":
+            try:
+                decoded_bytes = bytes.fromhex(ed.text.strip())
+                decoded_text = decoded_bytes.decode("utf-8")
+                if decoded_text.strip().startswith("OCMF|"):
+                    return decoded_text.strip()
+            except (ValueError, UnicodeDecodeError):
+                pass
+    return None
+
+
+def _extract_from_any_signed_data(value_elem: ET.Element) -> str | None:
+    """Extract OCMF string from any signedData element containing OCMF data."""
+    sd = value_elem.find("signedData")
+    if sd is not None and sd.text is not None and sd.text.strip().startswith("OCMF|"):
+        return sd.text.strip()
+    return None
+
+
 def extract_ocmf_strings_from_file(xml_path: pathlib.Path) -> list[str]:
     """Extract all OCMF strings from an XML file.
 
@@ -31,32 +63,17 @@ def extract_ocmf_strings_from_file(xml_path: pathlib.Path) -> list[str]:
     ocmf_strings = []
 
     for value_elem in root.findall("value"):
-        sd = value_elem.find("signedData")
-        if sd is not None and sd.get("format") == "OCMF" and sd.text:
-            ocmf_strings.append(sd.text.strip())
+        if ocmf_str := _extract_from_signed_data(value_elem):
+            ocmf_strings.append(ocmf_str)
 
     for value_elem in root.findall("value"):
-        ed = value_elem.find("encodedData")
-        if ed is not None and ed.get("format") == "OCMF" and ed.text:
-            encoding = ed.get("encoding", "").lower()
-            if encoding == "hex":
-                try:
-                    decoded_bytes = bytes.fromhex(ed.text.strip())
-                    decoded_text = decoded_bytes.decode("utf-8")
-                    if decoded_text.strip().startswith("OCMF|"):
-                        ocmf_strings.append(decoded_text.strip())
-                except (ValueError, UnicodeDecodeError):
-                    continue
+        if ocmf_str := _extract_from_encoded_data(value_elem):
+            ocmf_strings.append(ocmf_str)
 
     for value_elem in root.findall("value"):
-        sd = value_elem.find("signedData")
-        if (
-            sd is not None
-            and sd.text is not None
-            and sd.text.strip().startswith("OCMF|")
-            and sd.text.strip() not in ocmf_strings
-        ):
-            ocmf_strings.append(sd.text.strip())
+        if ocmf_str := _extract_from_any_signed_data(value_elem):
+            if ocmf_str not in ocmf_strings:
+                ocmf_strings.append(ocmf_str)
 
     return ocmf_strings
 

@@ -103,41 +103,44 @@ class Payload(pydantic.BaseModel):
 
         return cls(**payload_data)
 
-    def to_flat_dict(self) -> dict:
-        """Convert the Payload back to a flat dictionary format."""
+    def _serialize_field_value(self, value) -> any:
+        """Serialize a field value for JSON conversion."""
         import decimal
 
+        if hasattr(value, "value"):
+            return value.value
+        if isinstance(value, list):
+            return [item.value if hasattr(item, "value") else item for item in value]
+        if isinstance(value, decimal.Decimal):
+            return float(value)
+        return value
+
+    def _serialize_reading(self, reading: Reading) -> dict:
+        """Serialize a reading to a dictionary with floats instead of Decimals."""
+        import decimal
+
+        reading_dict = reading.model_dump(exclude_none=True)
+        for key, val in reading_dict.items():
+            if isinstance(val, decimal.Decimal):
+                reading_dict[key] = float(val)
+        return reading_dict
+
+    def to_flat_dict(self) -> dict:
+        """Convert the Payload back to a flat dictionary format."""
         result = {}
 
         for field_name, _field_info in self.__class__.model_fields.items():
             if field_name != "RD":
                 value = getattr(self, field_name)
                 if value is not None:
-                    if hasattr(value, "value"):
-                        result[field_name] = value.value
-                    elif isinstance(value, list):
-                        result[field_name] = [
-                            item.value if hasattr(item, "value") else item for item in value
-                        ]
-                    elif isinstance(value, decimal.Decimal):
-                        result[field_name] = float(value)
-                    else:
-                        result[field_name] = value
+                    result[field_name] = self._serialize_field_value(value)
 
         if hasattr(self, "__pydantic_extra__") and self.__pydantic_extra__:
             for field_name, value in self.__pydantic_extra__.items():
                 if value is not None:
                     result[field_name] = value
 
-        readings_list = []
-        for reading in self.RD:
-            reading_dict = reading.model_dump(exclude_none=True)
-            for key, val in reading_dict.items():
-                if isinstance(val, decimal.Decimal):
-                    reading_dict[key] = float(val)
-            readings_list.append(reading_dict)
-
-        result["RD"] = readings_list
+        result["RD"] = [self._serialize_reading(reading) for reading in self.RD]
 
         return result
 

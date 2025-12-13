@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import decimal
-import json
-from typing import Any
-
 import pydantic
 
 from pyocmf.exceptions import ValidationError
@@ -83,6 +79,10 @@ class Payload(pydantic.BaseModel):
 
     @classmethod
     def from_flat_dict(cls, data: dict) -> Payload:
+        """Parse payload data with inheritable reading fields.
+
+        Some reading fields can be inherited from the previous reading if not specified.
+        """
         readings_data = data.get("RD", [])
         readings = []
 
@@ -90,69 +90,28 @@ class Payload(pydantic.BaseModel):
         last_values: dict[str, str] = {}
 
         for rd in readings_data:
-            reading_dict = rd.copy()
+            # Inherit missing fields from previous reading
+            reading_dict = {
+                field: rd.get(field, last_values.get(field))
+                for field in inheritable_fields
+                if field in rd or field in last_values
+            }
+            # Add non-inheritable fields
+            reading_dict.update({k: v for k, v in rd.items() if k not in inheritable_fields})
 
-            for field in inheritable_fields:
-                if field not in reading_dict and field in last_values:
-                    reading_dict[field] = last_values[field]
-
-            for field in inheritable_fields:
-                if field in reading_dict:
-                    last_values[field] = reading_dict[field]
+            # Update last_values with current reading's inheritable fields
+            last_values.update({k: v for k, v in reading_dict.items() if k in inheritable_fields})
 
             readings.append(Reading(**reading_dict))
 
         payload_data = {k: v for k, v in data.items() if k != "RD"}
         payload_data["RD"] = readings
-
         return cls(**payload_data)
-
-    def _serialize_field_value(self, value: Any) -> str | int | float | list[Any] | None:
-        """Serialize a field value for JSON conversion.
-
-        Converts Pydantic model field values to JSON-serializable types:
-        - Enums/objects with .value → extract the value
-        - Lists → recursively extract values from items
-        - Decimal → convert to float
-        - Other types → return as-is
-        """
-        if hasattr(value, "value"):
-            return value.value
-        if isinstance(value, list):
-            return [item.value if hasattr(item, "value") else item for item in value]
-        if isinstance(value, decimal.Decimal):
-            return float(value)
-        return value
-
-    def _serialize_reading(self, reading: Reading) -> dict:
-        """Serialize a reading to a dictionary with floats instead of Decimals."""
-
-        reading_dict = reading.model_dump(exclude_none=True)
-        for key, val in reading_dict.items():
-            if isinstance(val, decimal.Decimal):
-                reading_dict[key] = float(val)
-        return reading_dict
 
     def to_flat_dict(self) -> dict:
         """Convert the Payload back to a flat dictionary format."""
-        result = {}
-
-        for field_name, _field_info in self.__class__.model_fields.items():
-            if field_name != "RD":
-                value = getattr(self, field_name)
-                if value is not None:
-                    result[field_name] = self._serialize_field_value(value)
-
-        if hasattr(self, "__pydantic_extra__") and self.__pydantic_extra__:
-            for field_name, value in self.__pydantic_extra__.items():
-                if value is not None:
-                    result[field_name] = value
-
-        result["RD"] = [self._serialize_reading(reading) for reading in self.RD]
-
-        return result
+        return self.model_dump(mode="python", exclude_none=True)
 
     def to_flat_dict_json(self) -> str:
         """Convert the Payload to a flat dictionary and return as JSON string."""
-
-        return json.dumps(self.to_flat_dict(), separators=(",", ":"))
+        return self.model_dump_json(exclude_none=True)

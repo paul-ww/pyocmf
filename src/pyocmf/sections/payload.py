@@ -119,3 +119,45 @@ class Payload(pydantic.BaseModel):
         payload_data["RD"] = readings
 
         return cls(**payload_data)
+
+    def to_flat_dict(self) -> dict:
+        """Convert the Payload back to a flat dictionary format."""
+        import decimal
+        
+        result = {}
+        
+        # Add all scalar fields
+        for field_name, field_info in self.model_fields.items():
+            if field_name != "RD":  # Handle readings separately
+                value = getattr(self, field_name)
+                if value is not None:
+                    # Convert enums and custom types to their string representation
+                    if hasattr(value, 'value'):
+                        result[field_name] = value.value
+                    elif isinstance(value, list):
+                        # Handle list fields like IF (IdentificationFlags)
+                        result[field_name] = [item.value if hasattr(item, 'value') else item for item in value]
+                    elif isinstance(value, decimal.Decimal):
+                        # Convert Decimal to float for JSON serialization
+                        result[field_name] = float(value)
+                    else:
+                        result[field_name] = value
+        
+        # Add readings - convert them using pydantic's model_dump which handles Decimals
+        readings_list = []
+        for reading in self.RD:
+            reading_dict = reading.model_dump(exclude_none=True)
+            # Convert Decimal values to float in the reading dict
+            for key, val in reading_dict.items():
+                if isinstance(val, decimal.Decimal):
+                    reading_dict[key] = float(val)
+            readings_list.append(reading_dict)
+        
+        result["RD"] = readings_list
+        
+        return result
+    
+    def to_flat_dict_json(self) -> str:
+        """Convert the Payload to a flat dictionary and return as JSON string."""
+        import json
+        return json.dumps(self.to_flat_dict(), separators=(',', ':'))

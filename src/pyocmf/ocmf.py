@@ -1,6 +1,4 @@
 from __future__ import annotations
-import pathlib
-import xml.etree.ElementTree as ET
 import json
 
 import pydantic
@@ -14,78 +12,70 @@ class OCMF(pydantic.BaseModel):
     signature: Signature
 
     @classmethod
-    def from_xml(cls, xml_path: pathlib.Path) -> OCMF:
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
-
-        # Find the first signedData element with format="OCMF"
-        signed_data_elem = None
-        for value_elem in root.findall("value"):
-            sd = value_elem.find("signedData")
-            if sd is not None and sd.get("format") == "OCMF":
-                signed_data_elem = sd
-                break
-
-        # Also check for encodedData with format="OCMF"
-        if signed_data_elem is None:
-            for value_elem in root.findall("value"):
-                ed = value_elem.find("encodedData")
-                if ed is not None and ed.get("format") == "OCMF":
-                    # Try to decode hex-encoded OCMF data
-                    encoding = ed.get("encoding", "").lower()
-                    if encoding == "hex":
-                        if ed.text is None:
-                            raise ValueError("encodedData element is empty.")
-                        try:
-                            # Decode hex to bytes
-                            decoded_bytes = bytes.fromhex(ed.text.strip())
-                            # Try to decode as UTF-8 text
-                            decoded_text = decoded_bytes.decode("utf-8")
-                            # Check if it contains OCMF format
-                            if decoded_text.strip().startswith("OCMF|"):
-                                # Create a temporary element for the decoded text
-                                signed_data_elem = ET.Element("signedData")
-                                signed_data_elem.text = decoded_text.strip()
-                                break
-                            else:
-                                raise ValueError(
-                                    "Hex-decoded data does not contain valid OCMF format."
-                                )
-                        except (ValueError, UnicodeDecodeError) as e:
-                            # If hex decoding fails or the result isn't valid OCMF text,
-                            # this might be a more complex encoding (e.g., ASN.1/DER wrapped)
-                            raise ValueError(
-                                f"Failed to decode hex-encoded OCMF data: {e}. This may be ASN.1/DER encoded data which requires specialized parsing."
-                            )
-                    else:
-                        raise ValueError(
-                            f"Unsupported encoding for OCMF data: {encoding}"
-                        )
-
-        # Fallback: if no signedData with format="OCMF" found, 
-        # look for any signedData that contains OCMF data
-        if signed_data_elem is None:
-            for value_elem in root.findall("value"):
-                sd = value_elem.find("signedData")
-                if sd is not None and sd.text is not None and sd.text.strip().startswith("OCMF|"):
-                    signed_data_elem = sd
-                    break
+    def from_string(cls, ocmf_string: str) -> "OCMF":
+        """Parse an OCMF string into an OCMF model.
         
-        if signed_data_elem is None:
-            raise ValueError("No signedData element with OCMF content found.")
-
-        if signed_data_elem.text is None:
-            raise ValueError("signedData element is empty.")
-        
-        # Clean and parse the signedData string: OCMF|{payload_json}|{signature_json}
-        ocmf_text = signed_data_elem.text.strip()
+        Args:
+            ocmf_string: The OCMF string in format "OCMF|{payload_json}|{signature_json}"
+            
+        Returns:
+            OCMF: The parsed OCMF model
+            
+        Raises:
+            ValueError: If the string is not in valid OCMF format
+        """
+        ocmf_text = ocmf_string.strip()
         parts = ocmf_text.split("|", 2)
+        
         if len(parts) != 3 or parts[0] != "OCMF":
-            raise ValueError("signedData does not match expected OCMF format.")
+            raise ValueError("String does not match expected OCMF format 'OCMF|{payload}|{signature}'.")
+            
         payload_json = parts[1]
         signature_json = parts[2]
 
-        payload = Payload.from_flat_dict(json.loads(payload_json))
-        signature = Signature.model_validate_json(signature_json)
+        try:
+            payload = Payload.from_flat_dict(json.loads(payload_json))
+        except (json.JSONDecodeError, ValueError) as e:
+            raise ValueError(f"Invalid payload JSON: {e}")
+            
+        try:
+            signature = Signature.model_validate_json(signature_json)
+        except (json.JSONDecodeError, pydantic.ValidationError) as e:
+            raise ValueError(f"Invalid signature JSON: {e}")
 
         return cls(header="OCMF", payload=payload, signature=signature)
+    
+    def to_string(self) -> str:
+        """Convert the OCMF model to its string representation.
+        
+        Returns:
+            str: The OCMF string in format "OCMF|{payload_json}|{signature_json}"
+        """
+        payload_json = self.payload.to_flat_dict_json()
+        signature_json = self.signature.model_dump_json()
+        
+        return f"OCMF|{payload_json}|{signature_json}"
+
+    @classmethod
+    def from_xml(cls, xml_path) -> "OCMF":
+        """Parse an OCMF model from an XML file.
+        
+        This method is deprecated. Use xml_parser.parse_ocmf_from_xml() instead.
+        
+        Args:
+            xml_path: Path to the XML file
+            
+        Returns:
+            OCMF: The parsed OCMF model
+        """
+        import warnings
+        from pathlib import Path
+        from pyocmf.xml_parser import parse_ocmf_from_xml
+        
+        warnings.warn(
+            "OCMF.from_xml() is deprecated. Use pyocmf.xml_parser.parse_ocmf_from_xml() instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        
+        return parse_ocmf_from_xml(Path(xml_path))

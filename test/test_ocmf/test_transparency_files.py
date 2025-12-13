@@ -1,7 +1,7 @@
 import pathlib
 import pytest
 from typing import List
-from pyocmf.ocmf import OCMF
+from pyocmf.xml_parser import parse_ocmf_from_xml
 
 
 @pytest.fixture
@@ -79,7 +79,7 @@ def test_transparency_xml_file_parsing(xml_file: pathlib.Path) -> None:
     )
 
     try:
-        result = OCMF.from_xml(xml_file)
+        result = parse_ocmf_from_xml(xml_file)
         assert result is not None, f"Parsing {rel_path} returned None"
         assert result.header == "OCMF", f"Expected header 'OCMF', got '{result.header}'"
         assert result.payload is not None, f"Payload is None for {rel_path}"
@@ -171,7 +171,7 @@ def test_transparency_files_summary(transparency_xml_files: List[pathlib.Path]) 
         parent_dir = xml_file.parent.name
 
         try:
-            result = OCMF.from_xml(xml_file)
+            result = parse_ocmf_from_xml(xml_file)
             if result is not None:
                 successful_files.append(str(rel_path))
             else:

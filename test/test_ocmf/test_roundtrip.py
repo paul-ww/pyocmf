@@ -6,6 +6,14 @@ from typing import List
 
 import pytest
 
+from pyocmf.exceptions import (
+    DataNotFoundError,
+    OcmfFormatError,
+    OcmfPayloadError,
+    OcmfSignatureError,
+    PyOCMFError,
+    XmlParsingError,
+)
 from pyocmf.ocmf import OCMF
 from pyocmf.xml_parser import extract_ocmf_strings_from_xml, parse_ocmf_from_xml
 
@@ -82,7 +90,7 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
         or "test_input_xml_two_values" in file_name_lower
     ):
         # Verify these correctly raise exceptions
-        with pytest.raises((ValueError, ET.ParseError)):
+        with pytest.raises((PyOCMFError, ET.ParseError)):
             parse_ocmf_from_xml(xml_file)
         return
 

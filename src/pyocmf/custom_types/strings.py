@@ -1,17 +1,20 @@
-import pydantic
-from typing import Annotated
-import enum
-from pydantic_extra_types import phone_numbers
-from pydantic import AfterValidator, WithJsonSchema
-import re
 import base64
+import enum
+import re
+from typing import Annotated
+
+import pydantic
+from pydantic import AfterValidator, WithJsonSchema
+from pydantic_extra_types import phone_numbers
+
+from pyocmf.exceptions import Base64DecodingError, HexDecodingError, ValidationError
 
 
 def validate_hex_string(value: str) -> str:
     if not isinstance(value, str):
         raise TypeError("string required")
     if not re.fullmatch(r"^[0-9a-fA-F]+$", value):
-        raise ValueError("invalid hexadecimal string")
+        raise HexDecodingError("invalid hexadecimal string")
     return value
 
 
@@ -27,8 +30,8 @@ def validate_base64_string(value: str) -> str:
         raise TypeError("string required")
     try:
         base64.b64decode(value, validate=True)
-    except Exception:
-        raise ValueError("invalid base64 string")
+    except Exception as e:
+        raise Base64DecodingError("invalid base64 string") from e
     return value
 
 
@@ -42,6 +45,7 @@ Base64Str = Annotated[
 TransactionContext = Annotated[str, pydantic.constr(pattern=r"^T[1-9]*$")]
 FiscalContext = Annotated[str, pydantic.constr(pattern=r"^F[1-9]*$")]
 PaginationString = TransactionContext | FiscalContext
+
 
 class UserAssignmentStatus(str, enum.Enum):
     # status without assignment

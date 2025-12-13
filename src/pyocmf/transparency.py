@@ -2,6 +2,9 @@ import pathlib
 import xml.etree.ElementTree as ET
 from typing import List, Optional
 
+from pyocmf.exceptions import XmlParsingError
+
+
 class SignedData:
     def __init__(self, element: ET.Element):
         self.format = element.get("format")
@@ -9,10 +12,12 @@ class SignedData:
         self.transaction_id = element.get("transactionId")
         self.text = element.text
 
+
 class PublicKey:
     def __init__(self, element: ET.Element):
         self.encoding = element.get("encoding")
         self.text = element.text
+
 
 class Value:
     def __init__(self, element: ET.Element):
@@ -26,12 +31,16 @@ class Value:
             elif child.tag == "publicKey":
                 self.public_key = PublicKey(child)
 
+
 class TransparencyXML:
     def __init__(self, xml_path: pathlib.Path):
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
+        try:
+            tree = ET.parse(xml_path)
+            root = tree.getroot()
+        except ET.ParseError as e:
+            raise XmlParsingError(f"Failed to parse XML file: {e}") from e
         if root.tag != "values":
-            raise ValueError("Root element must be <values>")
+            raise XmlParsingError("Root element must be <values>")
         self.values: List[Value] = [Value(elem) for elem in root.findall("value")]
 
     def get_datasets(self) -> List[Value]:

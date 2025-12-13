@@ -1,36 +1,41 @@
 """XML parsing utilities for extracting OCMF data from transparency software XML files."""
 
 from __future__ import annotations
+
 import pathlib
 import xml.etree.ElementTree as ET
 from typing import List
 
+from pyocmf.exceptions import DataNotFoundError, HexDecodingError, XmlParsingError
 from pyocmf.ocmf import OCMF
 
 
 def extract_ocmf_strings_from_xml(xml_path: pathlib.Path) -> List[str]:
     """Extract all OCMF strings from an XML file.
-    
+
     Args:
         xml_path: Path to the XML file
-        
+
     Returns:
         List[str]: List of OCMF strings found in the XML file
-        
+
     Raises:
-        ValueError: If the XML file cannot be parsed
+        XmlParsingError: If the XML file cannot be parsed
     """
-    tree = ET.parse(xml_path)
-    root = tree.getroot()
-    
+    try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+    except ET.ParseError as e:
+        raise XmlParsingError(f"Failed to parse XML file: {e}") from e
+
     ocmf_strings = []
-    
+
     # Look for signedData elements with format="OCMF"
     for value_elem in root.findall("value"):
         sd = value_elem.find("signedData")
         if sd is not None and sd.get("format") == "OCMF" and sd.text:
             ocmf_strings.append(sd.text.strip())
-    
+
     # Also check for encodedData with format="OCMF" and hex encoding
     for value_elem in root.findall("value"):
         ed = value_elem.find("encodedData")
@@ -45,65 +50,66 @@ def extract_ocmf_strings_from_xml(xml_path: pathlib.Path) -> List[str]:
                     # Check if it contains OCMF format
                     if decoded_text.strip().startswith("OCMF|"):
                         ocmf_strings.append(decoded_text.strip())
-                except (ValueError, UnicodeDecodeError):
+                except (ValueError, UnicodeDecodeError) as e:
                     # Skip hex data that can't be decoded or doesn't contain OCMF
                     continue
-    
+
     # Fallback: look for any signedData that contains OCMF data (even without format attribute)
     for value_elem in root.findall("value"):
         sd = value_elem.find("signedData")
-        if (sd is not None and 
-            sd.text is not None and 
-            sd.text.strip().startswith("OCMF|") and
-            sd.text.strip() not in ocmf_strings):  # Avoid duplicates
+        if (
+            sd is not None
+            and sd.text is not None
+            and sd.text.strip().startswith("OCMF|")
+            and sd.text.strip() not in ocmf_strings
+        ):  # Avoid duplicates
             ocmf_strings.append(sd.text.strip())
-    
+
     return ocmf_strings
 
 
 def parse_ocmf_from_xml(xml_path: pathlib.Path) -> OCMF:
     """Parse the first OCMF string found in an XML file.
-    
+
     Args:
         xml_path: Path to the XML file
-        
+
     Returns:
         OCMF: The parsed OCMF model
-        
+
     Raises:
-        ValueError: If no OCMF data is found or parsing fails
+        DataNotFoundError: If no OCMF data is found
+        XmlParsingError: If XML parsing fails
     """
     ocmf_strings = extract_ocmf_strings_from_xml(xml_path)
-    
+
     if not ocmf_strings:
-        raise ValueError("No OCMF data found in XML file.")
-    
+        raise DataNotFoundError("No OCMF data found in XML file.")
+
     # Use the first OCMF string found
     return OCMF.from_string(ocmf_strings[0])
 
 
 def parse_all_ocmf_from_xml(xml_path: pathlib.Path) -> List[OCMF]:
     """Parse all OCMF strings found in an XML file.
-    
+
     Args:
         xml_path: Path to the XML file
-        
+
     Returns:
         List[OCMF]: List of parsed OCMF models
-        
+
     Raises:
-        ValueError: If parsing any OCMF string fails
+        DataNotFoundError: If no OCMF data is found
+        XmlParsingError: If XML parsing fails
     """
     ocmf_strings = extract_ocmf_strings_from_xml(xml_path)
-    
+
     if not ocmf_strings:
-        raise ValueError("No OCMF data found in XML file.")
-    
+        raise DataNotFoundError("No OCMF data found in XML file.")
+
     results = []
     for i, ocmf_string in enumerate(ocmf_strings):
-        try:
-            results.append(OCMF.from_string(ocmf_string))
-        except ValueError as e:
-            raise ValueError(f"Failed to parse OCMF string {i+1}: {e}")
-    
+        results.append(OCMF.from_string(ocmf_string))
+
     return results

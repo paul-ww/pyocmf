@@ -13,6 +13,7 @@ from pyocmf.custom_types.strings import (
     PaginationString,
     UserAssignmentStatus,
 )
+from pyocmf.exceptions import ValidationError
 from pyocmf.sections.readings import Reading
 
 
@@ -74,7 +75,7 @@ class Payload(pydantic.BaseModel):
     def validate_serial_numbers(self) -> Payload:
         """Either GS or MS must be present for signature component identification"""
         if not self.GS and not self.MS:
-            raise ValueError(
+            raise ValidationError(
                 "Either Gateway Serial (GS) or Meter Serial (MS) must be provided"
             )
         return self

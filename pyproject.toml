@@ -9,17 +9,17 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "ciso8601>=2.3.2",
-    "phonenumbers>=9.0.10",
-    "pydantic-extra-types>=2.10.1",
-    "pydantic>=2.10.4",
+    "ciso8601~=2.3",
+    "phonenumbers~=9.0",
+    "pydantic-extra-types~=2.10",
+    "pydantic~=2.10",
 ]
 
 [dependency-groups]
 dev = [
-    "mypy>=1.13.0",
-    "pytest>=8.3.4",
-    "ruff>=0.8.4",
+    "mypy~=1.1",
+    "pytest~=9.0",
+    "ruff~=0.8",
 ]
 
 [tool.mypy]

@@ -6,7 +6,7 @@ import pathlib
 import xml.etree.ElementTree as ET
 from typing import List
 
-from pyocmf.exceptions import DataNotFoundError, HexDecodingError, XmlParsingError
+from pyocmf.exceptions import DataNotFoundError, XmlParsingError
 from pyocmf.ocmf import OCMF
 
 
@@ -50,7 +50,7 @@ def extract_ocmf_strings_from_xml(xml_path: pathlib.Path) -> List[str]:
                     # Check if it contains OCMF format
                     if decoded_text.strip().startswith("OCMF|"):
                         ocmf_strings.append(decoded_text.strip())
-                except (ValueError, UnicodeDecodeError) as e:
+                except (ValueError, UnicodeDecodeError):
                     # Skip hex data that can't be decoded or doesn't contain OCMF
                     continue
 

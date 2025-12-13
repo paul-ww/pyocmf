@@ -7,12 +7,7 @@ from typing import List
 import pytest
 
 from pyocmf.exceptions import (
-    DataNotFoundError,
-    OcmfFormatError,
-    OcmfPayloadError,
-    OcmfSignatureError,
     PyOCMFError,
-    XmlParsingError,
 )
 from pyocmf.ocmf import OCMF
 from pyocmf.xml_parser import extract_ocmf_strings_from_xml, parse_ocmf_from_xml

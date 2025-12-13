@@ -7,7 +7,7 @@ import pydantic
 from pydantic import AfterValidator, WithJsonSchema
 from pydantic_extra_types import phone_numbers
 
-from pyocmf.exceptions import Base64DecodingError, HexDecodingError, ValidationError
+from pyocmf.exceptions import Base64DecodingError, HexDecodingError
 
 
 def validate_hex_string(value: str) -> str:

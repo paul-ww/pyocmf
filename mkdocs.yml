@@ -1,6 +1,8 @@
 site_name: PyOCMF
 site_description: Python library for parsing and validating OCMF (Open Charge Metering Format)
-site_url: https://pyocmf.readthedocs.io/
+site_url: https://paul-ww.github.io/pyocmf/
+repo_url: https://github.com/paul-ww/pyocmf
+repo_name: paul-ww/pyocmf
 
 theme:
   name: material

@@ -210,7 +210,8 @@ uv run ruff check src/
 
 ## Documentation
 
-For detailed API documentation, visit [the docs](https://pyocmf.readthedocs.io/) or see the `docs/` directory.
+- **[Full Documentation](https://paul-ww.github.io/pyocmf/)** - Complete guide and API reference
+- **[Browser Demo](https://paul-ww.github.io/pyocmf/demo/)** - Try PyOCMF in your browser
 
 ## License
 

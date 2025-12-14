@@ -33,7 +33,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/paul-ww/pyocmf"
-Documentation = "https://pyocmf.readthedocs.io/"
+Documentation = "https://paul-ww.github.io/pyocmf/"
 Repository = "https://github.com/paul-ww/pyocmf"
 Issues = "https://github.com/paul-ww/pyocmf/issues"
 

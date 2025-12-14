@@ -3,6 +3,13 @@
 import enum
 
 
+class HashAlgorithm(enum.StrEnum):
+    """Hash algorithms supported by OCMF."""
+
+    SHA256 = "SHA256"
+    SHA512 = "SHA512"
+
+
 class SignatureMethod(enum.StrEnum):
     """ECDSA signature algorithms supported by OCMF.
 
@@ -40,17 +47,3 @@ class SignatureMimeType(enum.StrEnum):
     """MIME type for signature data format."""
 
     APPLICATION_X_DER = "application/x-der"
-
-
-class KeyType(enum.StrEnum):
-    """Elliptic curve types for cryptographic keys."""
-
-    SECP192K1 = "secp192k1"
-    SECP256K1 = "secp256k1"
-    SECP192R1 = "secp192r1"
-    SECP256R1 = "secp256r1"
-    SECP384R1 = "secp384r1"
-    SECP521R1 = "secp521r1"
-    BRAINPOOL256R1 = "brainpool256r1"
-    BRAINPOOLP256R1 = "brainpoolP256r1"
-    BRAINPOOL384R1 = "brainpool384r1"

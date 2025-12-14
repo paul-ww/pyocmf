@@ -10,7 +10,10 @@ import base64
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyocmf.types.crypto import SignatureEncodingType, SignatureMethod
+    from pyocmf.types.crypto import SignatureEncodingType
+
+from pyocmf.types.crypto import HashAlgorithm, SignatureMethod
+from pyocmf.types.public_key import CurveType
 
 try:
     from cryptography.exceptions import InvalidSignature
@@ -57,10 +60,14 @@ def get_hash_algorithm(signature_method: SignatureMethod | None) -> type[hashes.
         msg = "Signature algorithm (SA) is required for verification"
         raise SignatureVerificationError(msg)
 
-    if "SHA256" in signature_method:
-        return hashes.SHA256
-    if "SHA512" in signature_method:
-        return hashes.SHA512
+    hash_mapping: dict[HashAlgorithm, type[hashes.HashAlgorithm]] = {
+        HashAlgorithm.SHA256: hashes.SHA256,
+        HashAlgorithm.SHA512: hashes.SHA512,
+    }
+
+    for hash_algo, hash_class in hash_mapping.items():
+        if hash_algo.value in signature_method:
+            return hash_class
 
     msg = f"Unsupported hash algorithm in signature method: {signature_method}"
     raise SignatureVerificationError(msg)
@@ -84,20 +91,20 @@ def get_elliptic_curve(signature_method: SignatureMethod | None) -> ec.EllipticC
         msg = "Signature algorithm (SA) is required for verification"
         raise SignatureVerificationError(msg)
 
-    curve_mapping = {
-        "secp192k1": ec.SECP192R1,
-        "secp256k1": ec.SECP256K1,
-        "secp192r1": ec.SECP192R1,
-        "secp256r1": ec.SECP256R1,
-        "secp384r1": ec.SECP384R1,
-        "secp521r1": ec.SECP521R1,
-        "brainpool256r1": ec.BrainpoolP256R1,
-        "brainpoolp256r1": ec.BrainpoolP256R1,
-        "brainpool384r1": ec.BrainpoolP384R1,
+    curve_mapping: dict[CurveType, type[ec.EllipticCurve]] = {
+        CurveType.SECP192K1: ec.SECP192R1,
+        CurveType.SECP256K1: ec.SECP256K1,
+        CurveType.SECP192R1: ec.SECP192R1,
+        CurveType.SECP256R1: ec.SECP256R1,
+        CurveType.SECP384R1: ec.SECP384R1,
+        CurveType.SECP521R1: ec.SECP521R1,
+        CurveType.BRAINPOOL256R1: ec.BrainpoolP256R1,
+        CurveType.BRAINPOOLP256R1: ec.BrainpoolP256R1,
+        CurveType.BRAINPOOL384R1: ec.BrainpoolP384R1,
     }
 
-    for curve_name, curve_class in curve_mapping.items():
-        if curve_name in signature_method.lower():
+    for curve_type, curve_class in curve_mapping.items():
+        if curve_type.value in signature_method.lower():
             return curve_class()
 
     msg = f"Unsupported elliptic curve in signature method: {signature_method}"
@@ -164,6 +171,33 @@ def decode_public_key(public_key_hex: str) -> ec.EllipticCurvePublicKey:
         return public_key
 
 
+def validate_key_matches_algorithm(
+    public_key: ec.EllipticCurvePublicKey,
+    signature_method: SignatureMethod | None,
+) -> None:
+    """Validate that the public key curve matches the signature algorithm.
+
+    Args:
+        public_key: The elliptic curve public key
+        signature_method: The ECDSA signature method from OCMF data
+
+    Raises:
+        SignatureVerificationError: If the key curve doesn't match the algorithm
+    """
+    if signature_method is None:
+        return
+
+    expected_curve = get_elliptic_curve(signature_method)
+    actual_curve_name = public_key.curve.name
+
+    if actual_curve_name != expected_curve.name:
+        msg = (
+            f"Public key curve mismatch: signature algorithm specifies "
+            f"'{expected_curve.name}' but public key uses '{actual_curve_name}'"
+        )
+        raise SignatureVerificationError(msg)
+
+
 def verify_signature(
     payload_json: str,
     signature_data: str,
@@ -184,12 +218,14 @@ def verify_signature(
         True if signature is valid, False otherwise
 
     Raises:
-        SignatureVerificationError: If verification cannot be performed
+        SignatureVerificationError: If verification cannot be performed or if
+            the public key curve doesn't match the signature algorithm
         ImportError: If cryptography package is not installed
     """
     check_cryptography_available()
 
     public_key = decode_public_key(public_key_hex)
+    validate_key_matches_algorithm(public_key, signature_method)
     signature_bytes = decode_signature_data(signature_data, signature_encoding)
     hash_algorithm = get_hash_algorithm(signature_method)
 

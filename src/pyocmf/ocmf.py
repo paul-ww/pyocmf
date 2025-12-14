@@ -116,12 +116,13 @@ class OCMF(pydantic.BaseModel):
         ocmf_bytes = ocmf_string.encode("utf-8")
         return ocmf_bytes.hex()
 
-    def verify_signature(self, public_key_hex: str | None = None) -> bool:
+    def verify_signature(self, public_key_hex: str) -> bool:
         """Verify the cryptographic signature of the OCMF data.
 
         Args:
-            public_key_hex: Hex-encoded public key. If None, uses the public key
-                from the signature section (if present)
+            public_key_hex: Hex-encoded public key (required per OCMF spec).
+                The spec requires public keys to be transmitted out-of-band,
+                separately from the OCMF data.
 
         Returns:
             bool: True if signature is valid, False otherwise

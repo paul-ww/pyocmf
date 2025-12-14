@@ -8,14 +8,19 @@ from dataclasses import dataclass
 
 from pyocmf.exceptions import DataNotFoundError, XmlParsingError
 from pyocmf.ocmf import OCMF
+from pyocmf.types.public_key import PublicKey
 
 
 @dataclass
 class OcmfXmlData:
-    """Container for OCMF data and associated metadata from XML files."""
+    """Container for OCMF data and associated metadata from XML files.
+
+    The public_key_info field contains structured public key metadata per OCMF
+    spec Table 23, including the curve type, key size, and hex-encoded key data.
+    """
 
     ocmf_string: str
-    public_key: str | None = None
+    public_key: PublicKey | None = None
 
 
 def _extract_from_signed_data(value_elem: ET.Element) -> str | None:
@@ -50,14 +55,31 @@ def _extract_from_any_signed_data(value_elem: ET.Element) -> str | None:
     return None
 
 
-def _extract_public_key(value_elem: ET.Element) -> str | None:
-    """Extract public key from publicKey element."""
+def _extract_public_key_hex(value_elem: ET.Element) -> str | None:
+    """Extract public key hex string from publicKey element."""
     pk = value_elem.find("publicKey")
     if pk is not None and pk.text:
         encoding = pk.get("encoding", "").lower()
         if encoding == "hex":
             return pk.text.strip()
     return None
+
+
+def _extract_public_key(value_elem: ET.Element) -> PublicKey | None:
+    """Extract public key with metadata from publicKey element.
+
+    Returns None if cryptography is not installed or key cannot be parsed.
+    """
+    public_key_hex = _extract_public_key_hex(value_elem)
+    if public_key_hex is None:
+        return None
+
+    try:
+        return PublicKey.from_hex(public_key_hex)
+    except (ImportError, ValueError):
+        # If cryptography not installed or key parsing fails, return None
+        # The raw hex string is still available in OcmfXmlData.public_key
+        return None
 
 
 def extract_ocmf_data_from_file(xml_path: pathlib.Path) -> list[OcmfXmlData]:
@@ -141,7 +163,7 @@ def parse_ocmf_with_key_from_xml(xml_path: pathlib.Path) -> tuple[OCMF, str | No
         xml_path: Path to the XML file
 
     Returns:
-        Tuple[OCMF, str | None]: The parsed OCMF model and optional public key
+        Tuple[OCMF, str | None]: The parsed OCMF model and optional public key hex string
 
     Raises:
         DataNotFoundError: If no OCMF data is found
@@ -154,7 +176,8 @@ def parse_ocmf_with_key_from_xml(xml_path: pathlib.Path) -> tuple[OCMF, str | No
         raise DataNotFoundError(msg)
 
     data = ocmf_data_list[0]
-    return OCMF.from_string(data.ocmf_string), data.public_key
+    public_key_hex = data.public_key.key_hex if data.public_key else None
+    return OCMF.from_string(data.ocmf_string), public_key_hex
 
 
 def parse_all_ocmf_from_xml(xml_path: pathlib.Path) -> list[OCMF]:

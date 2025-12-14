@@ -157,11 +157,11 @@ def decode_public_key(public_key_hex: str) -> ec.EllipticCurvePublicKey:
         if not isinstance(public_key, ec.EllipticCurvePublicKey):
             msg = "Public key is not an elliptic curve key"
             raise SignatureVerificationError(msg)
-
-        return public_key
     except ValueError as e:
         msg = f"Failed to decode public key: {e}"
         raise SignatureVerificationError(msg) from e
+    else:
+        return public_key
 
 
 def verify_signature(
@@ -201,9 +201,10 @@ def verify_signature(
             payload_bytes,
             ec.ECDSA(hash_algorithm()),
         )
-        return True
     except InvalidSignature:
         return False
     except Exception as e:
         msg = f"Signature verification failed: {e}"
         raise SignatureVerificationError(msg) from e
+    else:
+        return True

@@ -7,7 +7,10 @@ import pytest
 
 from pyocmf.exceptions import SignatureVerificationError
 from pyocmf.ocmf import OCMF
-from pyocmf.utils.xml import extract_ocmf_strings_from_file, parse_ocmf_from_xml
+from pyocmf.utils.xml import (
+    extract_ocmf_data_from_file,
+    parse_ocmf_with_key_from_xml,
+)
 
 # Check if cryptography is available by checking if verification module works
 try:
@@ -28,15 +31,9 @@ class TestSignatureVerification:
         xml_file = test_data_dir / "src" / "test" / "resources" / "xml" / "test_ocmf_keba_kcp30.xml"
 
         # Extract OCMF and public key from XML
-        ocmf = parse_ocmf_from_xml(xml_file)
+        ocmf, public_key = parse_ocmf_with_key_from_xml(xml_file)
 
-        # Public key from the XML file
-        public_key = (
-            "3059301306072A8648CE3D020106082A8648CE3D030107034200043AEEB45C392357820A58FDFB"
-            "0857BD77ADA31585C61C430531DFA53B440AFBFDD95AC887C658EA55260F808F55CA948DF235C21"
-            "08A0D6DC7D4AB1A5E1A7955BE"
-        )
-
+        assert public_key is not None
         assert ocmf.verify_signature(public_key) is True
 
     def test_verify_invalid_signature(self, test_data_dir: pathlib.Path) -> None:
@@ -46,19 +43,15 @@ class TestSignatureVerification:
         """
         xml_file = test_data_dir / "src" / "test" / "resources" / "xml" / "test_ocmf_keba_kcp30.xml"
 
-        # Get original valid OCMF
-        ocmf_strings = extract_ocmf_strings_from_file(xml_file)
-        original_ocmf = ocmf_strings[0]
+        # Get original valid OCMF and public key
+        ocmf_data_list = extract_ocmf_data_from_file(xml_file)
+        original_ocmf = ocmf_data_list[0].ocmf_string
+        public_key = ocmf_data_list[0].public_key
 
         # Tamper with the data (change energy value)
         tampered_ocmf = original_ocmf.replace('"RV":0.2597', '"RV":999.9999')
 
-        public_key = (
-            "3059301306072A8648CE3D020106082A8648CE3D030107034200043AEEB45C392357820A58FDFB"
-            "0857BD77ADA31585C61C430531DFA53B440AFBFDD95AC887C658EA55260F808F55CA948DF235C21"
-            "08A0D6DC7D4AB1A5E1A7955BE"
-        )
-
+        assert public_key is not None
         ocmf = OCMF.from_string(tampered_ocmf)
         assert ocmf.verify_signature(public_key) is False
 
@@ -66,7 +59,7 @@ class TestSignatureVerification:
         """Test that wrong public key results in invalid signature."""
         xml_file = test_data_dir / "src" / "test" / "resources" / "xml" / "test_ocmf_keba_kcp30.xml"
 
-        ocmf = parse_ocmf_from_xml(xml_file)
+        ocmf, _correct_key = parse_ocmf_with_key_from_xml(xml_file)
 
         # Use a different public key (from Compleo test data)
         wrong_public_key = (
@@ -114,16 +107,12 @@ class TestSignatureVerification:
         """
         xml_file = test_data_dir / "src" / "test" / "resources" / "xml" / "test_ocmf_keba_kcp30.xml"
 
-        # Get original OCMF
-        ocmf_strings = extract_ocmf_strings_from_file(xml_file)
-        original_ocmf = ocmf_strings[0]
+        # Get original OCMF and public key
+        ocmf_data_list = extract_ocmf_data_from_file(xml_file)
+        original_ocmf = ocmf_data_list[0].ocmf_string
+        public_key = ocmf_data_list[0].public_key
 
-        # Add public key to signature section
-        public_key = (
-            "3059301306072A8648CE3D020106082A8648CE3D030107034200043AEEB45C392357820A58FDFB"
-            "0857BD77ADA31585C61C430531DFA53B440AFBFDD95AC887C658EA55260F808F55CA948DF235C21"
-            "08A0D6DC7D4AB1A5E1A7955BE"
-        )
+        assert public_key is not None
 
         # Parse OCMF to get the three parts
         parts = original_ocmf.split("|")
@@ -146,13 +135,8 @@ class TestSignatureVerification:
         """Test ECDSA-secp256r1-SHA256 signature algorithm."""
         xml_file = test_data_dir / "src" / "test" / "resources" / "xml" / "test_ocmf_keba_kcp30.xml"
 
-        ocmf = parse_ocmf_from_xml(xml_file)
+        ocmf, public_key = parse_ocmf_with_key_from_xml(xml_file)
 
-        public_key = (
-            "3059301306072A8648CE3D020106082A8648CE3D030107034200043AEEB45C392357820A58FDFB"
-            "0857BD77ADA31585C61C430531DFA53B440AFBFDD95AC887C658EA55260F808F55CA948DF235C21"
-            "08A0D6DC7D4AB1A5E1A7955BE"
-        )
-
+        assert public_key is not None
         assert ocmf.verify_signature(public_key) is True
         assert ocmf.signature.SA == "ECDSA-secp256r1-SHA256"

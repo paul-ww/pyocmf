@@ -4,9 +4,18 @@ from __future__ import annotations
 
 import pathlib
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 
 from pyocmf.exceptions import DataNotFoundError, XmlParsingError
 from pyocmf.ocmf import OCMF
+
+
+@dataclass
+class OcmfXmlData:
+    """Container for OCMF data and associated metadata from XML files."""
+
+    ocmf_string: str
+    public_key: str | None = None
 
 
 def _extract_from_signed_data(value_elem: ET.Element) -> str | None:
@@ -41,6 +50,53 @@ def _extract_from_any_signed_data(value_elem: ET.Element) -> str | None:
     return None
 
 
+def _extract_public_key(value_elem: ET.Element) -> str | None:
+    """Extract public key from publicKey element."""
+    pk = value_elem.find("publicKey")
+    if pk is not None and pk.text:
+        encoding = pk.get("encoding", "").lower()
+        if encoding == "hex":
+            return pk.text.strip()
+    return None
+
+
+def extract_ocmf_data_from_file(xml_path: pathlib.Path) -> list[OcmfXmlData]:
+    """Extract all OCMF data (strings and public keys) from an XML file.
+
+    Args:
+        xml_path: Path to the XML file
+
+    Returns:
+        List[OcmfXmlData]: List of OCMF data with associated public keys
+
+    Raises:
+        XmlParsingError: If the XML file cannot be parsed
+    """
+    try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+    except ET.ParseError as e:
+        msg = f"Failed to parse XML file: {e}"
+        raise XmlParsingError(msg) from e
+
+    ocmf_data_list = []
+    seen_strings = set()
+
+    for value_elem in root.findall("value"):
+        ocmf_str = (
+            _extract_from_signed_data(value_elem)
+            or _extract_from_encoded_data(value_elem)
+            or _extract_from_any_signed_data(value_elem)
+        )
+
+        if ocmf_str and ocmf_str not in seen_strings:
+            public_key = _extract_public_key(value_elem)
+            ocmf_data_list.append(OcmfXmlData(ocmf_string=ocmf_str, public_key=public_key))
+            seen_strings.add(ocmf_str)
+
+    return ocmf_data_list
+
+
 def extract_ocmf_strings_from_file(xml_path: pathlib.Path) -> list[str]:
     """Extract all OCMF strings from an XML file.
 
@@ -53,29 +109,7 @@ def extract_ocmf_strings_from_file(xml_path: pathlib.Path) -> list[str]:
     Raises:
         XmlParsingError: If the XML file cannot be parsed
     """
-    try:
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
-    except ET.ParseError as e:
-        msg = f"Failed to parse XML file: {e}"
-        raise XmlParsingError(msg) from e
-
-    ocmf_strings = []
-
-    for value_elem in root.findall("value"):
-        if ocmf_str := _extract_from_signed_data(value_elem):
-            ocmf_strings.append(ocmf_str)
-
-    for value_elem in root.findall("value"):
-        if ocmf_str := _extract_from_encoded_data(value_elem):
-            ocmf_strings.append(ocmf_str)
-
-    for value_elem in root.findall("value"):
-        if ocmf_str := _extract_from_any_signed_data(value_elem):
-            if ocmf_str not in ocmf_strings:
-                ocmf_strings.append(ocmf_str)
-
-    return ocmf_strings
+    return [data.ocmf_string for data in extract_ocmf_data_from_file(xml_path)]
 
 
 def parse_ocmf_from_xml(xml_path: pathlib.Path) -> OCMF:
@@ -91,13 +125,36 @@ def parse_ocmf_from_xml(xml_path: pathlib.Path) -> OCMF:
         DataNotFoundError: If no OCMF data is found
         XmlParsingError: If XML parsing fails
     """
-    ocmf_strings = extract_ocmf_strings_from_file(xml_path)
+    ocmf_data_list = extract_ocmf_data_from_file(xml_path)
 
-    if not ocmf_strings:
+    if not ocmf_data_list:
         msg = "No OCMF data found in XML file."
         raise DataNotFoundError(msg)
 
-    return OCMF.from_string(ocmf_strings[0])
+    return OCMF.from_string(ocmf_data_list[0].ocmf_string)
+
+
+def parse_ocmf_with_key_from_xml(xml_path: pathlib.Path) -> tuple[OCMF, str | None]:
+    """Parse the first OCMF string and public key from an XML file.
+
+    Args:
+        xml_path: Path to the XML file
+
+    Returns:
+        Tuple[OCMF, str | None]: The parsed OCMF model and optional public key
+
+    Raises:
+        DataNotFoundError: If no OCMF data is found
+        XmlParsingError: If XML parsing fails
+    """
+    ocmf_data_list = extract_ocmf_data_from_file(xml_path)
+
+    if not ocmf_data_list:
+        msg = "No OCMF data found in XML file."
+        raise DataNotFoundError(msg)
+
+    data = ocmf_data_list[0]
+    return OCMF.from_string(data.ocmf_string), data.public_key
 
 
 def parse_all_ocmf_from_xml(xml_path: pathlib.Path) -> list[OCMF]:

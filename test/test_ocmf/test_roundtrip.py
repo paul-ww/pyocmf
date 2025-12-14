@@ -15,7 +15,8 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     """Generate test parameters for test_ocmf_roundtrip."""
     if "xml_file" in metafunc.fixturenames:
         transparency_xml_dir = (
-            pathlib.Path(__file__).parent.parent
+            metafunc.config.rootpath
+            / "test"
             / "resources"
             / "transparenzsoftware"
             / "src"
@@ -23,12 +24,12 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             / "resources"
             / "xml"
         )
-        xml_files = [f for f in transparency_xml_dir.rglob("*.xml") if f.is_file()]
+        xml_files = sorted([f for f in transparency_xml_dir.rglob("*.xml") if f.is_file()])
         metafunc.parametrize(
             "xml_file",
             [
                 pytest.param(xml_file, id=str(xml_file.relative_to(transparency_xml_dir)))
-                for xml_file in sorted(xml_files)
+                for xml_file in xml_files
             ],
         )
 

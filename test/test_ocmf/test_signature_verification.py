@@ -23,12 +23,23 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+@pytest.fixture
+def ocmf_string_without_public_key() -> str:
+    """Fixture providing a sample OCMF string without embedded public key."""
+    return (
+        'OCMF|{"FV":"1.0","GI":"Test","GS":"123","GV":"1.0","PG":"T1",'
+        '"IS":false,"IL":"NONE","RD":[{"TM":"2022-01-01T12:00:00,000+0000 S",'
+        '"TX":"B","RV":0.0,"RI":"1-b:1.8.0","RU":"kWh","ST":"G"}]}|'
+        '{"SA":"ECDSA-secp256r1-SHA256","SD":"3046022100abcd1234"}'
+    )
+
+
 class TestSignatureVerification:
     """Test suite for OCMF signature verification."""
 
-    def test_verify_valid_keba_signature(self, test_data_dir: pathlib.Path) -> None:
+    def test_verify_valid_keba_signature(self, transparency_xml_dir: pathlib.Path) -> None:
         """Test verification of valid KEBA KCP30 signature from XML file."""
-        xml_file = test_data_dir / "src" / "test" / "resources" / "xml" / "test_ocmf_keba_kcp30.xml"
+        xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
         # Extract OCMF and public key from XML
         ocmf, public_key = parse_ocmf_with_key_from_xml(xml_file)
@@ -36,12 +47,12 @@ class TestSignatureVerification:
         assert public_key is not None
         assert ocmf.verify_signature(public_key) is True
 
-    def test_verify_invalid_signature(self, test_data_dir: pathlib.Path) -> None:
+    def test_verify_invalid_signature(self, transparency_xml_dir: pathlib.Path) -> None:
         """Test that tampered data results in invalid signature.
 
         Uses real OCMF from XML but tampers with the payload to make signature invalid.
         """
-        xml_file = test_data_dir / "src" / "test" / "resources" / "xml" / "test_ocmf_keba_kcp30.xml"
+        xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
         # Get original valid OCMF and public key
         ocmf_data_list = extract_ocmf_data_from_file(xml_file)
@@ -55,9 +66,9 @@ class TestSignatureVerification:
         ocmf = OCMF.from_string(tampered_ocmf)
         assert ocmf.verify_signature(public_key) is False
 
-    def test_verify_wrong_public_key(self, test_data_dir: pathlib.Path) -> None:
+    def test_verify_wrong_public_key(self, transparency_xml_dir: pathlib.Path) -> None:
         """Test that wrong public key results in invalid signature."""
-        xml_file = test_data_dir / "src" / "test" / "resources" / "xml" / "test_ocmf_keba_kcp30.xml"
+        xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
         ocmf, _correct_key = parse_ocmf_with_key_from_xml(xml_file)
 
@@ -69,16 +80,9 @@ class TestSignatureVerification:
 
         assert ocmf.verify_signature(wrong_public_key) is False
 
-    def test_verify_missing_public_key(self) -> None:
+    def test_verify_missing_public_key(self, ocmf_string_without_public_key: str) -> None:
         """Test that verification without public key raises error."""
-        ocmf_string = (
-            'OCMF|{"FV":"1.0","GI":"Test","GS":"123","GV":"1.0","PG":"T1",'
-            '"IS":false,"IL":"NONE","RD":[{"TM":"2022-01-01T12:00:00,000+0000 S",'
-            '"TX":"B","RV":0.0,"RI":"1-b:1.8.0","RU":"kWh","ST":"G"}]}|'
-            '{"SA":"ECDSA-secp256r1-SHA256","SD":"3046022100abcd1234"}'
-        )
-
-        ocmf = OCMF.from_string(ocmf_string)
+        ocmf = OCMF.from_string(ocmf_string_without_public_key)
 
         with pytest.raises(
             SignatureVerificationError,
@@ -86,26 +90,19 @@ class TestSignatureVerification:
         ):
             ocmf.verify_signature()
 
-    def test_verify_malformed_public_key(self) -> None:
+    def test_verify_malformed_public_key(self, ocmf_string_without_public_key: str) -> None:
         """Test that malformed public key raises error."""
-        ocmf_string = (
-            'OCMF|{"FV":"1.0","GI":"Test","GS":"123","GV":"1.0","PG":"T1",'
-            '"IS":false,"IL":"NONE","RD":[{"TM":"2022-01-01T12:00:00,000+0000 S",'
-            '"TX":"B","RV":0.0,"RI":"1-b:1.8.0","RU":"kWh","ST":"G"}]}|'
-            '{"SA":"ECDSA-secp256r1-SHA256","SD":"3046022100abcd1234"}'
-        )
-
-        ocmf = OCMF.from_string(ocmf_string)
+        ocmf = OCMF.from_string(ocmf_string_without_public_key)
 
         with pytest.raises(SignatureVerificationError, match="Failed to decode public key"):
             ocmf.verify_signature("not_a_valid_hex_key")
 
-    def test_verify_with_embedded_public_key(self, test_data_dir: pathlib.Path) -> None:
+    def test_verify_with_embedded_public_key(self, transparency_xml_dir: pathlib.Path) -> None:
         """Test verification using public key embedded in signature section.
 
         Uses real OCMF from XML and adds the public key to the signature section.
         """
-        xml_file = test_data_dir / "src" / "test" / "resources" / "xml" / "test_ocmf_keba_kcp30.xml"
+        xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
         # Get original OCMF and public key
         ocmf_data_list = extract_ocmf_data_from_file(xml_file)
@@ -131,9 +128,9 @@ class TestSignatureVerification:
         ocmf = OCMF.from_string(ocmf_with_pk)
         assert ocmf.verify_signature() is True
 
-    def test_signature_algorithm_secp256r1(self, test_data_dir: pathlib.Path) -> None:
+    def test_signature_algorithm_secp256r1(self, transparency_xml_dir: pathlib.Path) -> None:
         """Test ECDSA-secp256r1-SHA256 signature algorithm."""
-        xml_file = test_data_dir / "src" / "test" / "resources" / "xml" / "test_ocmf_keba_kcp30.xml"
+        xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
         ocmf, public_key = parse_ocmf_with_key_from_xml(xml_file)
 

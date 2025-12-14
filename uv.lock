@@ -882,10 +882,14 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "ciso8601" },
-    { name = "cryptography" },
     { name = "phonenumbers" },
     { name = "pydantic" },
     { name = "pydantic-extra-types" },
+]
+
+[package.optional-dependencies]
+crypto = [
+    { name = "cryptography" },
 ]
 
 [package.dev-dependencies]
@@ -903,11 +907,12 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "ciso8601", specifier = "~=2.3" },
-    { name = "cryptography", specifier = "~=44.0" },
+    { name = "cryptography", marker = "extra == 'crypto'", specifier = "~=44.0" },
     { name = "phonenumbers", specifier = "~=9.0" },
     { name = "pydantic", specifier = "~=2.10" },
     { name = "pydantic-extra-types", specifier = "~=2.10" },
 ]
+provides-extras = ["crypto"]
 
 [package.metadata.requires-dev]
 dev = [

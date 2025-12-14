@@ -11,9 +11,19 @@ Python library for parsing, validating, and verifying OCMF (Open Charge Metering
 
 ## Installation
 
+### Basic Installation (parsing only)
+
 ```bash
 pip install pyocmf
 ```
+
+### With Signature Verification
+
+```bash
+pip install pyocmf[crypto]
+```
+
+The `crypto` extra includes the `cryptography` package for verifying ECDSA signatures.
 
 ## Quick Examples
 

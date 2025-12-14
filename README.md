@@ -12,9 +12,21 @@ Python library for parsing, validating, and verifying OCMF (Open Charge Metering
 
 ## Installation
 
+### Basic Installation (parsing only)
+
 ```bash
 pip install pyocmf
 ```
+
+This installs the core library for parsing and validating OCMF data (~2MB).
+
+### With Signature Verification (recommended)
+
+```bash
+pip install pyocmf[crypto]
+```
+
+This includes the `cryptography` package (~8MB) for verifying ECDSA signatures.
 
 ## Quick Start
 
@@ -35,6 +47,8 @@ print(ocmf.payload.RD)  # List of meter readings
 
 ### Verifying Signatures
 
+**Note:** Signature verification requires the `cryptography` package. Install with `pip install pyocmf[crypto]`.
+
 ```python
 from pyocmf import OCMF
 
@@ -43,12 +57,15 @@ ocmf = OCMF.from_string(ocmf_string)
 
 # Verify signature with public key
 public_key_hex = "3059301306072A8648CE3D020106082A8648CE3D03010703420004..."
-is_valid = ocmf.verify_signature(public_key_hex)
 
-if is_valid:
-    print("✓ Signature is valid - data is authentic and untampered")
-else:
-    print("✗ Signature is invalid - data may have been modified")
+try:
+    is_valid = ocmf.verify_signature(public_key_hex)
+    if is_valid:
+        print("✓ Signature is valid - data is authentic and untampered")
+    else:
+        print("✗ Signature is invalid - data may have been modified")
+except ImportError:
+    print("Install cryptography package: pip install pyocmf[crypto]")
 ```
 
 ### Using Embedded Public Keys

@@ -5,6 +5,16 @@ import pytest
 from pyocmf.exceptions import SignatureVerificationError
 from pyocmf.ocmf import OCMF
 
+# Check if cryptography is available by checking if verification module works
+try:
+    from pyocmf.verification import CRYPTOGRAPHY_AVAILABLE
+except ImportError:
+    CRYPTOGRAPHY_AVAILABLE = False
+
+pytestmark = pytest.mark.skipif(
+    not CRYPTOGRAPHY_AVAILABLE, reason="cryptography package not installed"
+)
+
 
 class TestSignatureVerification:
     """Test suite for OCMF signature verification."""

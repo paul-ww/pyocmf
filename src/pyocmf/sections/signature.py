@@ -34,28 +34,3 @@ class Signature(pydantic.BaseModel):
         default=SignatureMimeType.APPLICATION_X_DER, description="Signature Mime Type"
     )
     SD: SignatureDataType = pydantic.Field(description="Signature Data")
-
-    def verify(self, payload_json: str, public_key_hex: str) -> bool:
-        """Verify the signature against the payload using the provided public key.
-
-        Args:
-            payload_json: The JSON string of the OCMF payload to verify
-            public_key_hex: Hex-encoded public key (required per OCMF spec)
-
-        Returns:
-            bool: True if signature is valid, False otherwise
-
-        Raises:
-            SignatureVerificationError: If verification cannot be performed due to
-                missing data, unsupported algorithms, or malformed keys/signatures
-            ImportError: If cryptography package is not installed
-        """
-        from pyocmf import verification
-
-        return verification.verify_signature(
-            payload_json=payload_json,
-            signature_data=self.SD,
-            signature_method=self.SA,
-            signature_encoding=self.SE,
-            public_key_hex=public_key_hex,
-        )

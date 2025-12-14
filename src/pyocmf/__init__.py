@@ -11,7 +11,6 @@ from pyocmf.exceptions import (
     PyOCMFError,
     SignatureVerificationError,
     ValidationError,
-    XmlParsingError,
 )
 from pyocmf.ocmf import OCMF
 
@@ -28,6 +27,5 @@ __all__ = [
     "HexDecodingError",
     "Base64DecodingError",
     "DataNotFoundError",
-    "XmlParsingError",
     "SignatureVerificationError",
 ]

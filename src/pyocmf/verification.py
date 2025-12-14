@@ -13,11 +13,11 @@ if TYPE_CHECKING:
     from pyocmf.types.crypto import SignatureEncodingType
 
 from pyocmf.types.crypto import HashAlgorithm, SignatureMethod
-from pyocmf.types.public_key import CurveType
+from pyocmf.types.public_key import PublicKey
 
 try:
     from cryptography.exceptions import InvalidSignature
-    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import ec
 
     CRYPTOGRAPHY_AVAILABLE = True
@@ -73,44 +73,6 @@ def get_hash_algorithm(signature_method: SignatureMethod | None) -> type[hashes.
     raise SignatureVerificationError(msg)
 
 
-def get_elliptic_curve(signature_method: SignatureMethod | None) -> ec.EllipticCurve:
-    """Get the elliptic curve from the signature method.
-
-    Args:
-        signature_method: The ECDSA signature method
-
-    Returns:
-        The elliptic curve instance
-
-    Raises:
-        SignatureVerificationError: If algorithm is missing or unsupported
-    """
-    check_cryptography_available()
-
-    if signature_method is None:
-        msg = "Signature algorithm (SA) is required for verification"
-        raise SignatureVerificationError(msg)
-
-    curve_mapping: dict[CurveType, type[ec.EllipticCurve]] = {
-        CurveType.SECP192K1: ec.SECP192R1,
-        CurveType.SECP256K1: ec.SECP256K1,
-        CurveType.SECP192R1: ec.SECP192R1,
-        CurveType.SECP256R1: ec.SECP256R1,
-        CurveType.SECP384R1: ec.SECP384R1,
-        CurveType.SECP521R1: ec.SECP521R1,
-        CurveType.BRAINPOOL256R1: ec.BrainpoolP256R1,
-        CurveType.BRAINPOOLP256R1: ec.BrainpoolP256R1,
-        CurveType.BRAINPOOL384R1: ec.BrainpoolP384R1,
-    }
-
-    for curve_type, curve_class in curve_mapping.items():
-        if curve_type.value in signature_method.lower():
-            return curve_class()
-
-    msg = f"Unsupported elliptic curve in signature method: {signature_method}"
-    raise SignatureVerificationError(msg)
-
-
 def decode_signature_data(signature_data: str, encoding: SignatureEncodingType | None) -> bytes:
     """Decode the signature data based on its encoding type.
 
@@ -143,61 +105,6 @@ def decode_signature_data(signature_data: str, encoding: SignatureEncodingType |
         raise SignatureVerificationError(msg)
 
 
-def decode_public_key(public_key_hex: str) -> ec.EllipticCurvePublicKey:
-    """Decode a hex-encoded public key into an EllipticCurvePublicKey object.
-
-    Args:
-        public_key_hex: Hex-encoded DER public key
-
-    Returns:
-        The elliptic curve public key
-
-    Raises:
-        SignatureVerificationError: If decoding fails or key is invalid
-    """
-    check_cryptography_available()
-
-    try:
-        key_bytes = bytes.fromhex(public_key_hex)
-        public_key = serialization.load_der_public_key(key_bytes)
-
-        if not isinstance(public_key, ec.EllipticCurvePublicKey):
-            msg = "Public key is not an elliptic curve key"
-            raise SignatureVerificationError(msg)
-    except ValueError as e:
-        msg = f"Failed to decode public key: {e}"
-        raise SignatureVerificationError(msg) from e
-    else:
-        return public_key
-
-
-def validate_key_matches_algorithm(
-    public_key: ec.EllipticCurvePublicKey,
-    signature_method: SignatureMethod | None,
-) -> None:
-    """Validate that the public key curve matches the signature algorithm.
-
-    Args:
-        public_key: The elliptic curve public key
-        signature_method: The ECDSA signature method from OCMF data
-
-    Raises:
-        SignatureVerificationError: If the key curve doesn't match the algorithm
-    """
-    if signature_method is None:
-        return
-
-    expected_curve = get_elliptic_curve(signature_method)
-    actual_curve_name = public_key.curve.name
-
-    if actual_curve_name != expected_curve.name:
-        msg = (
-            f"Public key curve mismatch: signature algorithm specifies "
-            f"'{expected_curve.name}' but public key uses '{actual_curve_name}'"
-        )
-        raise SignatureVerificationError(msg)
-
-
 def verify_signature(
     payload_json: str,
     signature_data: str,
@@ -224,15 +131,30 @@ def verify_signature(
     """
     check_cryptography_available()
 
-    public_key = decode_public_key(public_key_hex)
-    validate_key_matches_algorithm(public_key, signature_method)
+    try:
+        public_key_info = PublicKey.from_hex(public_key_hex)
+    except (ValueError, ImportError) as e:
+        msg = f"Failed to parse public key: {e}"
+        raise SignatureVerificationError(msg) from e
+
+    if not public_key_info.matches_signature_algorithm(signature_method):
+        msg = (
+            f"Public key curve mismatch: signature algorithm specifies "
+            f"'{signature_method}' but public key uses '{public_key_info.curve}'"
+        )
+        raise SignatureVerificationError(msg)
+
     signature_bytes = decode_signature_data(signature_data, signature_encoding)
     hash_algorithm = get_hash_algorithm(signature_method)
-
     payload_bytes = payload_json.encode("utf-8")
 
+    from cryptography.hazmat.primitives import serialization
+
+    key_bytes = bytes.fromhex(public_key_hex)
+    crypto_public_key = serialization.load_der_public_key(key_bytes)
+
     try:
-        public_key.verify(
+        crypto_public_key.verify(
             signature_bytes,
             payload_bytes,
             ec.ECDSA(hash_algorithm()),

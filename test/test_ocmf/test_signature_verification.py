@@ -92,7 +92,7 @@ class TestSignatureVerification:
         """Test that malformed public key raises error."""
         ocmf = OCMF.from_string(ocmf_string_without_public_key)
 
-        with pytest.raises(SignatureVerificationError, match="Failed to decode public key"):
+        with pytest.raises(SignatureVerificationError, match="Failed to parse public key"):
             ocmf.verify_signature("not_a_valid_hex_key")
 
     def test_signature_algorithm_secp256r1(self, transparency_xml_dir: pathlib.Path) -> None:

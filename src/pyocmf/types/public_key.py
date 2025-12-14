@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import enum
+from typing import TYPE_CHECKING
 
 import pydantic
+
+if TYPE_CHECKING:
+    from pyocmf.types.crypto import SignatureMethod
 
 
 class CurveType(enum.StrEnum):
@@ -83,7 +87,9 @@ class PublicKey(pydantic.BaseModel):
         """Get the OCMF key type identifier (e.g., 'ECDSA-secp256r1')."""
         return f"ECDSA-{self.curve}"
 
-    def matches_signature_algorithm(self, signature_algorithm: str | None) -> bool:
+    def matches_signature_algorithm(
+        self, signature_algorithm: SignatureMethod | str | None
+    ) -> bool:
         """Check if this key's curve matches the given signature algorithm.
 
         Args:
@@ -95,4 +101,5 @@ class PublicKey(pydantic.BaseModel):
         if signature_algorithm is None:
             return False
 
-        return self.curve in signature_algorithm.lower()
+        algo_str = str(signature_algorithm).lower()
+        return self.curve.value in algo_str

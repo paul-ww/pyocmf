@@ -8,7 +8,6 @@ Python library for parsing, validating, and verifying OCMF (Open Charge Metering
 - ✅ **Verify cryptographic signatures** - Ensure data integrity and authenticity  
 - 🔐 **Support multiple algorithms** - ECDSA with various curves (secp192r1, secp256r1, secp384r1, secp521r1, brainpool variants)
 - 📝 **Type-safe** - Full Pydantic validation with comprehensive type hints
-- 📦 **Parse XML containers** - Extract OCMF from Transparenzsoftware XML files
 
 ## Installation
 
@@ -70,58 +69,49 @@ except ImportError:
     print("Install cryptography package: pip install pyocmf[crypto]")
 ```
 
-### Working with Transparenzsoftware XML Files
-
-Transparenzsoftware XML files contain both the OCMF data and the public key in separate elements:
-
-```python
-from pyocmf.utils.xml import parse_ocmf_with_key_from_xml, extract_ocmf_data_from_file
-
-# Parse OCMF and public key from XML file
-ocmf, public_key = parse_ocmf_with_key_from_xml("charging_session.xml")
-
-# Verify using the public key from XML
-is_valid = ocmf.verify_signature(public_key)
-print(f"Session {ocmf.payload.PG}: {'Valid' if is_valid else 'Invalid'}")
-
-# Or extract all OCMF data with public key metadata from XML
-ocmf_data_list = extract_ocmf_data_from_file("charging_session.xml")
-for ocmf_data in ocmf_data_list:
-    ocmf = OCMF.from_string(ocmf_data.ocmf_string)
-    if ocmf_data.public_key_info:
-        is_valid = ocmf.verify_signature(ocmf_data.public_key_info.key_hex)
-        print(f"Session: {'Valid' if is_valid else 'Invalid'}")
-```
-
 ### Working with Public Key Metadata
 
 The library can extract structured metadata from public keys per OCMF spec Table 23:
 
 ```python
-from pyocmf.utils.xml import extract_ocmf_data_from_file
+from pyocmf.types.public_key import PublicKey
 
-# Extract OCMF data with public key metadata
-ocmf_data_list = extract_ocmf_data_from_file("charging_session.xml")
-ocmf_data = ocmf_data_list[0]
+# Parse public key directly
+public_key = PublicKey.from_hex(public_key_hex)
+print(f"Key Type: {public_key.key_type_identifier}")
+print(f"Curve: {public_key.curve}")
+print(f"Key Size: {public_key.key_size} bits")
+print(f"Block Length: {public_key.block_length} bytes")
 
-# Access public key metadata
-if ocmf_data.public_key_info:
-    print(f"Key Type: {ocmf_data.public_key_info.key_type_identifier}")
-    print(f"Curve: {ocmf_data.public_key_info.curve}")
-    print(f"Key Size: {ocmf_data.public_key_info.key_size} bits")
-    print(f"Block Length: {ocmf_data.public_key_info.block_length} bytes")
-    
-    # Validate key matches signature algorithm
-    from pyocmf import OCMF
+# Validate key matches signature algorithm
+from pyocmf import OCMF
+ocmf = OCMF.from_string(ocmf_string)
+matches = public_key.matches_signature_algorithm(ocmf.signature.SA)
+print(f"Key matches algorithm: {matches}")
+```
+
+### Working with XML Test Files (For Testing)
+
+**Note:** XML parsing utilities use stdlib and are primarily for testing. They are not part of the public API.
+
+```python
+# These imports are NOT part of the public API
+from pyocmf.utils.xml import parse_ocmf_with_key_from_xml, extract_ocmf_data_from_file
+
+# Parse OCMF and public key from Transparenzsoftware XML file
+ocmf, public_key_hex = parse_ocmf_with_key_from_xml("test_file.xml")
+
+# Verify using the public key from XML
+is_valid = ocmf.verify_signature(public_key_hex)
+print(f"Session: {'Valid' if is_valid else 'Invalid'}")
+
+# Or extract all OCMF data with public key metadata
+ocmf_data_list = extract_ocmf_data_from_file("test_file.xml")
+for ocmf_data in ocmf_data_list:
     ocmf = OCMF.from_string(ocmf_data.ocmf_string)
-    matches = ocmf_data.public_key_info.matches_signature_algorithm(ocmf.signature.SA)
-    print(f"Key matches algorithm: {matches}")
-
-# Or parse public key directly
-from pyocmf.types.public_key import PublicKeyInfo
-
-key_info = PublicKeyInfo.from_hex(public_key_hex)
-print(f"{key_info.key_type_identifier} - {key_info.key_size} bit")
+    if ocmf_data.public_key:
+        is_valid = ocmf.verify_signature(ocmf_data.public_key.key_hex)
+        print(f"Session: {'Valid' if is_valid else 'Invalid'}")
 ```
 
 ## Supported Signature Algorithms

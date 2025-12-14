@@ -131,5 +131,13 @@ class OCMF(pydantic.BaseModel):
             SignatureVerificationError: If verification cannot be performed due to
                 missing data, unsupported algorithms, or malformed keys/signatures
         """
+        from pyocmf import verification
+
         payload_json = self._original_payload_json or self.payload.to_flat_dict_json()
-        return self.signature.verify(payload_json, public_key_hex)
+        return verification.verify_signature(
+            payload_json=payload_json,
+            signature_data=self.signature.SD,
+            signature_method=self.signature.SA,
+            signature_encoding=self.signature.SE,
+            public_key_hex=public_key_hex,
+        )

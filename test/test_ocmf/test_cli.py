@@ -90,21 +90,21 @@ class TestCliValidation:
         assert "KEBA_KCP30" in result.stdout
 
     def test_validate_hex_encoded(self, cli_runner: CliRunner, sample_ocmf_string: str) -> None:
-        """Test validating hex-encoded OCMF string."""
+        """Test validating hex-encoded OCMF string (auto-detected)."""
         from pyocmf.ocmf import OCMF
 
         ocmf = OCMF.from_string(sample_ocmf_string)
         hex_string = ocmf.to_hex()
 
-        result = cli_runner.invoke(app, [hex_string, "--hex"])
+        result = cli_runner.invoke(app, [hex_string])
 
         assert result.exit_code == 0
         assert "Successfully parsed hex-encoded OCMF string" in result.stdout
         assert "OCMF validation passed" in result.stdout
 
     def test_validate_malformed_hex(self, cli_runner: CliRunner) -> None:
-        """Test validating malformed hex string."""
-        result = cli_runner.invoke(app, ["not_valid_hex", "--hex"])
+        """Test validating malformed hex string (auto-detected as hex)."""
+        result = cli_runner.invoke(app, ["not_valid_hex"])
 
         assert result.exit_code == 1
         assert "OCMF validation failed" in result.stdout
@@ -199,3 +199,18 @@ class TestCliRealData:
         assert result.exit_code == 0
         assert "Signature verification: VALID" in result.stdout
         assert "KEBA_KCP30" in result.stdout
+
+    @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
+    def test_validate_xml_file_auto_detect(
+        self, cli_runner: CliRunner, transparency_xml_dir: pathlib.Path
+    ) -> None:
+        """Test validating XML file with auto-detection (no --xml flag needed)."""
+        xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
+
+        result = cli_runner.invoke(app, [str(xml_file)])
+
+        assert result.exit_code == 0
+        assert "Found" in result.stdout
+        assert "OCMF entry(ies) in XML file" in result.stdout
+        assert "Successfully parsed OCMF string" in result.stdout
+        assert "Signature verification: VALID" in result.stdout

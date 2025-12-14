@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pathlib
 import sys
+from enum import StrEnum
 from typing import Annotated
 
 import typer
@@ -23,12 +24,20 @@ app = typer.Typer(
 console = Console()
 
 
+class InputType(StrEnum):
+    """Type of OCMF input."""
+
+    XML = "xml"
+    OCMF_STRING = "ocmf_string"
+    HEX = "hex"
+
+
 @app.command()
 def validate(
     ocmf_input: Annotated[
         str,
         typer.Argument(
-            help="OCMF string or path to XML file (format: OCMF|{payload}|{signature})",
+            help="OCMF string, hex-encoded string, or path to XML file",
         ),
     ],
     public_key: Annotated[
@@ -39,20 +48,6 @@ def validate(
             help="Hex-encoded public key for signature verification",
         ),
     ] = None,
-    hex_encoded: Annotated[
-        bool,
-        typer.Option(
-            "--hex",
-            help="Treat input as hex-encoded OCMF string",
-        ),
-    ] = False,
-    xml_file: Annotated[
-        bool,
-        typer.Option(
-            "--xml",
-            help="Treat input as path to XML file containing OCMF data",
-        ),
-    ] = False,
     verbose: Annotated[
         bool,
         typer.Option(
@@ -61,7 +56,7 @@ def validate(
             help="Show detailed OCMF structure",
         ),
     ] = False,
-    verify_all: Annotated[
+    all_entries: Annotated[
         bool,
         typer.Option(
             "--all",
@@ -71,6 +66,11 @@ def validate(
 ) -> None:
     """Validate an OCMF string and optionally verify its signature.
 
+    The input format is auto-detected:
+    - If input is an existing file path, it's treated as XML
+    - If input starts with "OCMF|", it's treated as an OCMF string
+    - Otherwise, it's treated as hex-encoded OCMF
+
     Examples:
         # Validate OCMF string
         ocmf 'OCMF|{...}|{...}'
@@ -79,47 +79,24 @@ def validate(
         ocmf 'OCMF|{...}|{...}' --public-key 3059301306...
 
         # Validate hex-encoded OCMF
-        ocmf 4f434d467c7b... --hex
+        ocmf 4f434d467c7b...
 
         # Validate from XML file (auto-extracts public key)
-        ocmf charging_session.xml --xml
+        ocmf charging_session.xml
 
         # Validate all entries in XML file
-        ocmf charging_session.xml --xml --all
+        ocmf charging_session.xml --all
     """
     try:
-        if xml_file:
-            _validate_from_xml(ocmf_input, verbose, verify_all)
-        elif hex_encoded:
-            ocmf = OCMF.from_hex(ocmf_input)
-            console.print("[green]✓[/green] Successfully parsed hex-encoded OCMF string")
-            console.print("[green]✓[/green] OCMF validation passed")
+        # Auto-detect input type
+        input_type = _detect_input_type(ocmf_input)
 
-            if verbose:
-                _display_ocmf_details(ocmf)
-
-            if public_key:
-                _verify_signature(ocmf, public_key)
-            elif ocmf.signature.SA:
-                console.print(
-                    "\n[yellow]ℹ[/yellow] Signature present but not verified "
-                    "(use --public-key to verify)"
-                )
-        else:
-            ocmf = OCMF.from_string(ocmf_input)
-            console.print("[green]✓[/green] Successfully parsed OCMF string")
-            console.print("[green]✓[/green] OCMF validation passed")
-
-            if verbose:
-                _display_ocmf_details(ocmf)
-
-            if public_key:
-                _verify_signature(ocmf, public_key)
-            elif ocmf.signature.SA:
-                console.print(
-                    "\n[yellow]ℹ[/yellow] Signature present but not verified "
-                    "(use --public-key to verify)"
-                )
+        if input_type == InputType.XML:
+            _validate_from_xml(ocmf_input, verbose, all_entries)
+        elif input_type == InputType.HEX:
+            _validate_single_ocmf(OCMF.from_hex(ocmf_input), verbose, public_key, "hex-encoded")
+        else:  # InputType.OCMF_STRING
+            _validate_single_ocmf(OCMF.from_string(ocmf_input), verbose, public_key, "")
 
     except PyOCMFError as e:
         console.print(f"[red]✗[/red] OCMF validation failed: {e}")
@@ -129,7 +106,55 @@ def validate(
         sys.exit(1)
 
 
-def _validate_from_xml(xml_path: str, verbose: bool, verify_all: bool) -> None:
+def _detect_input_type(ocmf_input: str) -> InputType:
+    """Detect the type of input provided.
+
+    Returns:
+        InputType.XML if input is an existing file path
+        InputType.OCMF_STRING if input starts with "OCMF|"
+        InputType.HEX otherwise
+    """
+    # Check if it's an OCMF string first (before file path check)
+    if ocmf_input.startswith("OCMF|"):
+        return InputType.OCMF_STRING
+
+    # Check if it's a file path (only check if it's a reasonable length for a file path)
+    # Most file systems limit paths to 255-4096 bytes
+    if len(ocmf_input) < 1024:
+        try:
+            path = pathlib.Path(ocmf_input)
+            if path.exists() and path.is_file():
+                return InputType.XML
+        except (OSError, ValueError):
+            # Not a valid path, continue to hex detection
+            pass
+
+    # Assume hex-encoded
+    return InputType.HEX
+
+
+def _validate_single_ocmf(
+    ocmf: OCMF, verbose: bool, public_key: str | None, input_description: str
+) -> None:
+    """Validate and optionally verify a single OCMF object."""
+    if input_description:
+        console.print(f"[green]✓[/green] Successfully parsed {input_description} OCMF string")
+    else:
+        console.print("[green]✓[/green] Successfully parsed OCMF string")
+    console.print("[green]✓[/green] OCMF validation passed")
+
+    if verbose:
+        _display_ocmf_details(ocmf)
+
+    if public_key:
+        _verify_signature(ocmf, public_key)
+    elif ocmf.signature.SA:
+        console.print(
+            "\n[yellow]ℹ[/yellow] Signature present but not verified (use --public-key to verify)"
+        )
+
+
+def _validate_from_xml(xml_path: str, verbose: bool, all_entries: bool) -> None:
     """Validate OCMF data from XML file."""
     path = pathlib.Path(xml_path)
     if not path.exists():
@@ -144,7 +169,7 @@ def _validate_from_xml(xml_path: str, verbose: bool, verify_all: bool) -> None:
 
     console.print(f"[green]✓[/green] Found {len(ocmf_data_list)} OCMF entry(ies) in XML file")
 
-    entries_to_process = ocmf_data_list if verify_all else [ocmf_data_list[0]]
+    entries_to_process = ocmf_data_list if all_entries else [ocmf_data_list[0]]
 
     for i, ocmf_data in enumerate(entries_to_process, 1):
         if len(entries_to_process) > 1:

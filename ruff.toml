@@ -1,0 +1,33 @@
+line-length = 100
+preview = true
+
+[lint]
+select = [
+    "E4",
+    "E7",
+    "E9",
+    "F",
+    "W",
+    "C901",
+    "TRY",
+    "N",
+    "EXE",
+    "C4",
+    "B",
+    "ERA",
+    "DTZ",
+    "EM",
+    "FA",
+    "PT",
+    "PTH",
+    "PIE",
+    "UP",
+    "FURB",
+    "PGH",
+    "BLE",
+    "I",
+    "D",  # pydocstyle - docstring linting
+]
+
+[lint.pydocstyle]
+convention = "google"  # Use Google-style docstrings (alternatives: "numpy", "pep257")

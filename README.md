@@ -44,6 +44,36 @@ print(ocmf.payload.GS)  # Gateway serial number
 print(ocmf.payload.RD)  # List of meter readings
 ```
 
+### Command Line Interface
+
+PyOCMF includes a CLI for quick validation and signature verification:
+
+```bash
+# Validate an OCMF string
+pyocmf 'OCMF|{"FV":"1.0",...}|{"SD":"3045..."}'
+
+# Validate with detailed output
+pyocmf 'OCMF|{...}|{...}' --verbose
+
+# Validate and verify signature
+pyocmf 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D...
+
+# Validate hex-encoded OCMF
+pyocmf 4f434d467c7b... --hex
+
+# Show help
+pyocmf --help
+```
+
+**Example output:**
+```
+✓ Successfully parsed OCMF string
+✓ OCMF validation passed
+✓ Signature verification: VALID
+  Algorithm:    ECDSA-secp256r1-SHA256
+  Encoding:     hex
+```
+
 ### Verifying Signatures
 
 **Note:** Signature verification requires the `cryptography` package. Install with `pip install pyocmf[crypto]`.

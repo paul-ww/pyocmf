@@ -30,6 +30,26 @@ class OCMF(pydantic.BaseModel):
     _original_payload_json: str | None = pydantic.PrivateAttr(default=None)
 
     @classmethod
+    def from_hex(cls, ocmf_hex: str) -> OCMF:
+        """Parse a hex-encoded OCMF string into an OCMF model.
+
+        Args:
+            ocmf_hex: The hex-encoded OCMF string
+        Returns:
+            OCMF: The parsed OCMF model
+        Raises:
+            OcmfFormatError: If the string is not valid hex or not in valid OCMF format
+        """
+        try:
+            decoded_bytes = bytes.fromhex(ocmf_hex.strip())
+            decoded_string = decoded_bytes.decode("utf-8")
+        except ValueError as e:
+            msg = f"Invalid hex-encoded OCMF string: {e}"
+            raise OcmfFormatError(msg) from e
+
+        return cls.from_string(decoded_string)
+
+    @classmethod
     def from_string(cls, ocmf_string: str) -> OCMF:
         """Parse an OCMF string into an OCMF model.
 
@@ -80,6 +100,16 @@ class OCMF(pydantic.BaseModel):
         signature_json = self.signature.model_dump_json()
 
         return f"OCMF|{payload_json}|{signature_json}"
+
+    def to_hex(self) -> str:
+        """Convert the OCMF model to its hex-encoded string representation.
+
+        Returns:
+            str: The hex-encoded OCMF string
+        """
+        ocmf_string = self.to_string()
+        ocmf_bytes = ocmf_string.encode("utf-8")
+        return ocmf_bytes.hex()
 
     def verify_signature(self, public_key_hex: str | None = None) -> bool:
         """Verify the cryptographic signature of the OCMF data.

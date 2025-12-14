@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pathlib
 import sys
 from typing import Annotated
 
@@ -12,9 +13,10 @@ from rich.table import Table
 
 from pyocmf.exceptions import PyOCMFError, SignatureVerificationError
 from pyocmf.ocmf import OCMF
+from pyocmf.utils.xml import extract_ocmf_data_from_file
 
 app = typer.Typer(
-    name="pyocmf",
+    name="ocmf",
     help="Validate and verify Open Charge Metering Format (OCMF) data",
     add_completion=False,
 )
@@ -23,10 +25,10 @@ console = Console()
 
 @app.command()
 def validate(
-    ocmf_string: Annotated[
+    ocmf_input: Annotated[
         str,
         typer.Argument(
-            help="OCMF string to validate (format: OCMF|{payload}|{signature})",
+            help="OCMF string or path to XML file (format: OCMF|{payload}|{signature})",
         ),
     ],
     public_key: Annotated[
@@ -44,6 +46,13 @@ def validate(
             help="Treat input as hex-encoded OCMF string",
         ),
     ] = False,
+    xml_file: Annotated[
+        bool,
+        typer.Option(
+            "--xml",
+            help="Treat input as path to XML file containing OCMF data",
+        ),
+    ] = False,
     verbose: Annotated[
         bool,
         typer.Option(
@@ -52,43 +61,107 @@ def validate(
             help="Show detailed OCMF structure",
         ),
     ] = False,
+    verify_all: Annotated[
+        bool,
+        typer.Option(
+            "--all",
+            help="Process all OCMF entries in XML file (default: first only)",
+        ),
+    ] = False,
 ) -> None:
     """Validate an OCMF string and optionally verify its signature.
 
     Examples:
         # Validate OCMF string
-        pyocmf validate 'OCMF|{...}|{...}'
+        ocmf 'OCMF|{...}|{...}'
 
         # Validate and verify signature
-        pyocmf validate 'OCMF|{...}|{...}' --public-key 3059301306...
+        ocmf 'OCMF|{...}|{...}' --public-key 3059301306...
 
         # Validate hex-encoded OCMF
-        pyocmf validate 4f434d467c7b... --hex
+        ocmf 4f434d467c7b... --hex
+
+        # Validate from XML file (auto-extracts public key)
+        ocmf charging_session.xml --xml
+
+        # Validate all entries in XML file
+        ocmf charging_session.xml --xml --all
     """
     try:
-        if hex_encoded:
-            ocmf = OCMF.from_hex(ocmf_string)
+        if xml_file:
+            _validate_from_xml(ocmf_input, verbose, verify_all)
+        elif hex_encoded:
+            ocmf = OCMF.from_hex(ocmf_input)
             console.print("[green]✓[/green] Successfully parsed hex-encoded OCMF string")
-        else:
-            ocmf = OCMF.from_string(ocmf_string)
-            console.print("[green]✓[/green] Successfully parsed OCMF string")
+            console.print("[green]✓[/green] OCMF validation passed")
 
+            if verbose:
+                _display_ocmf_details(ocmf)
+
+            if public_key:
+                _verify_signature(ocmf, public_key)
+            elif ocmf.signature.SA:
+                console.print(
+                    "\n[yellow]ℹ[/yellow] Signature present but not verified "
+                    "(use --public-key to verify)"
+                )
+        else:
+            ocmf = OCMF.from_string(ocmf_input)
+            console.print("[green]✓[/green] Successfully parsed OCMF string")
+            console.print("[green]✓[/green] OCMF validation passed")
+
+            if verbose:
+                _display_ocmf_details(ocmf)
+
+            if public_key:
+                _verify_signature(ocmf, public_key)
+            elif ocmf.signature.SA:
+                console.print(
+                    "\n[yellow]ℹ[/yellow] Signature present but not verified "
+                    "(use --public-key to verify)"
+                )
+
+    except PyOCMFError as e:
+        console.print(f"[red]✗[/red] OCMF validation failed: {e}")
+        sys.exit(1)
+    except FileNotFoundError as e:
+        console.print(f"[red]✗[/red] File not found: {e}")
+        sys.exit(1)
+
+
+def _validate_from_xml(xml_path: str, verbose: bool, verify_all: bool) -> None:
+    """Validate OCMF data from XML file."""
+    path = pathlib.Path(xml_path)
+    if not path.exists():
+        msg = f"XML file not found: {xml_path}"
+        raise FileNotFoundError(msg)
+
+    ocmf_data_list = extract_ocmf_data_from_file(path)
+
+    if not ocmf_data_list:
+        console.print("[red]✗[/red] No OCMF data found in XML file")
+        sys.exit(1)
+
+    console.print(f"[green]✓[/green] Found {len(ocmf_data_list)} OCMF entry(ies) in XML file")
+
+    entries_to_process = ocmf_data_list if verify_all else [ocmf_data_list[0]]
+
+    for i, ocmf_data in enumerate(entries_to_process, 1):
+        if len(entries_to_process) > 1:
+            console.print(f"\n[bold cyan]Entry {i}/{len(entries_to_process)}:[/bold cyan]")
+
+        ocmf = OCMF.from_string(ocmf_data.ocmf_string)
+        console.print("[green]✓[/green] Successfully parsed OCMF string")
         console.print("[green]✓[/green] OCMF validation passed")
 
         if verbose:
             _display_ocmf_details(ocmf)
 
-        if public_key:
-            _verify_signature(ocmf, public_key)
+        # Auto-verify with public key from XML if available
+        if ocmf_data.public_key:
+            _verify_signature(ocmf, ocmf_data.public_key.key_hex)
         elif ocmf.signature.SA:
-            console.print(
-                "\n[yellow]ℹ[/yellow] Signature present but not verified "
-                "(use --public-key to verify)"
-            )
-
-    except PyOCMFError as e:
-        console.print(f"[red]✗[/red] OCMF validation failed: {e}")
-        sys.exit(1)
+            console.print("\n[yellow]ℹ[/yellow] Signature present but no public key found in XML")
 
 
 def _verify_signature(ocmf: OCMF, public_key: str) -> None:

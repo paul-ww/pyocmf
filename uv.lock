@@ -909,6 +909,11 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "cryptography" },
+    { name = "rich" },
+    { name = "typer" },
+]
 cli = [
     { name = "rich" },
     { name = "typer" },
@@ -918,6 +923,13 @@ crypto = [
 ]
 
 [package.dev-dependencies]
+cli = [
+    { name = "rich" },
+    { name = "typer" },
+]
+crypto = [
+    { name = "cryptography" },
+]
 dev = [
     { name = "mypy" },
     { name = "pytest" },
@@ -937,12 +949,18 @@ requires-dist = [
     { name = "phonenumbers", specifier = "~=9.0" },
     { name = "pydantic", specifier = "~=2.10" },
     { name = "pydantic-extra-types", specifier = "~=2.10" },
+    { name = "pyocmf", extras = ["cli", "crypto"], marker = "extra == 'all'" },
     { name = "rich", marker = "extra == 'cli'", specifier = "~=14.2.0" },
     { name = "typer", marker = "extra == 'cli'", specifier = "~=0.20.0" },
 ]
-provides-extras = ["cli", "crypto"]
+provides-extras = ["cli", "crypto", "all"]
 
 [package.metadata.requires-dev]
+cli = [
+    { name = "rich", specifier = "~=14.2.0" },
+    { name = "typer", specifier = "~=0.20.0" },
+]
+crypto = [{ name = "cryptography", specifier = "~=44.0" }]
 dev = [
     { name = "mypy", specifier = "~=1.1" },
     { name = "pytest", specifier = "~=9.0" },

@@ -38,7 +38,7 @@ Repository = "https://github.com/paul-ww/pyocmf"
 Issues = "https://github.com/paul-ww/pyocmf/issues"
 
 [project.scripts]
-pyocmf = "pyocmf.cli:main"
+ocmf = "pyocmf.cli:main"
 
 [project.optional-dependencies]
 cli = [
@@ -48,8 +48,18 @@ cli = [
 crypto = [
     "cryptography~=44.0",
 ]
+all = [
+    "pyocmf[cli,crypto]",
+]
 
 [dependency-groups]
+cli = [
+    "rich~=14.2.0",
+    "typer~=0.20.0",
+]
+crypto = [
+    "cryptography~=44.0",
+]
 dev = [
     "mypy~=1.1",
     "pytest~=9.0",
@@ -61,3 +71,6 @@ docs = [
     "mkdocstrings[python]~=0.27",
     "mkdocs-autorefs~=1.2",
 ]
+
+[tool.uv]
+default-groups = "all"

@@ -11,37 +11,34 @@ Python library for parsing, validating, and verifying OCMF (Open Charge Metering
 
 ## Installation
 
-### Basic Installation (parsing only)
+### Recommended (Full Installation)
+
+```bash
+pip install pyocmf[all]
+```
+
+This installs the complete package with CLI tools and cryptographic signature verification.
+
+### Minimal Installation (parsing only)
 
 ```bash
 pip install pyocmf
 ```
 
-This installs the core library for parsing and validating OCMF data.
+This installs only the core library for parsing and validating OCMF data (no CLI or crypto).
 
-### With CLI Tools
+### Partial Installations
 
 ```bash
+# With CLI only
 pip install pyocmf[cli]
-```
 
-This includes the command-line interface with `rich` and `typer` for interactive validation.
-
-### With Signature Verification
-
-```bash
+# With crypto only
 pip install pyocmf[crypto]
-```
 
-This includes the `cryptography` package for verifying ECDSA signatures.
-
-### Full Installation (CLI + Crypto)
-
-```bash
+# With both CLI and crypto
 pip install pyocmf[cli,crypto]
 ```
-
-This includes both the CLI tools and cryptography support.
 
 ## Quick Start
 
@@ -62,25 +59,31 @@ print(ocmf.payload.RD)  # List of meter readings
 
 ### Command Line Interface
 
-PyOCMF includes an optional CLI for quick validation and signature verification.
+PyOCMF includes a powerful CLI for quick validation and signature verification.
 
-**Note:** The CLI requires the optional `cli` dependency group. Install with `pip install pyocmf[cli]`.
+**Note:** The CLI requires the `cli` extras. Install with `pip install pyocmf[cli]` or `pip install pyocmf[all]`.
 
 ```bash
 # Validate an OCMF string
-pyocmf 'OCMF|{"FV":"1.0",...}|{"SD":"3045..."}'
+ocmf 'OCMF|{"FV":"1.0",...}|{"SD":"3045..."}'
 
 # Validate with detailed output
-pyocmf 'OCMF|{...}|{...}' --verbose
+ocmf 'OCMF|{...}|{...}' --verbose
 
 # Validate and verify signature
-pyocmf 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D...
+ocmf 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D...
 
 # Validate hex-encoded OCMF
-pyocmf 4f434d467c7b... --hex
+ocmf 4f434d467c7b... --hex
+
+# Validate from XML file (auto-extracts public key for verification)
+ocmf charging_session.xml --xml
+
+# Validate all OCMF entries in XML file
+ocmf charging_session.xml --xml --all
 
 # Show help
-pyocmf --help
+ocmf --help
 ```
 
 **Example output:**
@@ -94,7 +97,7 @@ pyocmf --help
 
 ### Verifying Signatures
 
-**Note:** Signature verification requires the `cryptography` package. Install with `pip install pyocmf[crypto]`.
+**Note:** Signature verification requires the `crypto` extras. Install with `pip install pyocmf[crypto]` or `pip install pyocmf[all]`.
 
 **Important:** Per the OCMF specification, public keys must be transmitted out-of-band (separately from the OCMF data itself), typically via a central register. The public key is never embedded in the OCMF string.
 
@@ -138,23 +141,23 @@ matches = public_key.matches_signature_algorithm(ocmf.signature.SA)
 print(f"Key matches algorithm: {matches}")
 ```
 
-### Working with XML Test Files (For Testing)
+### Working with XML Files
 
-**Note:** XML parsing utilities use stdlib and are primarily for testing. They are not part of the public API.
+OCMF data is often distributed in XML format (e.g., from Transparenzsoftware). PyOCMF provides utilities to extract and verify OCMF data from these files.
 
 ```python
-# These imports are NOT part of the public API
-from pyocmf.utils.xml import parse_ocmf_with_key_from_xml, extract_ocmf_data_from_file
+from pyocmf import parse_ocmf_with_key_from_xml, extract_ocmf_data_from_file
 
-# Parse OCMF and public key from Transparenzsoftware XML file
-ocmf, public_key_hex = parse_ocmf_with_key_from_xml("test_file.xml")
+# Parse OCMF and public key from XML file
+ocmf, public_key_hex = parse_ocmf_with_key_from_xml("charging_session.xml")
 
 # Verify using the public key from XML
-is_valid = ocmf.verify_signature(public_key_hex)
-print(f"Session: {'Valid' if is_valid else 'Invalid'}")
+if public_key_hex:
+    is_valid = ocmf.verify_signature(public_key_hex)
+    print(f"Session: {'Valid' if is_valid else 'Invalid'}")
 
 # Or extract all OCMF data with public key metadata
-ocmf_data_list = extract_ocmf_data_from_file("test_file.xml")
+ocmf_data_list = extract_ocmf_data_from_file("charging_session.xml")
 for ocmf_data in ocmf_data_list:
     ocmf = OCMF.from_string(ocmf_data.ocmf_string)
     if ocmf_data.public_key:

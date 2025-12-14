@@ -13,14 +13,16 @@ dependencies = [
     "phonenumbers~=9.0",
     "pydantic-extra-types~=2.10",
     "pydantic~=2.10",
-    "rich>=14.2.0",
-    "typer>=0.20.0",
 ]
 
 [project.scripts]
 pyocmf = "pyocmf.cli:main"
 
 [project.optional-dependencies]
+cli = [
+    "rich>=14.2.0",
+    "typer>=0.20.0",
+]
 crypto = [
     "cryptography~=44.0",
 ]

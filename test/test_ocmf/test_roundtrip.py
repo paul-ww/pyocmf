@@ -1,14 +1,13 @@
 """End-to-end roundtrip tests for OCMF parsing using transparenzsoftware test files."""
 
 import pathlib
-import xml.etree.ElementTree as ET
 
 import pytest
 
-from pyocmf.exceptions import (
-    PyOCMFError,
-)
+from pyocmf.exceptions import PyOCMFError
 from pyocmf.ocmf import OCMF
+from pyocmf.sections.payload import Payload
+from pyocmf.sections.signature import Signature
 from pyocmf.utils.xml import extract_ocmf_strings_from_file, parse_ocmf_from_xml
 
 
@@ -59,22 +58,19 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
         or "template" in file_name_lower
         or "test_input_xml_two_values" in file_name_lower
     ):
-        with pytest.raises((PyOCMFError, ET.ParseError)):
+        with pytest.raises(PyOCMFError):
             parse_ocmf_from_xml(xml_file)
         return
 
     ocmf_strings = extract_ocmf_strings_from_file(xml_file)
     assert len(ocmf_strings) > 0, f"Expected OCMF data in {xml_file.name}"
 
-    for i, ocmf_string in enumerate(ocmf_strings):
+    for ocmf_string in ocmf_strings:
         ocmf_model = OCMF.from_string(ocmf_string)
 
         assert ocmf_model.header == "OCMF"
-        assert ocmf_model.payload is not None
-        assert ocmf_model.signature is not None
+        assert isinstance(ocmf_model.payload, Payload)
+        assert isinstance(ocmf_model.signature, Signature)
 
-        reconstructed_string = ocmf_model.to_string()
-        ocmf_model_2 = OCMF.from_string(reconstructed_string)
-        assert ocmf_model.model_dump() == ocmf_model_2.model_dump(), (
-            f"Roundtrip failed for OCMF string {i + 1} in {xml_file.name}"
-        )
+        assert ocmf_string == ocmf_model.to_string()
+        assert ocmf_model == OCMF.from_hex(ocmf_model.to_hex())

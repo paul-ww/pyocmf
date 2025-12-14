@@ -9,6 +9,7 @@ from pyocmf.exceptions import (
     OcmfPayloadError,
     OcmfSignatureError,
     PyOCMFError,
+    SignatureVerificationError,
     ValidationError,
     XmlParsingError,
 )
@@ -28,4 +29,5 @@ __all__ = [
     "Base64DecodingError",
     "DataNotFoundError",
     "XmlParsingError",
+    "SignatureVerificationError",
 ]

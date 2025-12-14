@@ -45,3 +45,7 @@ class ValidationError(PyOCMFError, ValueError):
 
     Inherits from ValueError for compatibility with Pydantic validation.
     """
+
+
+class SignatureVerificationError(PyOCMFError):
+    """Error verifying cryptographic signature."""

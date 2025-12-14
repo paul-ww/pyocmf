@@ -27,6 +27,7 @@ class OCMF(pydantic.BaseModel):
     header: Literal["OCMF"]
     payload: Payload
     signature: Signature
+    _original_payload_json: str | None = pydantic.PrivateAttr(default=None)
 
     @classmethod
     def from_string(cls, ocmf_string: str) -> OCMF:
@@ -65,7 +66,9 @@ class OCMF(pydantic.BaseModel):
             msg = f"Invalid signature JSON: {e}"
             raise OcmfSignatureError(msg) from e
 
-        return cls(header="OCMF", payload=payload, signature=signature)
+        ocmf = cls(header="OCMF", payload=payload, signature=signature)
+        ocmf._original_payload_json = payload_json
+        return ocmf
 
     def to_string(self) -> str:
         """Convert the OCMF model to its string representation.
@@ -77,3 +80,20 @@ class OCMF(pydantic.BaseModel):
         signature_json = self.signature.model_dump_json()
 
         return f"OCMF|{payload_json}|{signature_json}"
+
+    def verify_signature(self, public_key_hex: str | None = None) -> bool:
+        """Verify the cryptographic signature of the OCMF data.
+
+        Args:
+            public_key_hex: Hex-encoded public key. If None, uses the public key
+                from the signature section (if present)
+
+        Returns:
+            bool: True if signature is valid, False otherwise
+
+        Raises:
+            SignatureVerificationError: If verification cannot be performed due to
+                missing data, unsupported algorithms, or malformed keys/signatures
+        """
+        payload_json = self._original_payload_json or self.payload.to_flat_dict_json()
+        return self.signature.verify(payload_json, public_key_hex)

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import pydantic
+
+from pyocmf.exceptions import PublicKeyError
 
 if TYPE_CHECKING:
     from pyocmf.types.crypto import SignatureMethod
@@ -38,7 +40,7 @@ class PublicKey(pydantic.BaseModel):
     block_length: int = pydantic.Field(description="Block length in bytes")
 
     @classmethod
-    def from_hex(cls, key_hex: str) -> PublicKey:
+    def from_hex(cls, key_hex: str) -> Self:
         """Create PublicKeyInfo by parsing a hex-encoded DER public key.
 
         Args:
@@ -74,13 +76,13 @@ class PublicKey(pydantic.BaseModel):
 
             return cls(
                 key_hex=key_hex,
-                curve=curve_name,  # type: ignore[arg-type]
+                curve=curve_name,
                 key_size=key_size,
                 block_length=block_length,
             )
         except (ValueError, TypeError) as e:
             msg = f"Failed to parse public key: {e}"
-            raise ValueError(msg) from e
+            raise PublicKeyError(msg) from e
 
     @property
     def key_type_identifier(self) -> str:

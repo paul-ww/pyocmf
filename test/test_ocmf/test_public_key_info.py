@@ -4,6 +4,7 @@ import pathlib
 
 import pytest
 
+from pyocmf.exceptions import PublicKeyError
 from pyocmf.utils.xml import extract_ocmf_data_from_file
 
 # Check if cryptography is available
@@ -69,12 +70,12 @@ class TestPublicKeyInfo:
 
     def test_parse_invalid_key(self) -> None:
         """Test that invalid key raises ValueError."""
-        with pytest.raises(ValueError, match="Failed to parse public key"):
+        with pytest.raises(PublicKeyError, match="Failed to parse public key"):
             PublicKey.from_hex("not_a_valid_hex_key")
 
     def test_parse_non_hex(self) -> None:
         """Test that non-hex string raises ValueError."""
-        with pytest.raises(ValueError, match="Failed to parse public key"):
+        with pytest.raises(PublicKeyError, match="Failed to parse public key"):
             PublicKey.from_hex("xyz123")
 
 

@@ -47,5 +47,9 @@ class ValidationError(PyOCMFError, ValueError):
     """
 
 
+class PublicKeyError(PyOCMFError):
+    """Error related to public key handling."""
+
+
 class SignatureVerificationError(PyOCMFError):
     """Error verifying cryptographic signature."""

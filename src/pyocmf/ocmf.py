@@ -10,7 +10,12 @@ from typing import Literal
 
 import pydantic
 
-from pyocmf.exceptions import OcmfFormatError, OcmfPayloadError, OcmfSignatureError
+from pyocmf.exceptions import (
+    HexDecodingError,
+    OcmfFormatError,
+    OcmfPayloadError,
+    OcmfSignatureError,
+)
 from pyocmf.sections.payload import Payload
 from pyocmf.sections.signature import Signature
 
@@ -38,14 +43,14 @@ class OCMF(pydantic.BaseModel):
         Returns:
             OCMF: The parsed OCMF model
         Raises:
-            OcmfFormatError: If the string is not valid hex or not in valid OCMF format
+            HexDecodingError: If the string is not valid hexadecimal
         """
         try:
             decoded_bytes = bytes.fromhex(ocmf_hex.strip())
             decoded_string = decoded_bytes.decode("utf-8")
         except ValueError as e:
             msg = f"Invalid hex-encoded OCMF string: {e}"
-            raise OcmfFormatError(msg) from e
+            raise HexDecodingError(msg) from e
 
         return cls.from_string(decoded_string)
 

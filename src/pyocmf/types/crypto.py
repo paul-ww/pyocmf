@@ -4,6 +4,11 @@ import enum
 
 
 class SignatureMethod(enum.StrEnum):
+    """ECDSA signature algorithms supported by OCMF.
+
+    Combines elliptic curve types with hash functions (SHA256 or SHA512).
+    """
+
     SECP192K1_SHA256 = "ECDSA-secp192k1-SHA256"
     SECP256K1_SHA256 = "ECDSA-secp256k1-SHA256"
     SECP192R1_SHA256 = "ECDSA-secp192r1-SHA256"
@@ -25,15 +30,21 @@ class SignatureMethod(enum.StrEnum):
 
 
 class SignatureEncodingType(enum.StrEnum):
+    """Encoding format for signature data."""
+
     HEX = "hex"
     BASE64 = "base64"
 
 
 class SignatureMimeType(enum.StrEnum):
+    """MIME type for signature data format."""
+
     APPLICATION_X_DER = "application/x-der"
 
 
 class KeyType(enum.StrEnum):
+    """Elliptic curve types for cryptographic keys."""
+
     SECP192K1 = "secp192k1"
     SECP256K1 = "secp256k1"
     SECP192R1 = "secp192r1"

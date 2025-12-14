@@ -1,3 +1,8 @@
+"""OCMF (Open Charge Metering Format) parser and validator.
+
+This module provides the main OCMF class for parsing and validating OCMF strings.
+"""
+
 from __future__ import annotations
 
 import json
@@ -11,6 +16,14 @@ from pyocmf.sections.signature import Signature
 
 
 class OCMF(pydantic.BaseModel):
+    """OCMF data model representing the complete OCMF structure.
+
+    The OCMF format consists of three pipe-separated sections:
+    - Header: Always "OCMF"
+    - Payload: JSON object containing meter readings and metadata
+    - Signature: JSON object containing cryptographic signature data
+    """
+
     header: Literal["OCMF"]
     payload: Payload
     signature: Signature

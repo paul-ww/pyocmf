@@ -119,8 +119,4 @@ def parse_all_ocmf_from_xml(xml_path: pathlib.Path) -> list[OCMF]:
         msg = "No OCMF data found in XML file."
         raise DataNotFoundError(msg)
 
-    results = []
-    for _i, ocmf_string in enumerate(ocmf_strings):
-        results.append(OCMF.from_string(ocmf_string))
-
-    return results
+    return [OCMF.from_string(ocmf_str) for ocmf_str in ocmf_strings]

@@ -1,3 +1,9 @@
+"""OCMF signature section containing cryptographic signature data.
+
+This module defines the Signature model which contains the cryptographic
+signature information used to verify the authenticity of OCMF data.
+"""
+
 import pydantic
 
 from pyocmf.types.crypto import (
@@ -12,6 +18,12 @@ SignatureDataType = HexStr | Base64Str
 
 
 class Signature(pydantic.BaseModel):
+    """Cryptographic signature data for OCMF payload verification.
+
+    Contains the signature algorithm, encoding, data, and optional public key
+    information for verifying the authenticity of the OCMF payload.
+    """
+
     SA: SignatureMethod | None = pydantic.Field(
         default=SignatureMethod.SECP256R1_SHA256, description="Signature Algorithm"
     )

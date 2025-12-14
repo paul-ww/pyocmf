@@ -1,3 +1,9 @@
+"""OCMF meter reading types and models.
+
+This module defines the various enums and models used for representing
+meter readings in OCMF format, including reading types, statuses, and values.
+"""
+
 import decimal
 import enum
 from typing import Annotated
@@ -8,11 +14,15 @@ from pyocmf.types.units import OCMFUnit
 
 
 class ReadingType(enum.StrEnum):
+    """Type of electrical current in the meter reading."""
+
     AC = "AC"
     DC = "DC"
 
 
 class MeterReadingReason(enum.StrEnum):
+    """Reason or trigger for a meter reading."""
+
     BEGIN = "B"
     CHARGING = "C"
     EXCEPTION = "X"
@@ -26,6 +36,8 @@ class MeterReadingReason(enum.StrEnum):
 
 
 class MeterStatus(enum.StrEnum):
+    """Status of the meter at the time of reading."""
+
     NOT_PRESENT = "N"
     OK = "G"
     TIMEOUT = "T"
@@ -41,6 +53,8 @@ class MeterStatus(enum.StrEnum):
 
 
 class TimeStatus(enum.StrEnum):
+    """Synchronization status of the timestamp."""
+
     UNKNOWN_OR_UNSYNCHRONIZED = "U"
     INFORMATIVE = "I"
     SYNCHRONIZED = "S"
@@ -68,6 +82,12 @@ ObisCode = Annotated[
 
 
 class Reading(pydantic.BaseModel):
+    """A single meter reading with timestamp and associated metadata.
+
+    Represents one meter reading taken during a charging session, including
+    the meter value, timestamp, status, and other relevant information.
+    """
+
     TM: OCMFTimeFormat = pydantic.Field(description="Time (ISO 8601 + time status) - REQUIRED")
     TX: MeterReadingReason | None = pydantic.Field(default=None, description="Transaction")
     RV: decimal.Decimal | None = pydantic.Field(
@@ -88,6 +108,7 @@ class Reading(pydantic.BaseModel):
     @pydantic.field_validator("EF", mode="before")
     @classmethod
     def ef_empty_string_to_none(cls, v: str | None) -> ErrorFlags | None:
+        """Convert empty error flag strings to None."""
         if v == "":
             return None
         return v

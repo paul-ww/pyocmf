@@ -1,3 +1,10 @@
+"""User and charge point identification types for OCMF.
+
+This module defines various identification types, validation functions,
+and enums for representing user authentication and charge point identification
+in OCMF format.
+"""
+
 import base64
 import enum
 import re
@@ -11,6 +18,18 @@ from pyocmf.exceptions import Base64DecodingError, HexDecodingError
 
 
 def validate_hex_string(value: str) -> str:
+    """Validate that a string contains only hexadecimal characters.
+
+    Args:
+        value: String to validate.
+
+    Returns:
+        The validated hex string.
+
+    Raises:
+        TypeError: If value is not a string.
+        HexDecodingError: If string contains non-hex characters.
+    """
     if not isinstance(value, str):
         msg = "string required"
         raise TypeError(msg)
@@ -28,6 +47,18 @@ HexStr = Annotated[
 
 
 def validate_base64_string(value: str) -> str:
+    """Validate that a string is valid base64 encoding.
+
+    Args:
+        value: String to validate.
+
+    Returns:
+        The validated base64 string.
+
+    Raises:
+        TypeError: If value is not a string.
+        Base64DecodingError: If string is not valid base64.
+    """
     if not isinstance(value, str):
         msg = "string required"
         raise TypeError(msg)
@@ -53,7 +84,13 @@ FiscalContext = Annotated[str, pydantic.constr(pattern=r"^F[1-9]*$")]
 PaginationString = TransactionContext | FiscalContext
 
 
-class UserAssignmentStatus(str, enum.Enum):
+class UserAssignmentStatus(enum.StrEnum):
+    """Security level of user identification and assignment.
+
+    Indicates the trustworthiness and verification level of the user
+    identification method used for the charging session.
+    """
+
     NO_ASSIGNMENT = "NONE"
     UNSECURED = "HEARSAY"
     TRUSTED = "TRUSTED"
@@ -66,14 +103,18 @@ class UserAssignmentStatus(str, enum.Enum):
     CERT_UNVERIFIED = "UNKNOWN"
 
 
-class IdentificationFlagRFID(str, enum.Enum):
+class IdentificationFlagRFID(enum.StrEnum):
+    """RFID-based user identification methods."""
+
     NO_ASSIGNMENT_VIA_RFID = "RFID_NONE"
     ASSIGNMENT_VIA_EXTERNAL_RFID_CARD_READER = "RFID_PLAIN"
     ASSIGNMENT_VIA_PROTECTED_RFID_CARD_READER = "RFID_RELATED"
     PREVIOUSLY_KNOWN_SHARED_KEY = "RFID_PSK"
 
 
-class IdentificationFlagOCPP(str, enum.Enum):
+class IdentificationFlagOCPP(enum.StrEnum):
+    """OCPP-based user identification methods."""
+
     NO_USER_ASSIGNMENT_BY_OCPP = "OCPP_NONE"
     ASSIGNMENT_BY_OCPP_REMOTESTART_METHOD = "OCPP_RS"
     ASSIGNMENT_BY_OCPP_AUTHORIZE_METHOD = "OCPP_AUTH"
@@ -84,18 +125,24 @@ class IdentificationFlagOCPP(str, enum.Enum):
     CERTIFICATE_OF_BACKEND_USED = "OCPP_CERTIFIED"
 
 
-class IdentificationFlagIso15118(str, enum.Enum):
+class IdentificationFlagIso15118(enum.StrEnum):
+    """ISO 15118-based user identification methods."""
+
     NO_USER_ASSIGNMENT_BY_ISO_15118 = "ISO15118_NONE"
     PLUG_AND_CHARGE_WAS_USED = "ISO15118_PNC"
 
 
-class IdentificationFlagPLMN(str, enum.Enum):
+class IdentificationFlagPLMN(enum.StrEnum):
+    """PLMN (mobile network) based user identification methods."""
+
     NO_USER_ASSIGNMENT = "PLMN_NONE"
     CALL = "PLMN_RING"
     SHORT_MESSAGE = "PLMN_SMS"
 
 
 class IdentificationType(enum.StrEnum):
+    """Types of user identification credentials."""
+
     NONE = "NONE"
     DENIED = "DENIED"
     UNDEFINED = "UNDEFINED"
@@ -142,5 +189,7 @@ IdentificationData = ISO14443 | ISO15693 | EMAID | EVCCID | EVCOID | ISO7812 | P
 
 
 class ChargePointIdentificationType(enum.StrEnum):
+    """Types of charge point identification schemes."""
+
     EVSEID = "EVSEID"
     CBIDC = "CBIDC"

@@ -1,5 +1,6 @@
 site_name: PyOCMF
 site_description: Python library for parsing and validating OCMF (Open Charge Metering Format)
+site_url: https://pyocmf.readthedocs.io/
 
 theme:
   name: material
@@ -17,8 +18,11 @@ theme:
   features:
     - navigation.instant
     - navigation.top
+    - navigation.tabs
     - search.suggest
+    - search.highlight
     - content.code.copy
+    - content.code.annotate
 
 plugins:
   - search
@@ -29,12 +33,39 @@ plugins:
           options:
             docstring_style: google
             show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            members_order: source
+            group_by_category: true
+            show_signature_annotations: true
 
 markdown_extensions:
-  - pymdownx.highlight
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
   - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
   - Home: index.md
+  - CLI Reference: cli.md
   - API Reference: api.md
+  - Browser Demo: demo.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/paul-ww/pyocmf
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/pyocmf/

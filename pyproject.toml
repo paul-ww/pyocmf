@@ -5,15 +5,37 @@ build-backend = "uv_build"
 [project]
 name = "pyocmf"
 version = "0.1.0"
-description = "Add your description here"
+description = "Python library for parsing, validating, and verifying OCMF (Open Charge Metering Format) signatures from electric vehicle charging stations"
 readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Paul Wullenweber", email = "44506902+paul-ww@users.noreply.github.com" }
+]
+keywords = ["ocmf", "ev", "charging", "metering", "electric-vehicle", "signature-verification", "ecdsa"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+]
 dependencies = [
     "ciso8601~=2.3",
     "phonenumbers~=9.0",
     "pydantic-extra-types~=2.10",
     "pydantic~=2.10",
 ]
+
+[project.urls]
+Homepage = "https://github.com/paul-ww/pyocmf"
+Documentation = "https://pyocmf.readthedocs.io/"
+Repository = "https://github.com/paul-ww/pyocmf"
+Issues = "https://github.com/paul-ww/pyocmf/issues"
 
 [project.scripts]
 pyocmf = "pyocmf.cli:main"

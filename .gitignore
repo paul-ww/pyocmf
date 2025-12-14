@@ -19,3 +19,6 @@ wheels/
 
 # Documentation build
 site/
+
+# Publishing instructions
+PUBLISHING.md

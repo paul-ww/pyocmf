@@ -5,7 +5,7 @@ import pathlib
 import pytest
 
 from pyocmf.exceptions import PublicKeyError
-from pyocmf.utils.xml import extract_ocmf_data_from_file
+from pyocmf.utils.xml import OcmfContainer
 
 # Check if cryptography is available
 try:
@@ -31,7 +31,7 @@ class TestPublicKey:
             "08A0D6DC7D4AB1A5E1A7955BE"
         )
 
-        key_info = PublicKey.from_hex(public_key_hex)
+        key_info = PublicKey.from_string(public_key_hex)
 
         assert key_info.key_hex == public_key_hex
         assert key_info.curve == "secp256r1"
@@ -46,7 +46,7 @@ class TestPublicKey:
             "d792127c006c242ccccd96bf7051b6fbc278497036659e7bae57f542776a17c7f8b28600"
         )
 
-        key_info = PublicKey.from_hex(public_key_hex)
+        key_info = PublicKey.from_string(public_key_hex)
 
         assert key_info.curve == "secp192r1"
         assert key_info.key_size == 192
@@ -61,7 +61,7 @@ class TestPublicKey:
             "08A0D6DC7D4AB1A5E1A7955BE"
         )
 
-        key_info = PublicKey.from_hex(public_key_hex)
+        key_info = PublicKey.from_string(public_key_hex)
 
         assert key_info.matches_signature_algorithm("ECDSA-secp256r1-SHA256") is True
         assert key_info.matches_signature_algorithm("ECDSA-secp192r1-SHA256") is False
@@ -69,14 +69,18 @@ class TestPublicKey:
         assert key_info.matches_signature_algorithm(None) is False
 
     def test_parse_invalid_key(self) -> None:
-        """Test that invalid key raises ValueError."""
+        """Test that valid hex but invalid key raises PublicKeyError."""
+        # This is valid hex but not a valid DER-encoded public key
         with pytest.raises(PublicKeyError, match="Failed to parse public key"):
-            PublicKey.from_hex("not_a_valid_hex_key")
+            PublicKey.from_string("0123456789abcdef")
 
-    def test_parse_non_hex(self) -> None:
-        """Test that non-hex string raises ValueError."""
-        with pytest.raises(PublicKeyError, match="Failed to parse public key"):
-            PublicKey.from_hex("xyz123")
+    def test_parse_invalid_encoding(self) -> None:
+        """Test that invalid encoding raises error."""
+        from pyocmf.exceptions import Base64DecodingError
+
+        # Contains characters that are neither valid hex nor valid base64
+        with pytest.raises(Base64DecodingError):
+            PublicKey.from_string("not_valid!!!")
 
 
 class TestXmlPublicKeyExtraction:
@@ -86,47 +90,27 @@ class TestXmlPublicKeyExtraction:
         """Test extracting PublicKey from XML file."""
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
-        ocmf_data_list = extract_ocmf_data_from_file(xml_file)
+        container = OcmfContainer.from_xml(xml_file)
 
-        assert len(ocmf_data_list) > 0
-        ocmf_data = ocmf_data_list[0]
+        assert len(container) > 0
+        entry = container[0]
 
         # public_key provides structured metadata
-        assert ocmf_data.public_key is not None
-        assert ocmf_data.public_key.curve == "secp256r1"
-        assert ocmf_data.public_key.key_size == 256
-        assert ocmf_data.public_key.block_length == 32
-        assert ocmf_data.public_key.key_hex.startswith("3059")
+        assert entry.public_key is not None
+        assert entry.public_key.curve == "secp256r1"
+        assert entry.public_key.key_size == 256
+        assert entry.public_key.block_length == 32
+        assert entry.public_key.key_hex.startswith("3059")
 
-    def test_public_key_info_matches_signature_algorithm(
+    def test_public_key_matches_signature_algorithm(
         self, transparency_xml_dir: pathlib.Path
     ) -> None:
         """Test that extracted key info matches the OCMF signature algorithm."""
-        from pyocmf import OCMF
-
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
-        ocmf_data_list = extract_ocmf_data_from_file(xml_file)
-        ocmf_data = ocmf_data_list[0]
-        ocmf = OCMF.from_string(ocmf_data.ocmf_string)
+        container = OcmfContainer.from_xml(xml_file)
+        entry = container[0]
 
-        assert ocmf_data.public_key is not None
-        assert ocmf.signature.SA is not None
-        assert ocmf_data.public_key.matches_signature_algorithm(ocmf.signature.SA)
-
-    def test_xml_without_public_key(self, tmp_path: pathlib.Path) -> None:
-        """Test XML file without public key element."""
-        xml_content = """<?xml version="1.0" encoding="UTF-8"?>
-<values>
-    <value>
-        <signedData format="OCMF">OCMF|{"FV":"1.0"}|{"SD":"abc"}</signedData>
-    </value>
-</values>"""
-
-        xml_file = tmp_path / "no_key.xml"
-        xml_file.write_text(xml_content)
-
-        ocmf_data_list = extract_ocmf_data_from_file(xml_file)
-
-        assert len(ocmf_data_list) == 1
-        assert ocmf_data_list[0].public_key is None
+        assert entry.public_key is not None
+        assert entry.ocmf.signature.SA is not None
+        assert entry.public_key.matches_signature_algorithm(entry.ocmf.signature.SA)

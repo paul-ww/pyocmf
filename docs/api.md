@@ -28,25 +28,17 @@ Cryptographic signature data and verification.
 
 ## XML Utilities
 
-### OcmfXmlData
+### OcmfContainer
 
-Container for OCMF data extracted from XML files.
+Container for parsing OCMF data from XML transaction files.
 
-::: pyocmf.utils.xml.OcmfXmlData
+::: pyocmf.utils.xml.OcmfContainer
 
-### XML Functions
+### OcmfEntry
 
-Helper functions for extracting OCMF data from Transparenzsoftware XML files.
+A single OCMF entry with its associated public key.
 
-::: pyocmf.utils.xml.parse_ocmf_from_xml
-
-::: pyocmf.utils.xml.parse_ocmf_with_key_from_xml
-
-::: pyocmf.utils.xml.parse_all_ocmf_from_xml
-
-::: pyocmf.utils.xml.extract_ocmf_data_from_file
-
-::: pyocmf.utils.xml.extract_ocmf_strings_from_file
+::: pyocmf.utils.xml.OcmfEntry
 
 ## Public Key
 

@@ -6,10 +6,7 @@ import pytest
 
 from pyocmf.exceptions import SignatureVerificationError
 from pyocmf.ocmf import OCMF
-from pyocmf.utils.xml import (
-    extract_ocmf_data_from_file,
-    parse_ocmf_with_key_from_xml,
-)
+from pyocmf.utils.xml import OcmfContainer
 
 # Check if cryptography is available by checking if verification module works
 try:
@@ -40,11 +37,11 @@ class TestSignatureVerification:
         """Test verification of valid KEBA KCP30 signature from XML file."""
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
-        # Extract OCMF and public key from XML
-        ocmf, public_key = parse_ocmf_with_key_from_xml(xml_file)
+        container = OcmfContainer.from_xml(xml_file)
+        entry = container[0]
 
-        assert public_key is not None
-        assert ocmf.verify_signature(public_key) is True
+        assert entry.public_key is not None
+        assert entry.verify_signature() is True
 
     def test_verify_invalid_signature(self, transparency_xml_dir: pathlib.Path) -> None:
         """Test that tampered data results in invalid signature.
@@ -53,10 +50,10 @@ class TestSignatureVerification:
         """
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
-        # Get original valid OCMF and public key
-        ocmf_data_list = extract_ocmf_data_from_file(xml_file)
-        original_ocmf = ocmf_data_list[0].ocmf_string
-        public_key = ocmf_data_list[0].public_key.key_hex if ocmf_data_list[0].public_key else None
+        container = OcmfContainer.from_xml(xml_file)
+        entry = container[0]
+        original_ocmf = entry.original_string
+        public_key = entry.public_key.key_hex if entry.public_key else None
 
         # Tamper with the data (change energy value)
         tampered_ocmf = original_ocmf.replace('"RV":0.2597', '"RV":999.9999')
@@ -69,7 +66,8 @@ class TestSignatureVerification:
         """Test that wrong public key (but correct curve) results in invalid signature."""
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
-        ocmf, _correct_key = parse_ocmf_with_key_from_xml(xml_file)
+        container = OcmfContainer.from_xml(xml_file)
+        ocmf = container[0].ocmf
 
         # Use a different secp256r1 public key (same curve type, but wrong key)
         # This is a valid secp256r1 key, just not the one that signed this data
@@ -99,18 +97,19 @@ class TestSignatureVerification:
         """Test ECDSA-secp256r1-SHA256 signature algorithm."""
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
-        ocmf, public_key = parse_ocmf_with_key_from_xml(xml_file)
+        container = OcmfContainer.from_xml(xml_file)
+        entry = container[0]
 
-        assert public_key is not None
-        assert ocmf.verify_signature(public_key) is True
-        assert ocmf.signature.SA == "ECDSA-secp256r1-SHA256"
+        assert entry.public_key is not None
+        assert entry.verify_signature() is True
+        assert entry.ocmf.signature.SA == "ECDSA-secp256r1-SHA256"
 
     def test_verify_key_curve_mismatch(self, transparency_xml_dir: pathlib.Path) -> None:
         """Test that using a key with wrong curve type raises error."""
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
-        # Get OCMF with secp256r1 signature
-        ocmf, _correct_key = parse_ocmf_with_key_from_xml(xml_file)
+        container = OcmfContainer.from_xml(xml_file)
+        ocmf = container[0].ocmf
         assert ocmf.signature.SA == "ECDSA-secp256r1-SHA256"
 
         # Use a secp192r1 public key (from Compleo test data which uses secp192r1)

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyocmf.cli import app
-from pyocmf.utils.xml import extract_ocmf_data_from_file
+from pyocmf.utils.xml import OcmfContainer
 
 if TYPE_CHECKING:
     from typer.testing import CliRunner
@@ -178,22 +178,20 @@ class TestCliRealData:
     ) -> None:
         """Test verification with real KEBA data from XML file."""
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
-        ocmf_data_list = extract_ocmf_data_from_file(xml_file)
+        container = OcmfContainer.from_xml(xml_file)
 
-        assert len(ocmf_data_list) > 0
-        ocmf_data = ocmf_data_list[0]
+        assert len(container) > 0
+        entry = container[0]
 
-        if ocmf_data.public_key is None:
+        if entry.public_key is None:
             pytest.skip("Public key not available in test data")
-
-        assert ocmf_data.public_key is not None
 
         result = cli_runner.invoke(
             app,
             [
-                ocmf_data.ocmf_string,
+                entry.original_string,
                 "--public-key",
-                ocmf_data.public_key.key_hex,
+                entry.public_key.key_hex,
                 "--verbose",
             ],
         )

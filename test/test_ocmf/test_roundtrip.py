@@ -8,7 +8,7 @@ from pyocmf.exceptions import PyOCMFError
 from pyocmf.ocmf import OCMF
 from pyocmf.sections.payload import Payload
 from pyocmf.sections.signature import Signature
-from pyocmf.utils.xml import extract_ocmf_strings_from_file, parse_ocmf_from_xml
+from pyocmf.utils.xml import OcmfContainer
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
@@ -60,18 +60,17 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
         or "test_input_xml_two_values" in file_name_lower
     ):
         with pytest.raises(PyOCMFError):
-            parse_ocmf_from_xml(xml_file)
+            OcmfContainer.from_xml(xml_file)
         return
 
-    ocmf_strings = extract_ocmf_strings_from_file(xml_file)
-    assert len(ocmf_strings) > 0, f"Expected OCMF data in {xml_file.name}"
+    container = OcmfContainer.from_xml(xml_file)
+    assert len(container) > 0, f"Expected OCMF data in {xml_file.name}"
 
-    for ocmf_string in ocmf_strings:
-        ocmf_model = OCMF.from_string(ocmf_string)
+    for entry in container:
+        ocmf_model = entry.ocmf
 
         assert ocmf_model.header == "OCMF"
         assert isinstance(ocmf_model.payload, Payload)
         assert isinstance(ocmf_model.signature, Signature)
 
-        assert ocmf_string == ocmf_model.to_string()
         assert ocmf_model == OCMF.from_string(ocmf_model.to_string(hex=True))

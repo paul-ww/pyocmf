@@ -25,7 +25,7 @@ except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
 
 
-from pyocmf.exceptions import PublicKeyError, SignatureVerificationError
+from pyocmf.exceptions import EncodingError, PublicKeyError, SignatureVerificationError
 
 
 def check_cryptography_available() -> None:
@@ -132,8 +132,8 @@ def verify_signature(
     check_cryptography_available()
 
     try:
-        public_key_info = PublicKey.from_hex(public_key_hex)
-    except (PublicKeyError, ImportError) as e:
+        public_key_info = PublicKey.from_string(public_key_hex)
+    except (PublicKeyError, EncodingError, ImportError) as e:
         msg = f"Failed to parse public key: {e}"
         raise SignatureVerificationError(msg) from e
 

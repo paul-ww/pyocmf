@@ -51,10 +51,17 @@ from pyocmf import OCMF
 ocmf_string = 'OCMF|{"FV":"1.0","GI":"KEBA_KCP30",...}|{"SD":"3045..."}'
 ocmf = OCMF.from_string(ocmf_string)
 
+# Hex-encoded strings are automatically detected and decoded
+ocmf = OCMF.from_string('4f434d467c7b2246...')
+
 # Access payload data
 print(ocmf.payload.GI)  # Gateway ID: "KEBA_KCP30"
 print(ocmf.payload.GS)  # Gateway serial number
 print(ocmf.payload.RD)  # List of meter readings
+
+# Serialize back to string
+print(ocmf.to_string())           # Plain OCMF string
+print(ocmf.to_string(hex=True))   # Hex-encoded
 ```
 
 ### Command Line Interface
@@ -73,14 +80,14 @@ ocmf 'OCMF|{...}|{...}' --verbose
 # Validate and verify signature
 ocmf 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D...
 
-# Validate hex-encoded OCMF
-ocmf 4f434d467c7b... --hex
+# Validate hex-encoded OCMF (auto-detected)
+ocmf 4f434d467c7b...
 
-# Validate from XML file (auto-extracts public key for verification)
-ocmf charging_session.xml --xml
+# Validate from XML file (auto-detected, extracts public key for verification)
+ocmf charging_session.xml
 
 # Validate all OCMF entries in XML file
-ocmf charging_session.xml --xml --all
+ocmf charging_session.xml --all
 
 # Show help
 ocmf --help
@@ -127,12 +134,16 @@ The library can extract structured metadata from public keys per OCMF spec Table
 ```python
 from pyocmf.types.public_key import PublicKey
 
-# Parse public key directly
-public_key = PublicKey.from_hex(public_key_hex)
+# Parse public key (accepts hex or base64 encoding, auto-detected)
+public_key = PublicKey.from_string(public_key_hex)
 print(f"Key Type: {public_key.key_type_identifier}")
 print(f"Curve: {public_key.curve}")
 print(f"Key Size: {public_key.key_size} bits")
 print(f"Block Length: {public_key.block_length} bytes")
+
+# Export key in different formats
+print(public_key.to_string())             # hex (default)
+print(public_key.to_string(base64=True))  # base64
 
 # Validate key matches signature algorithm
 from pyocmf import OCMF
@@ -143,26 +154,22 @@ print(f"Key matches algorithm: {matches}")
 
 ### Working with XML Files
 
-OCMF data is often distributed in XML format (e.g., from Transparenzsoftware). PyOCMF provides utilities to extract and verify OCMF data from these files.
+OCMF data is often distributed in XML format (e.g. when downloading transaction data from a CPO backend). PyOCMF provides utilities to extract and verify OCMF data from these files.
 
 ```python
-from pyocmf import parse_ocmf_with_key_from_xml, extract_ocmf_data_from_file
+from pyocmf.utils.xml import OcmfContainer
 
-# Parse OCMF and public key from XML file
-ocmf, public_key_hex = parse_ocmf_with_key_from_xml("charging_session.xml")
+# Parse all OCMF entries from XML file
+container = OcmfContainer.from_xml("charging_session.xml")
 
-# Verify using the public key from XML
-if public_key_hex:
-    is_valid = ocmf.verify_signature(public_key_hex)
-    print(f"Session: {'Valid' if is_valid else 'Invalid'}")
-
-# Or extract all OCMF data with public key metadata
-ocmf_data_list = extract_ocmf_data_from_file("charging_session.xml")
-for ocmf_data in ocmf_data_list:
-    ocmf = OCMF.from_string(ocmf_data.ocmf_string)
-    if ocmf_data.public_key:
-        is_valid = ocmf.verify_signature(ocmf_data.public_key.key_hex)
-        print(f"Session: {'Valid' if is_valid else 'Invalid'}")
+# Iterate over entries and verify signatures
+for entry in container:
+    print(f"Gateway: {entry.ocmf.payload.GI}")
+    
+    # Public key is automatically extracted from XML if present
+    if entry.public_key:
+        is_valid = entry.verify_signature()
+        print(f"Signature: {'Valid' if is_valid else 'Invalid'}")
 ```
 
 ## Supported Signature Algorithms

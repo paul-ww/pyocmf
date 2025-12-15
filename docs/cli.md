@@ -25,7 +25,7 @@ ocmf 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D...
 
 ## Input Formats
 
-The CLI automatically detects the input format:
+The CLI automatically detects the input format - no flags needed:
 
 ### OCMF String
 
@@ -35,13 +35,15 @@ ocmf 'OCMF|{"FV":"1.0","GI":"KEBA_KCP30",...}|{"SD":"3045..."}'
 
 ### Hex-Encoded OCMF
 
+Hex-encoded strings are automatically detected and decoded:
+
 ```bash
 ocmf 4f434d467c7b2246563a22312e30222c...
 ```
 
 ### XML File
 
-Extract and validate OCMF from Transparenzsoftware XML files:
+XML files are automatically detected. The CLI extracts OCMF data and public keys for verification:
 
 ```bash
 # Validate first entry
@@ -50,8 +52,6 @@ ocmf charging_session.xml
 # Validate all entries
 ocmf charging_session.xml --all
 ```
-
-When processing XML files, the CLI automatically extracts public keys and verifies signatures.
 
 ## Options
 

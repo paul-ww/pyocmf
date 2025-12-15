@@ -11,7 +11,7 @@ from pyocmf.types.crypto import (
     SignatureMethod,
     SignatureMimeType,
 )
-from pyocmf.types.identifiers import Base64Str, HexStr
+from pyocmf.types.encoding import Base64Str, HexStr
 
 SignatureDataType = HexStr | Base64Str
 

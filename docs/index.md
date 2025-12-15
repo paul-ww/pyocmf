@@ -55,10 +55,17 @@ from pyocmf import OCMF
 ocmf_string = 'OCMF|{"FV":"1.0","GI":"KEBA_KCP30",...}|{"SD":"3045..."}'
 ocmf = OCMF.from_string(ocmf_string)
 
+# Hex-encoded strings are automatically detected and decoded
+ocmf = OCMF.from_string('4f434d467c7b2246...')
+
 # Access payload data
 print(ocmf.payload.GI)  # Gateway ID: "KEBA_KCP30"
 print(ocmf.payload.GS)  # Gateway serial number
 print(ocmf.payload.RD)  # List of meter readings
+
+# Serialize back to string
+print(ocmf.to_string())           # Plain OCMF string
+print(ocmf.to_string(hex=True))   # Hex-encoded
 ```
 
 Verify signatures (requires `pyocmf[crypto]`):
@@ -106,29 +113,15 @@ Try PyOCMF directly in your browser with our [interactive demo](demo.md) - no in
 OCMF data is often distributed in XML format (e.g., from Transparenzsoftware):
 
 ```python
-from pyocmf import parse_ocmf_with_key_from_xml
+from pyocmf import OcmfContainer
 
-# Parse OCMF and public key from XML file
-ocmf, public_key_hex = parse_ocmf_with_key_from_xml("charging_session.xml")
+# Parse OCMF entries from XML file
+container = OcmfContainer.from_xml("charging_session.xml")
 
-# Verify using the public key from XML
-if public_key_hex:
-    is_valid = ocmf.verify_signature(public_key_hex)
-    print(f"Session: {'Valid' if is_valid else 'Invalid'}")
-```
-
-Extract all OCMF entries from XML:
-
-```python
-from pyocmf import extract_ocmf_data_from_file, OCMF
-
-# Extract all OCMF data with public key metadata
-ocmf_data_list = extract_ocmf_data_from_file("charging_session.xml")
-
-for ocmf_data in ocmf_data_list:
-    ocmf = OCMF.from_string(ocmf_data.ocmf_string)
-    if ocmf_data.public_key:
-        is_valid = ocmf.verify_signature(ocmf_data.public_key.key_hex)
+# Verify signatures using the public keys from XML
+for entry in container:
+    if entry.public_key:
+        is_valid = entry.verify_signature()
         print(f"Session: {'Valid' if is_valid else 'Invalid'}")
 ```
 
@@ -148,9 +141,10 @@ ocmf = OCMF.from_string('4f434d467c7b2246563a22312e30222c...')
 ### From XML Files
 
 ```python
-from pyocmf import parse_ocmf_from_xml
+from pyocmf import OcmfContainer
 
-ocmf = parse_ocmf_from_xml("charging_session.xml")
+container = OcmfContainer.from_xml("charging_session.xml")
+ocmf = container[0].ocmf  # Access the first OCMF entry
 ```
 
 ## Supported Signature Algorithms
@@ -169,14 +163,18 @@ Per the OCMF specification, public keys must be transmitted out-of-band (separat
 ```python
 from pyocmf.types.public_key import PublicKey
 
-# Parse public key
-public_key = PublicKey.from_hex(public_key_hex)
+# Parse public key (accepts hex or base64, auto-detected)
+public_key = PublicKey.from_string(public_key_hex)
 
 # Access metadata per OCMF spec Table 23
 print(f"Key Type: {public_key.key_type_identifier}")
 print(f"Curve: {public_key.curve}")
 print(f"Key Size: {public_key.key_size} bits")
 print(f"Block Length: {public_key.block_length} bytes")
+
+# Export key in different formats
+print(public_key.to_string())             # hex (default)
+print(public_key.to_string(base64=True))  # base64
 
 # Validate key matches signature algorithm
 from pyocmf import OCMF

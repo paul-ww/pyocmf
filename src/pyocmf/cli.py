@@ -14,7 +14,7 @@ from rich.table import Table
 
 from pyocmf.exceptions import PyOCMFError, SignatureVerificationError
 from pyocmf.ocmf import OCMF
-from pyocmf.utils.xml import extract_ocmf_data_from_file
+from pyocmf.utils.xml import OcmfContainer
 
 app = typer.Typer(
     name="ocmf",
@@ -152,31 +152,26 @@ def _validate_from_xml(xml_path: str, verbose: bool, all_entries: bool) -> None:
         msg = f"XML file not found: {xml_path}"
         raise FileNotFoundError(msg)
 
-    ocmf_data_list = extract_ocmf_data_from_file(path)
+    container = OcmfContainer.from_xml(path)
 
-    if not ocmf_data_list:
-        console.print("[red]✗[/red] No OCMF data found in XML file")
-        sys.exit(1)
+    console.print(f"[green]✓[/green] Found {len(container)} OCMF entry(ies) in XML file")
 
-    console.print(f"[green]✓[/green] Found {len(ocmf_data_list)} OCMF entry(ies) in XML file")
+    entries_to_process = container.entries if all_entries else [container[0]]
 
-    entries_to_process = ocmf_data_list if all_entries else [ocmf_data_list[0]]
-
-    for i, ocmf_data in enumerate(entries_to_process, 1):
+    for i, entry in enumerate(entries_to_process, 1):
         if len(entries_to_process) > 1:
             console.print(f"\n[bold cyan]Entry {i}/{len(entries_to_process)}:[/bold cyan]")
 
-        ocmf = OCMF.from_string(ocmf_data.ocmf_string)
         console.print("[green]✓[/green] Successfully parsed OCMF string")
         console.print("[green]✓[/green] OCMF validation passed")
 
         if verbose:
-            _display_ocmf_details(ocmf)
+            _display_ocmf_details(entry.ocmf)
 
         # Auto-verify with public key from XML if available
-        if ocmf_data.public_key:
-            _verify_signature(ocmf, ocmf_data.public_key.key_hex)
-        elif ocmf.signature.SA:
+        if entry.public_key:
+            _verify_signature(entry.ocmf, entry.public_key.key_hex)
+        elif entry.ocmf.signature.SA:
             console.print("\n[yellow]ℹ[/yellow] Signature present but no public key found in XML")
 
 

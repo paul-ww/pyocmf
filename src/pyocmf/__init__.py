@@ -17,14 +17,7 @@ from pyocmf.exceptions import (
     XmlParsingError,
 )
 from pyocmf.ocmf import OCMF
-from pyocmf.utils.xml import (
-    OcmfXmlData,
-    extract_ocmf_data_from_file,
-    extract_ocmf_strings_from_file,
-    parse_all_ocmf_from_xml,
-    parse_ocmf_from_xml,
-    parse_ocmf_with_key_from_xml,
-)
+from pyocmf.utils.xml import OcmfContainer, OcmfEntry
 
 __all__ = [
     # Version
@@ -32,12 +25,8 @@ __all__ = [
     # Core
     "OCMF",
     # XML utilities
-    "OcmfXmlData",
-    "extract_ocmf_data_from_file",
-    "extract_ocmf_strings_from_file",
-    "parse_ocmf_from_xml",
-    "parse_ocmf_with_key_from_xml",
-    "parse_all_ocmf_from_xml",
+    "OcmfContainer",
+    "OcmfEntry",
     # Exceptions
     "PyOCMFError",
     "OcmfFormatError",

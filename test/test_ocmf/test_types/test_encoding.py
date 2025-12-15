@@ -7,7 +7,7 @@ from typing import Any
 import pydantic
 import pytest
 
-from pyocmf.types.identifiers import Base64Str, HexStr
+from pyocmf.types.encoding import Base64Str, HexStr
 
 
 class TestHexString:

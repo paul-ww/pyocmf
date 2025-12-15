@@ -43,22 +43,28 @@ class TestSignatureVerification:
         assert entry.public_key is not None
         assert entry.verify_signature() is True
 
-    def test_verify_invalid_signature(self, transparency_xml_dir: pathlib.Path) -> None:
-        """Test that tampered data results in invalid signature.
+    def test_verify_invalid_signature(self) -> None:
+        """Test that tampered data results in invalid signature."""
+        # Valid OCMF string with known public key
+        public_key = (
+            "3059301306072A8648CE3D020106082A8648CE3D030107034200043AEEB45C392357820A58FDFB"
+            "0857BD77ADA31585C61C430531DFA53B440AFBFDD95AC887C658EA55260F808F55CA948DF235C2"
+            "108A0D6DC7D4AB1A5E1A7955BE"
+        )
 
-        Uses real OCMF from XML but tampers with the payload to make signature invalid.
-        """
-        xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
+        # Tampered OCMF string (RV changed from 0.2596 to 999.9999)
+        tampered_ocmf = (
+            'OCMF|{"FV":"1.0","GI":"KEBA_KCP30","GS":"17619300","GV":"2.8.5",'
+            '"PG":"T32","IS":false,"IL":"NONE","IF":["RFID_NONE","OCPP_NONE",'
+            '"ISO15118_NONE","PLMN_NONE"],"IT":"NONE","ID":"",'
+            '"RD":[{"TM":"2019-08-13T10:03:15,000+0000 I","TX":"B","EF":"",'
+            '"ST":"G","RV":999.9999,"RI":"1-b:1.8.0","RU":"kWh"},'
+            '{"TM":"2019-08-13T10:03:36,000+0000 R","TX":"E","EF":"",'
+            '"ST":"G","RV":0.2597,"RI":"1-b:1.8.0","RU":"kWh"}]}|'
+            '{"SD":"304502200E2F107C987A300AC1695CA89EA149A8CDFA16188AF0A33EE64B67964AA943F9'
+            '022100889A72B6D65364BEA8562E7F6A0253157ACFF84FE4929A93B5964D23C4265699"}'
+        )
 
-        container = OcmfContainer.from_xml(xml_file)
-        entry = container[0]
-        original_ocmf = entry.original_string
-        public_key = entry.public_key.key_hex if entry.public_key else None
-
-        # Tamper with the data (change energy value)
-        tampered_ocmf = original_ocmf.replace('"RV":0.2597', '"RV":999.9999')
-
-        assert public_key is not None
         ocmf = OCMF.from_string(tampered_ocmf)
         assert ocmf.verify_signature(public_key) is False
 

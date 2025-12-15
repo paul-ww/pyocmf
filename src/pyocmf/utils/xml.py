@@ -7,18 +7,22 @@ import xml.etree.ElementTree as ET
 from collections.abc import Iterator
 from dataclasses import dataclass
 
-from pyocmf.exceptions import DataNotFoundError, XmlParsingError
+from pyocmf.constants import OCMF_HEADER, OCMF_PREFIX
+from pyocmf.exceptions import DataNotFoundError, SignatureVerificationError, XmlParsingError
 from pyocmf.ocmf import OCMF
 from pyocmf.types.public_key import PublicKey
 
 
 @dataclass
-class OcmfEntry:
-    """A single OCMF entry with its associated public key."""
+class OcmfRecord:
+    """A single OCMF record with its associated public key.
+
+    Represents a signed meter value as defined in the OCMF specification,
+    paired with the public key needed for signature verification.
+    """
 
     ocmf: OCMF
     public_key: PublicKey | None = None
-    original_string: str = ""
 
     def verify_signature(self) -> bool:
         """Verify the signature using the associated public key.
@@ -29,8 +33,6 @@ class OcmfEntry:
         Raises:
             SignatureVerificationError: If no public key is available or verification fails
         """
-        from pyocmf.exceptions import SignatureVerificationError
-
         if self.public_key is None:
             msg = "No public key available for signature verification"
             raise SignatureVerificationError(msg)
@@ -45,7 +47,7 @@ class OcmfContainer:
     associated public keys from transparency software XML files.
     """
 
-    def __init__(self, entries: list[OcmfEntry]) -> None:
+    def __init__(self, entries: list[OcmfRecord]) -> None:
         """Initialize container with a list of OCMF entries."""
         self._entries = entries
 
@@ -81,9 +83,7 @@ class OcmfContainer:
             if ocmf_str and ocmf_str not in seen_strings:
                 ocmf = OCMF.from_string(ocmf_str)
                 public_key = _extract_public_key(value_elem)
-                entries.append(
-                    OcmfEntry(ocmf=ocmf, public_key=public_key, original_string=ocmf_str)
-                )
+                entries.append(OcmfRecord(ocmf=ocmf, public_key=public_key))
                 seen_strings.add(ocmf_str)
 
         if not entries:
@@ -93,7 +93,7 @@ class OcmfContainer:
         return cls(entries)
 
     @property
-    def entries(self) -> list[OcmfEntry]:
+    def entries(self) -> list[OcmfRecord]:
         """All OCMF entries in the container."""
         return self._entries
 
@@ -101,39 +101,39 @@ class OcmfContainer:
         """Return number of OCMF entries."""
         return len(self._entries)
 
-    def __iter__(self) -> Iterator[OcmfEntry]:
+    def __iter__(self) -> Iterator[OcmfRecord]:
         """Iterate over OCMF entries."""
         return iter(self._entries)
 
-    def __getitem__(self, index: int) -> OcmfEntry:
+    def __getitem__(self, index: int) -> OcmfRecord:
         """Get OCMF entry by index."""
         return self._entries[index]
 
 
-def _extract_ocmf_string(value_elem: ET.Element) -> str | None:
+def _extract_ocmf_string(element: ET.Element) -> str | None:
     """Extract OCMF string from value element.
 
     Checks signedData and encodedData elements for OCMF content.
     Returns the raw string - OCMF.from_string handles hex decoding automatically.
     """
     # Check signedData with format='OCMF'
-    sd = value_elem.find("signedData")
+    sd = element.find("signedData")
     if sd is not None and sd.text:
         text = sd.text.strip()
-        if sd.get("format") == "OCMF" or text.startswith("OCMF|"):
+        if sd.get("format") == OCMF_HEADER or text.startswith(OCMF_PREFIX):
             return text
 
     # Check encodedData with format='OCMF' (hex-encoded, handled by OCMF.from_string)
-    ed = value_elem.find("encodedData")
-    if ed is not None and ed.get("format") == "OCMF" and ed.text:
+    ed = element.find("encodedData")
+    if ed is not None and ed.get("format") == OCMF_HEADER and ed.text:
         return ed.text.strip()
 
     return None
 
 
-def _extract_public_key(value_elem: ET.Element) -> PublicKey | None:
+def _extract_public_key(element: ET.Element) -> PublicKey | None:
     """Extract public key from publicKey element."""
-    pk = value_elem.find("publicKey")
+    pk = element.find("publicKey")
     if pk is not None and pk.text:
         try:
             return PublicKey.from_string(pk.text.strip())

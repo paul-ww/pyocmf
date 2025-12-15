@@ -4,8 +4,10 @@ __version__ = "0.1.0"
 
 from pyocmf.exceptions import (
     Base64DecodingError,
+    CryptoError,
     DataNotFoundError,
     EncodingError,
+    EncodingTypeError,
     HexDecodingError,
     OcmfFormatError,
     OcmfPayloadError,
@@ -17,7 +19,7 @@ from pyocmf.exceptions import (
     XmlParsingError,
 )
 from pyocmf.ocmf import OCMF
-from pyocmf.utils.xml import OcmfContainer, OcmfEntry
+from pyocmf.utils.xml import OcmfContainer, OcmfRecord
 
 __all__ = [
     # Version
@@ -26,18 +28,26 @@ __all__ = [
     "OCMF",
     # XML utilities
     "OcmfContainer",
-    "OcmfEntry",
-    # Exceptions
+    "OcmfRecord",
+    # Exceptions - Base
     "PyOCMFError",
+    # Exceptions - OCMF parsing
     "OcmfFormatError",
     "OcmfPayloadError",
     "OcmfSignatureError",
+    # Exceptions - Validation
     "ValidationError",
+    # Exceptions - Encoding
     "EncodingError",
+    "EncodingTypeError",
     "HexDecodingError",
     "Base64DecodingError",
+    # Exceptions - Data
     "DataNotFoundError",
+    "XmlParsingError",
+    # Exceptions - Cryptography
+    "CryptoError",
     "SignatureVerificationError",
     "PublicKeyError",
-    "XmlParsingError",
+    "OcmfRecord",
 ]

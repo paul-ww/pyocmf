@@ -6,7 +6,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator, WithJsonSchema
 
-from pyocmf.exceptions import Base64DecodingError, HexDecodingError
+from pyocmf.exceptions import Base64DecodingError, EncodingTypeError, HexDecodingError
 
 
 def validate_hex_string(value: str) -> str:
@@ -19,15 +19,15 @@ def validate_hex_string(value: str) -> str:
         The validated hex string.
 
     Raises:
-        TypeError: If value is not a string.
+        EncodingTypeError: If value is not a string.
         HexDecodingError: If string contains non-hex characters.
     """
     if not isinstance(value, str):
         msg = "string required"
-        raise TypeError(msg)
+        raise EncodingTypeError(msg, value=value, expected_type="str")
     if not re.fullmatch(r"^[0-9a-fA-F]+$", value):
         msg = "invalid hexadecimal string"
-        raise HexDecodingError(msg)
+        raise HexDecodingError(msg, value=value)
     return value
 
 
@@ -48,17 +48,17 @@ def validate_base64_string(value: str) -> str:
         The validated base64 string.
 
     Raises:
-        TypeError: If value is not a string.
+        EncodingTypeError: If value is not a string.
         Base64DecodingError: If string is not valid base64.
     """
     if not isinstance(value, str):
         msg = "string required"
-        raise TypeError(msg)
+        raise EncodingTypeError(msg, value=value, expected_type="str")
     try:
         base64.b64decode(value, validate=True)
-    except Exception as e:
+    except (ValueError, TypeError) as e:
         msg = "invalid base64 string"
-        raise Base64DecodingError(msg) from e
+        raise Base64DecodingError(msg, value=value) from e
     return value
 
 

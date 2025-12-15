@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from pyocmf.constants import OCMF_PREFIX
 from pyocmf.exceptions import PyOCMFError, SignatureVerificationError
 from pyocmf.ocmf import OCMF
 from pyocmf.utils.xml import OcmfContainer
@@ -111,7 +112,7 @@ def _detect_input_type(ocmf_input: str) -> InputType:
         InputType.OCMF_STRING otherwise (handles both plain and hex-encoded)
     """
     # Check if it's an OCMF string first (before file path check)
-    if ocmf_input.startswith("OCMF|"):
+    if ocmf_input.startswith(OCMF_PREFIX):
         return InputType.OCMF_STRING
 
     # Check if it's a file path (only check if it's a reasonable length for a file path)

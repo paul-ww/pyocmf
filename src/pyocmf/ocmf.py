@@ -9,6 +9,7 @@ from typing import Literal
 
 import pydantic
 
+from pyocmf.constants import OCMF_HEADER, OCMF_PREFIX, OCMF_SEPARATOR
 from pyocmf.exceptions import (
     HexDecodingError,
     OcmfFormatError,
@@ -57,17 +58,17 @@ class OCMF(pydantic.BaseModel):
         ocmf_text = ocmf_string.strip()
 
         # Auto-detect hex encoding: if it doesn't start with "OCMF|", try hex decoding
-        if not ocmf_text.startswith("OCMF|"):
+        if not ocmf_text.startswith(OCMF_PREFIX):
             try:
                 decoded_bytes = bytes.fromhex(ocmf_text)
                 ocmf_text = decoded_bytes.decode("utf-8")
             except ValueError as e:
-                msg = f"Invalid OCMF string: must start with 'OCMF|' or be valid hex-encoded. {e}"
+                msg = f"Invalid OCMF string: must start with '{OCMF_PREFIX}' or be valid hex-encoded. {e}"
                 raise HexDecodingError(msg) from e
-        parts = ocmf_text.split("|", 2)
+        parts = ocmf_text.split(OCMF_SEPARATOR, 2)
 
-        if len(parts) != 3 or parts[0] != "OCMF":
-            msg = "String does not match expected OCMF format 'OCMF|{payload}|{signature}'."
+        if len(parts) != 3 or parts[0] != OCMF_HEADER:
+            msg = f"String does not match expected OCMF format '{OCMF_HEADER}{OCMF_SEPARATOR}{{payload}}{OCMF_SEPARATOR}{{signature}}'."
             raise OcmfFormatError(msg)
 
         payload_json = parts[1]
@@ -85,7 +86,7 @@ class OCMF(pydantic.BaseModel):
             msg = f"Invalid signature JSON: {e}"
             raise OcmfSignatureError(msg) from e
 
-        ocmf = cls(header="OCMF", payload=payload, signature=signature)
+        ocmf = cls(header=OCMF_HEADER, payload=payload, signature=signature)
         ocmf._original_payload_json = payload_json
         return ocmf
 
@@ -101,7 +102,7 @@ class OCMF(pydantic.BaseModel):
         """
         payload_json = self.payload.model_dump_json(exclude_none=True)
         signature_json = self.signature.model_dump_json(exclude_none=True)
-        ocmf_string = f"OCMF|{payload_json}|{signature_json}"
+        ocmf_string = OCMF_SEPARATOR.join([OCMF_HEADER, payload_json, signature_json])
 
         if hex:
             return ocmf_string.encode("utf-8").hex()

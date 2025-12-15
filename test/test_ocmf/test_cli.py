@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyocmf.cli import app
-from pyocmf.utils.xml import OcmfContainer
 
 if TYPE_CHECKING:
     from typer.testing import CliRunner
@@ -173,27 +172,16 @@ class TestCliRealData:
     """Tests using real OCMF data from XML test files."""
 
     @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
-    def test_verify_real_keba_data(
-        self, cli_runner: CliRunner, transparency_xml_dir: pathlib.Path
+    def test_verify_valid_signature_verbose(
+        self,
+        cli_runner: CliRunner,
+        sample_ocmf_string: str,
+        sample_public_key: str,
     ) -> None:
-        """Test verification with real KEBA data from XML file."""
-        xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
-        container = OcmfContainer.from_xml(xml_file)
-
-        assert len(container) > 0
-        entry = container[0]
-
-        if entry.public_key is None:
-            pytest.skip("Public key not available in test data")
-
+        """Test verifying a valid signature with verbose output."""
         result = cli_runner.invoke(
             app,
-            [
-                entry.original_string,
-                "--public-key",
-                entry.public_key.key_hex,
-                "--verbose",
-            ],
+            [sample_ocmf_string, "--public-key", sample_public_key, "--verbose"],
         )
 
         assert result.exit_code == 0

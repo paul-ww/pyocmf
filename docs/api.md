@@ -34,11 +34,11 @@ Container for parsing OCMF data from XML transaction files.
 
 ::: pyocmf.utils.xml.OcmfContainer
 
-### OcmfEntry
+### OcmfRecord
 
-A single OCMF entry with its associated public key.
+A single OCMF record with its associated public key.
 
-::: pyocmf.utils.xml.OcmfEntry
+::: pyocmf.utils.xml.OcmfRecord
 
 ## Public Key
 
@@ -54,23 +54,37 @@ All exceptions inherit from `PyOCMFError`.
 
 ::: pyocmf.exceptions.PyOCMFError
 
+### OCMF Parsing Errors
+
 ::: pyocmf.exceptions.OcmfFormatError
 
 ::: pyocmf.exceptions.OcmfPayloadError
 
 ::: pyocmf.exceptions.OcmfSignatureError
 
+### Validation Errors
+
 ::: pyocmf.exceptions.ValidationError
 
+### Encoding Errors
+
 ::: pyocmf.exceptions.EncodingError
+
+::: pyocmf.exceptions.EncodingTypeError
 
 ::: pyocmf.exceptions.HexDecodingError
 
 ::: pyocmf.exceptions.Base64DecodingError
 
+### Cryptography Errors
+
+::: pyocmf.exceptions.CryptoError
+
 ::: pyocmf.exceptions.SignatureVerificationError
 
 ::: pyocmf.exceptions.PublicKeyError
+
+### Data Errors
 
 ::: pyocmf.exceptions.DataNotFoundError
 

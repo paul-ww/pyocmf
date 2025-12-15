@@ -161,8 +161,8 @@ def verify_signature(
         )
     except InvalidSignature:
         return False
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         msg = f"Signature verification failed: {e}"
-        raise SignatureVerificationError(msg) from e
+        raise SignatureVerificationError(msg, reason="invalid_signature_format") from e
     else:
         return True

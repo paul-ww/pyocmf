@@ -42,16 +42,14 @@ class KeyType(enum.StrEnum):
     BRAINPOOL384R1 = "ECDSA-brainpool384r1"
 
     @classmethod
-    def from_curve(cls, curve_type: CurveType) -> Self:
-        """Get the KeyType corresponding to a given CurveType.
+    def from_curve(cls, curve: CurveType) -> Self:
+        """Construct a KeyType from a curve type."""
+        return cls(f"ECDSA-{curve.value}")
 
-        Args:
-            curve_type (CurveType): The elliptic curve type.
-
-        Returns:
-            KeyType: The corresponding KeyType.
-        """
-        return cls(f"ECDSA-{curve_type.value}")
+    @property
+    def curve(self) -> CurveType:
+        """Extract the curve type from this key type."""
+        return CurveType(self.value.split("-")[1])
 
 
 class SignatureMethod(enum.StrEnum):
@@ -79,13 +77,20 @@ class SignatureMethod(enum.StrEnum):
     BRAINPOOL384R1_SHA512 = "ECDSA-brainpool384r1-SHA512"
     SECP521R1_SHA512 = "ECDSA-secp521r1-SHA512"
 
+    @classmethod
+    def from_parts(cls, curve: CurveType, hash_algorithm: HashAlgorithm) -> Self:
+        """Construct a SignatureMethod from curve and hash algorithm."""
+        return cls(f"ECDSA-{curve.value}-{hash_algorithm.value}")
+
     @property
     def curve(self) -> CurveType:
         """Extract the curve type from this signature method."""
-        # Parse curve from format "ECDSA-{curve}-{hash}"
-        parts = self.value.split("-")
-        curve_value = parts[1]
-        return CurveType(curve_value)
+        return CurveType(self.value.split("-")[1])
+
+    @property
+    def hash_algorithm(self) -> HashAlgorithm:
+        """Extract the hash algorithm from this signature method."""
+        return HashAlgorithm(self.value.split("-")[2])
 
 
 class SignatureEncodingType(enum.StrEnum):

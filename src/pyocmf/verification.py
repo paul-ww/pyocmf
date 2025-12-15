@@ -65,12 +65,12 @@ def get_hash_algorithm(signature_method: SignatureMethod | None) -> type[hashes.
         HashAlgorithm.SHA512: hashes.SHA512,
     }
 
-    for hash_algo, hash_class in hash_mapping.items():
-        if hash_algo.value in signature_method:
-            return hash_class
+    hash_class = hash_mapping.get(signature_method.hash_algorithm)
+    if hash_class is None:
+        msg = f"Unsupported hash algorithm in signature method: {signature_method}"
+        raise SignatureVerificationError(msg)
 
-    msg = f"Unsupported hash algorithm in signature method: {signature_method}"
-    raise SignatureVerificationError(msg)
+    return hash_class
 
 
 def decode_signature_data(signature_data: str, encoding: SignatureEncodingType | None) -> bytes:

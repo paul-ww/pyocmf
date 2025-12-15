@@ -140,12 +140,9 @@ PyOCMF supports multiple input formats:
 
 ```python
 ocmf = OCMF.from_string('OCMF|{"FV":"1.0",...}|{"SD":"3045..."}')
-```
 
-### Hex-Encoded OCMF
-
-```python
-ocmf = OCMF.from_hex('4f434d467c7b2246563a22312e30222c...')
+# Hex-encoded strings are automatically detected and decoded
+ocmf = OCMF.from_string('4f434d467c7b2246563a22312e30222c...')
 ```
 
 ### From XML Files

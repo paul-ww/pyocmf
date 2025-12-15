@@ -1,4 +1,4 @@
-"""Tests for PublicKeyInfo model and extraction from XML."""
+"""Tests for PublicKey model and extraction from XML."""
 
 import pathlib
 
@@ -20,8 +20,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-class TestPublicKeyInfo:
-    """Test suite for PublicKeyInfo model."""
+class TestPublicKey:
+    """Test suite for PublicKey model."""
 
     def test_parse_secp256r1_key(self) -> None:
         """Test parsing a secp256r1 public key."""
@@ -80,10 +80,10 @@ class TestPublicKeyInfo:
 
 
 class TestXmlPublicKeyExtraction:
-    """Test suite for extracting PublicKeyInfo from XML files."""
+    """Test suite for extracting PublicKey from XML files."""
 
-    def test_extract_public_key_info_from_xml(self, transparency_xml_dir: pathlib.Path) -> None:
-        """Test extracting PublicKeyInfo from XML file."""
+    def test_extract_public_key_from_xml(self, transparency_xml_dir: pathlib.Path) -> None:
+        """Test extracting PublicKey from XML file."""
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
         ocmf_data_list = extract_ocmf_data_from_file(xml_file)
@@ -91,7 +91,7 @@ class TestXmlPublicKeyExtraction:
         assert len(ocmf_data_list) > 0
         ocmf_data = ocmf_data_list[0]
 
-        # public_key_info provides structured metadata
+        # public_key provides structured metadata
         assert ocmf_data.public_key is not None
         assert ocmf_data.public_key.curve == "secp256r1"
         assert ocmf_data.public_key.key_size == 256

@@ -29,7 +29,6 @@ class InputType(StrEnum):
 
     XML = "xml"
     OCMF_STRING = "ocmf_string"
-    HEX = "hex"
 
 
 @app.command()
@@ -93,10 +92,8 @@ def validate(
 
         if input_type == InputType.XML:
             _validate_from_xml(ocmf_input, verbose, all_entries)
-        elif input_type == InputType.HEX:
-            _validate_single_ocmf(OCMF.from_hex(ocmf_input), verbose, public_key, "hex-encoded")
-        else:  # InputType.OCMF_STRING
-            _validate_single_ocmf(OCMF.from_string(ocmf_input), verbose, public_key, "")
+        else:  # InputType.OCMF_STRING (handles both plain and hex-encoded)
+            _validate_single_ocmf(OCMF.from_string(ocmf_input), verbose, public_key)
 
     except PyOCMFError as e:
         console.print(f"[red]✗[/red] OCMF validation failed: {e}")
@@ -111,8 +108,7 @@ def _detect_input_type(ocmf_input: str) -> InputType:
 
     Returns:
         InputType.XML if input is an existing file path
-        InputType.OCMF_STRING if input starts with "OCMF|"
-        InputType.HEX otherwise
+        InputType.OCMF_STRING otherwise (handles both plain and hex-encoded)
     """
     # Check if it's an OCMF string first (before file path check)
     if ocmf_input.startswith("OCMF|"):
@@ -126,21 +122,16 @@ def _detect_input_type(ocmf_input: str) -> InputType:
             if path.exists() and path.is_file():
                 return InputType.XML
         except (OSError, ValueError):
-            # Not a valid path, continue to hex detection
+            # Not a valid path, treat as OCMF string
             pass
 
-    # Assume hex-encoded
-    return InputType.HEX
+    # Treat as OCMF string (from_string handles hex auto-detection)
+    return InputType.OCMF_STRING
 
 
-def _validate_single_ocmf(
-    ocmf: OCMF, verbose: bool, public_key: str | None, input_description: str
-) -> None:
+def _validate_single_ocmf(ocmf: OCMF, verbose: bool, public_key: str | None) -> None:
     """Validate and optionally verify a single OCMF object."""
-    if input_description:
-        console.print(f"[green]✓[/green] Successfully parsed {input_description} OCMF string")
-    else:
-        console.print("[green]✓[/green] Successfully parsed OCMF string")
+    console.print("[green]✓[/green] Successfully parsed OCMF string")
     console.print("[green]✓[/green] OCMF validation passed")
 
     if verbose:

@@ -74,4 +74,4 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
         assert isinstance(ocmf_model.signature, Signature)
 
         assert ocmf_string == ocmf_model.to_string()
-        assert ocmf_model == OCMF.from_hex(ocmf_model.to_hex())
+        assert ocmf_model == OCMF.from_string(ocmf_model.to_string(hex=True))

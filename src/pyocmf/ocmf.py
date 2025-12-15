@@ -5,7 +5,6 @@ This module provides the main OCMF class for parsing and validating OCMF strings
 
 from __future__ import annotations
 
-import json
 from typing import Literal
 
 import pydantic
@@ -15,6 +14,7 @@ from pyocmf.exceptions import (
     OcmfFormatError,
     OcmfPayloadError,
     OcmfSignatureError,
+    SignatureVerificationError,
 )
 from pyocmf.sections.payload import Payload
 from pyocmf.sections.signature import Signature
@@ -35,41 +35,35 @@ class OCMF(pydantic.BaseModel):
     _original_payload_json: str | None = pydantic.PrivateAttr(default=None)
 
     @classmethod
-    def from_hex(cls, ocmf_hex: str) -> OCMF:
-        """Parse a hex-encoded OCMF string into an OCMF model.
-
-        Args:
-            ocmf_hex: The hex-encoded OCMF string
-        Returns:
-            OCMF: The parsed OCMF model
-        Raises:
-            HexDecodingError: If the string is not valid hexadecimal
-        """
-        try:
-            decoded_bytes = bytes.fromhex(ocmf_hex.strip())
-            decoded_string = decoded_bytes.decode("utf-8")
-        except ValueError as e:
-            msg = f"Invalid hex-encoded OCMF string: {e}"
-            raise HexDecodingError(msg) from e
-
-        return cls.from_string(decoded_string)
-
-    @classmethod
     def from_string(cls, ocmf_string: str) -> OCMF:
         """Parse an OCMF string into an OCMF model.
 
+        Automatically detects whether the input is a plain OCMF string or
+        hex-encoded and handles both formats.
+
         Args:
             ocmf_string: The OCMF string in format "OCMF|{payload_json}|{signature_json}"
+                or a hex-encoded version of that format.
 
         Returns:
             OCMF: The parsed OCMF model
 
         Raises:
+            HexDecodingError: If the string appears to be hex but cannot be decoded
             OcmfFormatError: If the string is not in valid OCMF format
             OcmfPayloadError: If the payload cannot be parsed
             OcmfSignatureError: If the signature cannot be parsed
         """
         ocmf_text = ocmf_string.strip()
+
+        # Auto-detect hex encoding: if it doesn't start with "OCMF|", try hex decoding
+        if not ocmf_text.startswith("OCMF|"):
+            try:
+                decoded_bytes = bytes.fromhex(ocmf_text)
+                ocmf_text = decoded_bytes.decode("utf-8")
+            except ValueError as e:
+                msg = f"Invalid OCMF string: must start with 'OCMF|' or be valid hex-encoded. {e}"
+                raise HexDecodingError(msg) from e
         parts = ocmf_text.split("|", 2)
 
         if len(parts) != 3 or parts[0] != "OCMF":
@@ -80,14 +74,14 @@ class OCMF(pydantic.BaseModel):
         signature_json = parts[2]
 
         try:
-            payload = Payload.from_flat_dict(json.loads(payload_json))
-        except (json.JSONDecodeError, ValueError) as e:
+            payload = Payload.model_validate_json(payload_json)
+        except pydantic.ValidationError as e:
             msg = f"Invalid payload JSON: {e}"
             raise OcmfPayloadError(msg) from e
 
         try:
             signature = Signature.model_validate_json(signature_json)
-        except (json.JSONDecodeError, pydantic.ValidationError) as e:
+        except pydantic.ValidationError as e:
             msg = f"Invalid signature JSON: {e}"
             raise OcmfSignatureError(msg) from e
 
@@ -95,26 +89,23 @@ class OCMF(pydantic.BaseModel):
         ocmf._original_payload_json = payload_json
         return ocmf
 
-    def to_string(self) -> str:
+    def to_string(self, hex: bool = False) -> str:
         """Convert the OCMF model to its string representation.
 
-        Returns:
-            str: The OCMF string in format "OCMF|{payload_json}|{signature_json}"
-        """
-        payload_json = self.payload.to_flat_dict_json()
-        signature_json = self.signature.model_dump_json()
-
-        return f"OCMF|{payload_json}|{signature_json}"
-
-    def to_hex(self) -> str:
-        """Convert the OCMF model to its hex-encoded string representation.
+        Args:
+            hex: If True, return hex-encoded string. Defaults to False.
 
         Returns:
-            str: The hex-encoded OCMF string
+            str: The OCMF string in format "OCMF|{payload_json}|{signature_json}",
+                or hex-encoded if hex=True.
         """
-        ocmf_string = self.to_string()
-        ocmf_bytes = ocmf_string.encode("utf-8")
-        return ocmf_bytes.hex()
+        payload_json = self.payload.model_dump_json(exclude_none=True)
+        signature_json = self.signature.model_dump_json(exclude_none=True)
+        ocmf_string = f"OCMF|{payload_json}|{signature_json}"
+
+        if hex:
+            return ocmf_string.encode("utf-8").hex()
+        return ocmf_string
 
     def verify_signature(self, public_key_hex: str) -> bool:
         """Verify the cryptographic signature of the OCMF data.
@@ -129,13 +120,21 @@ class OCMF(pydantic.BaseModel):
 
         Raises:
             SignatureVerificationError: If verification cannot be performed due to
-                missing data, unsupported algorithms, or malformed keys/signatures
+                missing data, unsupported algorithms, malformed keys/signatures,
+                or if the OCMF was not parsed from a string (original payload required).
         """
         from pyocmf import verification
 
-        payload_json = self._original_payload_json or self.payload.to_flat_dict_json()
+        if self._original_payload_json is None:
+            msg = (
+                "Cannot verify signature: original payload JSON not available. "
+                "Signature verification requires the exact original payload bytes. "
+                "Use OCMF.from_string() to parse OCMF data for signature verification."
+            )
+            raise SignatureVerificationError(msg)
+
         return verification.verify_signature(
-            payload_json=payload_json,
+            payload_json=self._original_payload_json,
             signature_data=self.signature.SD,
             signature_method=self.signature.SA,
             signature_encoding=self.signature.SE,

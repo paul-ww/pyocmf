@@ -54,7 +54,7 @@ class OCMFBridge {
                 'success': True,
                 'data': ocmf.model_dump(),
                 'ocmf_string': ocmf.to_string(),
-                'ocmf_hex': ocmf.to_hex()
+                'ocmf_hex': ocmf.to_string(hex=True)
             }
         except Exception as e:
             result = {
@@ -90,12 +90,12 @@ class OCMFBridge {
         import json
 
         try:
-            ocmf = OCMF.from_hex('''${hexText.replace(/'/g, "\\'")}''')
+            ocmf = OCMF.from_string('''${hexText.replace(/'/g, "\\'")}''')
             result = {
                 'success': True,
                 'data': ocmf.model_dump(),
                 'ocmf_string': ocmf.to_string(),
-                'ocmf_hex': ocmf.to_hex()
+                'ocmf_hex': ocmf.to_string(hex=True)
             }
         except Exception as e:
             result = {

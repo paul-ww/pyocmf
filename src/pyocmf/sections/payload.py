@@ -65,6 +65,42 @@ class Payload(pydantic.BaseModel):
 
     RD: list[Reading] = pydantic.Field(description="Readings")
 
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def apply_reading_inheritance(cls, data: dict) -> dict:
+        """Apply field inheritance for readings.
+
+        Per OCMF spec, some reading fields can be inherited from the previous reading
+        if not specified.
+        """
+        if not isinstance(data, dict):
+            return data
+
+        readings_data = data.get("RD", [])
+        if not readings_data:
+            return data
+
+        inheritable_fields = ["TM", "TX", "RI", "RU", "RT", "EF", "ST"]
+        last_values: dict[str, str] = {}
+        processed_readings = []
+
+        for rd in readings_data:
+            # Inherit missing fields from previous reading
+            reading_dict = {
+                field: rd.get(field, last_values.get(field))
+                for field in inheritable_fields
+                if field in rd or field in last_values
+            }
+            # Add non-inheritable fields
+            reading_dict.update({k: v for k, v in rd.items() if k not in inheritable_fields})
+
+            # Update last_values with current reading's inheritable fields
+            last_values.update({k: v for k, v in reading_dict.items() if k in inheritable_fields})
+
+            processed_readings.append(reading_dict)
+
+        return {**data, "RD": processed_readings}
+
     @pydantic.model_validator(mode="after")
     def validate_serial_numbers(self) -> Payload:
         """Either GS or MS must be present for signature component identification."""
@@ -90,42 +126,3 @@ class Payload(pydantic.BaseModel):
         if isinstance(v, int):
             return str(v)
         return v
-
-    @classmethod
-    def from_flat_dict(cls, data: dict) -> Payload:
-        """Parse payload data with inheritable reading fields.
-
-        Some reading fields can be inherited from the previous reading if not specified.
-        """
-        readings_data = data.get("RD", [])
-        readings = []
-
-        inheritable_fields = ["TM", "TX", "RI", "RU", "RT", "EF", "ST"]
-        last_values: dict[str, str] = {}
-
-        for rd in readings_data:
-            # Inherit missing fields from previous reading
-            reading_dict = {
-                field: rd.get(field, last_values.get(field))
-                for field in inheritable_fields
-                if field in rd or field in last_values
-            }
-            # Add non-inheritable fields
-            reading_dict.update({k: v for k, v in rd.items() if k not in inheritable_fields})
-
-            # Update last_values with current reading's inheritable fields
-            last_values.update({k: v for k, v in reading_dict.items() if k in inheritable_fields})
-
-            readings.append(Reading(**reading_dict))
-
-        payload_data = {k: v for k, v in data.items() if k != "RD"}
-        payload_data["RD"] = readings
-        return cls(**payload_data)
-
-    def to_flat_dict(self) -> dict:
-        """Convert the Payload back to a flat dictionary format."""
-        return self.model_dump(mode="python", exclude_none=True)
-
-    def to_flat_dict_json(self) -> str:
-        """Convert the Payload to a flat dictionary and return as JSON string."""
-        return self.model_dump_json(exclude_none=True)

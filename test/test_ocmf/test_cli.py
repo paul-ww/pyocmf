@@ -94,12 +94,12 @@ class TestCliValidation:
         from pyocmf.ocmf import OCMF
 
         ocmf = OCMF.from_string(sample_ocmf_string)
-        hex_string = ocmf.to_hex()
+        hex_string = ocmf.to_string(hex=True)
 
         result = cli_runner.invoke(app, [hex_string])
 
         assert result.exit_code == 0
-        assert "Successfully parsed hex-encoded OCMF string" in result.stdout
+        assert "Successfully parsed OCMF string" in result.stdout
         assert "OCMF validation passed" in result.stdout
 
     def test_validate_malformed_hex(self, cli_runner: CliRunner) -> None:
@@ -185,6 +185,8 @@ class TestCliRealData:
 
         if ocmf_data.public_key is None:
             pytest.skip("Public key not available in test data")
+
+        assert ocmf_data.public_key is not None
 
         result = cli_runner.invoke(
             app,

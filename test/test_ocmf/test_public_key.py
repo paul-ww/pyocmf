@@ -5,7 +5,7 @@ import pathlib
 import pytest
 
 from pyocmf.exceptions import Base64DecodingError, PublicKeyError
-from pyocmf.types.crypto import SignatureMethod
+from pyocmf.types.crypto import KeyType, SignatureMethod
 from pyocmf.utils.xml import OcmfContainer
 
 # Check if cryptography is available
@@ -38,7 +38,7 @@ class TestPublicKey:
         assert public_key.curve == "secp256r1"
         assert public_key.size == 256
         assert public_key.block_length == 32
-        assert public_key.key_type_identifier == "ECDSA-secp256r1"
+        assert public_key.key_type_identifier == KeyType.SECP256R1
 
     def test_parse_secp192r1_key(self) -> None:
         """Test parsing a secp192r1 public key."""
@@ -52,7 +52,7 @@ class TestPublicKey:
         assert public_key.curve == "secp192r1"
         assert public_key.size == 192
         assert public_key.block_length == 24
-        assert public_key.key_type_identifier == "ECDSA-secp192r1"
+        assert public_key.key_type_identifier == KeyType.SECP192R1
 
     def test_matches_signature_algorithm(self) -> None:
         """Test matching key curve to signature algorithm."""

@@ -1,6 +1,7 @@
 """Cryptography-related types for OCMF signatures."""
 
 import enum
+from typing import Self
 
 
 class HashAlgorithm(enum.StrEnum):
@@ -8,6 +9,49 @@ class HashAlgorithm(enum.StrEnum):
 
     SHA256 = "SHA256"
     SHA512 = "SHA512"
+
+
+class CurveType(enum.StrEnum):
+    """Elliptic curve types supported by OCMF."""
+
+    SECP192K1 = "secp192k1"
+    SECP256K1 = "secp256k1"
+    SECP192R1 = "secp192r1"
+    SECP256R1 = "secp256r1"
+    SECP384R1 = "secp384r1"
+    SECP521R1 = "secp521r1"
+    BRAINPOOL256R1 = "brainpool256r1"
+    BRAINPOOLP256R1 = "brainpoolP256r1"
+    BRAINPOOL384R1 = "brainpool384r1"
+
+
+class KeyType(enum.StrEnum):
+    """OCMF key type identifiers (Table 21).
+
+    Combines the ECDSA algorithm with the elliptic curve type.
+    """
+
+    SECP192K1 = "ECDSA-secp192k1"
+    SECP256K1 = "ECDSA-secp256k1"
+    SECP192R1 = "ECDSA-secp192r1"
+    SECP256R1 = "ECDSA-secp256r1"
+    SECP384R1 = "ECDSA-secp384r1"
+    SECP521R1 = "ECDSA-secp521r1"
+    BRAINPOOL256R1 = "ECDSA-brainpool256r1"
+    BRAINPOOLP256R1 = "ECDSA-brainpoolP256r1"
+    BRAINPOOL384R1 = "ECDSA-brainpool384r1"
+
+    @classmethod
+    def from_curve(cls, curve_type: CurveType) -> Self:
+        """Get the KeyType corresponding to a given CurveType.
+
+        Args:
+            curve_type (CurveType): The elliptic curve type.
+
+        Returns:
+            KeyType: The corresponding KeyType.
+        """
+        return cls(f"ECDSA-{curve_type.value}")
 
 
 class SignatureMethod(enum.StrEnum):
@@ -34,6 +78,14 @@ class SignatureMethod(enum.StrEnum):
     SECP384R1_SHA512 = "ECDSA-secp384r1-SHA512"
     BRAINPOOL384R1_SHA512 = "ECDSA-brainpool384r1-SHA512"
     SECP521R1_SHA512 = "ECDSA-secp521r1-SHA512"
+
+    @property
+    def curve(self) -> CurveType:
+        """Extract the curve type from this signature method."""
+        # Parse curve from format "ECDSA-{curve}-{hash}"
+        parts = self.value.split("-")
+        curve_value = parts[1]
+        return CurveType(curve_value)
 
 
 class SignatureEncodingType(enum.StrEnum):

@@ -3,30 +3,16 @@
 from __future__ import annotations
 
 import base64
-import enum
 from typing import TYPE_CHECKING, Self
 
 import pydantic
 
 from pyocmf.exceptions import Base64DecodingError, PublicKeyError
+from pyocmf.types.crypto import CurveType, KeyType
 from pyocmf.types.encoding import HexStr
 
 if TYPE_CHECKING:
     from pyocmf.types.crypto import SignatureMethod
-
-
-class CurveType(enum.StrEnum):
-    """Elliptic curve types supported by OCMF."""
-
-    SECP192K1 = "secp192k1"
-    SECP256K1 = "secp256k1"
-    SECP192R1 = "secp192r1"
-    SECP256R1 = "secp256r1"
-    SECP384R1 = "secp384r1"
-    SECP521R1 = "secp521r1"
-    BRAINPOOL256R1 = "brainpool256r1"
-    BRAINPOOLP256R1 = "brainpoolP256r1"
-    BRAINPOOL384R1 = "brainpool384r1"
 
 
 class PublicKey(pydantic.BaseModel):
@@ -41,7 +27,7 @@ class PublicKey(pydantic.BaseModel):
     size: int = pydantic.Field(description="Key size in bits")
     block_length: int = pydantic.Field(description="Block length in bytes")
 
-    def to_string(self, *, base64: bool = False) -> str:
+    def to_string(self, base64: bool = False) -> str:
         """Convert the public key to a string representation.
 
         Args:
@@ -124,9 +110,9 @@ class PublicKey(pydantic.BaseModel):
             raise PublicKeyError(msg) from e
 
     @property
-    def key_type_identifier(self) -> str:
+    def key_type_identifier(self) -> KeyType:
         """Get the OCMF key type identifier (e.g., 'ECDSA-secp256r1')."""
-        return f"ECDSA-{self.curve}"
+        return KeyType.from_curve(self.curve)
 
     def matches_signature_algorithm(self, signature_algorithm: SignatureMethod | None) -> bool:
         """Check if this key's curve matches the given signature algorithm.
@@ -140,5 +126,4 @@ class PublicKey(pydantic.BaseModel):
         if signature_algorithm is None:
             return False
 
-        algo_str = str(signature_algorithm).lower()
-        return self.curve.value in algo_str
+        return self.curve == signature_algorithm.curve

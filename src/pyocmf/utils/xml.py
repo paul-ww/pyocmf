@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pathlib
 import xml.etree.ElementTree as ET
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from pyocmf.exceptions import DataNotFoundError, XmlParsingError
@@ -100,7 +101,7 @@ class OcmfContainer:
         """Return number of OCMF entries."""
         return len(self._entries)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[OcmfEntry]:
         """Iterate over OCMF entries."""
         return iter(self._entries)
 

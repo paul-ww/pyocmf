@@ -36,9 +36,9 @@ class PublicKey(pydantic.BaseModel):
     The key type, length, and block length are extracted from the actual key data.
     """
 
-    key_hex: HexStr = pydantic.Field(description="Hex-encoded DER public key")
+    key: HexStr = pydantic.Field(description="Hex-encoded DER public key")
     curve: CurveType = pydantic.Field(description="Elliptic curve type")
-    key_size: int = pydantic.Field(description="Key size in bits")
+    size: int = pydantic.Field(description="Key size in bits")
     block_length: int = pydantic.Field(description="Block length in bytes")
 
     def to_string(self, *, base64: bool = False) -> str:
@@ -53,9 +53,9 @@ class PublicKey(pydantic.BaseModel):
         if base64:
             import base64 as b64
 
-            key_bytes = bytes.fromhex(self.key_hex)
+            key_bytes = bytes.fromhex(self.key)
             return b64.b64encode(key_bytes).decode("ascii")
-        return self.key_hex
+        return self.key
 
     @classmethod
     def from_string(cls, key_string: str) -> Self:
@@ -114,9 +114,9 @@ class PublicKey(pydantic.BaseModel):
             block_length = key_size // 8
 
             return cls(
-                key_hex=key_hex,
+                key=key_hex,
                 curve=curve_name,
-                key_size=key_size,
+                size=key_size,
                 block_length=block_length,
             )
         except (ValueError, TypeError) as e:
@@ -128,9 +128,7 @@ class PublicKey(pydantic.BaseModel):
         """Get the OCMF key type identifier (e.g., 'ECDSA-secp256r1')."""
         return f"ECDSA-{self.curve}"
 
-    def matches_signature_algorithm(
-        self, signature_algorithm: SignatureMethod | str | None
-    ) -> bool:
+    def matches_signature_algorithm(self, signature_algorithm: SignatureMethod | None) -> bool:
         """Check if this key's curve matches the given signature algorithm.
 
         Args:

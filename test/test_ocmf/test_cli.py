@@ -24,6 +24,7 @@ try:
 except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
 
+
 pytestmark = pytest.mark.skipif(not TYPER_AVAILABLE, reason="typer not installed")
 
 

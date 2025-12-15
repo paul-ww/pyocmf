@@ -26,4 +26,4 @@ def test_helpful_error_when_cryptography_not_installed() -> None:
     ocmf = OCMF.from_string(ocmf_string)
 
     with pytest.raises(ImportError, match="pip install pyocmf\\[crypto\\]"):
-        ocmf.verify_signature("deadbeef")
+        ocmf.verify_signature("abcdef1234567890")

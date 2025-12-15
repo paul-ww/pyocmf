@@ -15,10 +15,12 @@ from rich.table import Table
 from pyocmf.constants import OCMF_PREFIX
 from pyocmf.exceptions import PyOCMFError, SignatureVerificationError
 from pyocmf.ocmf import OCMF
-from pyocmf.utils.xml import OcmfContainer
+from pyocmf.utils.xml import OcmfContainer, OcmfRecord
+
+CMD = "ocmf"
 
 app = typer.Typer(
-    name="ocmf",
+    name=CMD,
     help="Validate and verify Open Charge Metering Format (OCMF) data",
     add_completion=False,
 )
@@ -157,22 +159,22 @@ def _validate_from_xml(xml_path: str, verbose: bool, all_entries: bool) -> None:
 
     console.print(f"[green]✓[/green] Found {len(container)} OCMF entry(ies) in XML file")
 
-    entries_to_process = container.entries if all_entries else [container[0]]
+    records_to_process: list[OcmfRecord] = container.entries if all_entries else [container[0]]
 
-    for i, entry in enumerate(entries_to_process, 1):
-        if len(entries_to_process) > 1:
-            console.print(f"\n[bold cyan]Entry {i}/{len(entries_to_process)}:[/bold cyan]")
+    for i, record in enumerate(records_to_process, 1):
+        if len(records_to_process) > 1:
+            console.print(f"\n[bold cyan]Entry {i}/{len(records_to_process)}:[/bold cyan]")
 
         console.print("[green]✓[/green] Successfully parsed OCMF string")
         console.print("[green]✓[/green] OCMF validation passed")
 
         if verbose:
-            _display_ocmf_details(entry.ocmf)
+            _display_ocmf_details(record.ocmf)
 
         # Auto-verify with public key from XML if available
-        if entry.public_key:
-            _verify_signature(entry.ocmf, entry.public_key.key_hex)
-        elif entry.ocmf.signature.SA:
+        if record.public_key:
+            _verify_signature(record.ocmf, record.public_key.key)
+        elif record.ocmf.signature.SA:
             console.print("\n[yellow]ℹ[/yellow] Signature present but no public key found in XML")
 
 

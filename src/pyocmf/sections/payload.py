@@ -12,6 +12,13 @@ from pyocmf.exceptions import ValidationError
 from pyocmf.sections.reading import Reading
 from pyocmf.types.cable_loss import CableLossCompensation
 from pyocmf.types.identifiers import (
+    EMAID,
+    EVCCID,
+    EVCOID,
+    ISO7812,
+    ISO14443,
+    ISO15693,
+    PHONE_NUMBER,
     ChargePointIdentificationType,
     IdentificationData,
     IdentificationFlag,
@@ -126,3 +133,64 @@ class Payload(pydantic.BaseModel):
         if isinstance(v, int):
             return str(v)
         return v
+
+    @pydantic.model_validator(mode="after")
+    def validate_id_format_by_type(self) -> Payload:
+        """Validate ID format based on the Identification Type (IT).
+
+        Per OCMF spec Table 17, each identification type has specific format requirements:
+        - ISO14443: 8 or 14 hex chars
+        - ISO15693: 16 hex chars
+        - EMAID: 14-15 alphanumeric
+        - EVCCID: max 6 chars
+        - EVCOID: specific pattern
+        - ISO7812: 8-19 digits
+        - PHONE_NUMBER: valid phone number
+        - LOCAL, CENTRAL, CARD_TXN_NR, KEY_CODE: no format defined (accept any string)
+        - NONE, DENIED, UNDEFINED: no ID should be provided
+        """
+        if not self.ID or not self.IT:
+            return self
+
+        it_value = self.IT.value if isinstance(self.IT, IdentificationType) else str(self.IT)
+        id_value = self.ID
+
+        # Types with no format defined - accept any string
+        unrestricted_types = {
+            IdentificationType.LOCAL.value,
+            IdentificationType.LOCAL_1.value,
+            IdentificationType.LOCAL_2.value,
+            IdentificationType.CENTRAL.value,
+            IdentificationType.CENTRAL_1.value,
+            IdentificationType.CENTRAL_2.value,
+            IdentificationType.CARD_TXN_NR.value,
+            IdentificationType.KEY_CODE.value,
+        }
+
+        if it_value in unrestricted_types:
+            # Accept any string value for these types
+            return self
+
+        # For format-restricted types, validate the format using TypeAdapter
+        try:
+            if self.IT == IdentificationType.ISO14443:
+                # Validate against ISO14443 pattern (8 or 14 hex chars)
+                pydantic.TypeAdapter(ISO14443).validate_python(id_value)
+            elif self.IT == IdentificationType.ISO15693:
+                pydantic.TypeAdapter(ISO15693).validate_python(id_value)
+            elif self.IT == IdentificationType.EMAID:
+                pydantic.TypeAdapter(EMAID).validate_python(id_value)
+            elif self.IT == IdentificationType.EVCCID:
+                pydantic.TypeAdapter(EVCCID).validate_python(id_value)
+            elif self.IT == IdentificationType.EVCOID:
+                pydantic.TypeAdapter(EVCOID).validate_python(id_value)
+            elif self.IT == IdentificationType.ISO7812:
+                pydantic.TypeAdapter(ISO7812).validate_python(id_value)
+            elif self.IT == IdentificationType.PHONE_NUMBER:
+                pydantic.TypeAdapter(PHONE_NUMBER).validate_python(id_value)
+            # NONE, DENIED, UNDEFINED don't accept ID values (currently not validated)
+        except pydantic.ValidationError as e:
+            msg = f"ID value '{id_value}' does not match format for identification type '{it_value}': {e}"
+            raise ValidationError(msg) from e
+
+        return self

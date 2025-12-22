@@ -119,7 +119,13 @@ ISO7812 = Annotated[str, pydantic.Field(pattern=r"^[0-9]{8,19}$")]
 
 PHONE_NUMBER = phone_numbers.PhoneNumber
 
-IdentificationData = ISO14443 | ISO15693 | EMAID | EVCCID | EVCOID | ISO7812 | PHONE_NUMBER
+# Unrestricted ID types: LOCAL, CENTRAL, CARD_TXN_NR, KEY_CODE per spec have no exact format defined
+# These can be any string value (e.g., UUID, arbitrary text, etc.)
+UnrestrictedID = str
+
+IdentificationData = (
+    ISO14443 | ISO15693 | EMAID | EVCCID | EVCOID | ISO7812 | PHONE_NUMBER | UnrestrictedID
+)
 
 
 class ChargePointIdentificationType(enum.StrEnum):

@@ -37,7 +37,7 @@ class OcmfRecord:
             msg = "No public key available for signature verification"
             raise SignatureVerificationError(msg)
 
-        return self.ocmf.verify_signature(self.public_key.key)
+        return self.ocmf.verify_signature(self.public_key)
 
 
 class OcmfContainer:

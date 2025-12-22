@@ -19,6 +19,7 @@ from pyocmf.exceptions import (
 )
 from pyocmf.sections.payload import Payload
 from pyocmf.sections.signature import Signature
+from pyocmf.types.public_key import PublicKey
 
 
 class OCMF(pydantic.BaseModel):
@@ -108,11 +109,11 @@ class OCMF(pydantic.BaseModel):
             return ocmf_string.encode("utf-8").hex()
         return ocmf_string
 
-    def verify_signature(self, public_key_hex: str) -> bool:
+    def verify_signature(self, public_key: PublicKey | str) -> bool:
         """Verify the cryptographic signature of the OCMF data.
 
         Args:
-            public_key_hex: Hex-encoded public key (required per OCMF spec).
+            public_key: Public key (hex-encoded if provided as string, as per OCMF spec).
                 The spec requires public keys to be transmitted out-of-band,
                 separately from the OCMF data.
 
@@ -139,5 +140,5 @@ class OCMF(pydantic.BaseModel):
             signature_data=self.signature.SD,
             signature_method=self.signature.SA,
             signature_encoding=self.signature.SE,
-            public_key_hex=public_key_hex,
+            public_key_hex=public_key.key if isinstance(public_key, PublicKey) else public_key,
         )

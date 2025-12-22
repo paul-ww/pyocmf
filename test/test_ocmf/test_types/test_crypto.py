@@ -69,7 +69,7 @@ class TestSignatureMethod:
         # doesn't have all combinations defined if any exist
         # Actually all combinations exist in our enum, so we test a made-up case
         # by directly checking that from_parts validates against enum members
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="invalid"):
             # This would create "ECDSA-invalid-SHA256" which isn't a valid member
             SignatureMethod.from_parts(
                 CurveType("invalid"),  # type: ignore[arg-type]

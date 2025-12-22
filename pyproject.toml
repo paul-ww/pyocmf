@@ -62,6 +62,7 @@ crypto = [
 ]
 dev = [
     "mypy~=1.1",
+    "poethepoet~=0.3",
     "pytest~=9.0",
     "ruff~=0.8",
     "types-cryptography~=3.3",
@@ -74,3 +75,8 @@ docs = [
 
 [tool.uv]
 default-groups = "all"
+
+[tool.poe.tasks]
+test = "pytest test -x"
+lint = "ruff check --fix src test"
+docs = "mkdocs build"

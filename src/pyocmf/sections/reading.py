@@ -76,7 +76,7 @@ ErrorFlags = Annotated[str, StringConstraints(pattern=r"^[Et]*$")]
 
 # OBIS code formats: Accept either strict OCMF format or flexible IEC 62056 format
 # Strict OCMF format per spec Figure 1: 6 zero-padded hex byte pairs with asterisk
-# Example: "01-0B:01.08.00*FF"
+# Example: 01-0B:01.08.00*FF
 ObisCodeOCMF = Annotated[
     str,
     StringConstraints(
@@ -85,7 +85,7 @@ ObisCodeOCMF = Annotated[
 ]
 
 # IEC 62056-6-1/6-2 flexible format: 1-2 hex digits per group, case-insensitive, optional asterisk
-# Example: "1-b:1.8.0" or "1-0:1.8.0*198"
+# Example: 1-b:1.8.0 or 1-0:1.8.0*198
 ObisCodeIEC = Annotated[
     str,
     StringConstraints(

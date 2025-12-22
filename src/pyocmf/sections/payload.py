@@ -238,6 +238,27 @@ class Payload(pydantic.BaseModel):
 
         return v
 
+    def _validate_id_format(self, it_value: str, id_value: str) -> None:
+        """Validate ID format for format-restricted identification types."""
+        format_validators = {
+            IdentificationType.ISO14443.value: ISO14443,
+            IdentificationType.ISO15693.value: ISO15693,
+            IdentificationType.EMAID.value: EMAID,
+            IdentificationType.EVCCID.value: EVCCID,
+            IdentificationType.EVCOID.value: EVCOID,
+            IdentificationType.ISO7812.value: ISO7812,
+            IdentificationType.PHONE_NUMBER.value: PHONE_NUMBER,
+        }
+
+        if it_value not in format_validators:
+            return
+
+        try:
+            pydantic.TypeAdapter(format_validators[it_value]).validate_python(id_value)
+        except pydantic.ValidationError as e:
+            msg = f"ID value '{id_value}' does not match format for identification type '{it_value}': {e}"
+            raise ValidationError(msg) from e
+
     @pydantic.model_validator(mode="after")
     def validate_id_format_by_type(self) -> Payload:
         """Validate ID format based on the Identification Type (IT).
@@ -286,25 +307,5 @@ class Payload(pydantic.BaseModel):
             # Accept any string value for these types
             return self
 
-        # For format-restricted types, validate the format using TypeAdapter
-        try:
-            if self.IT == IdentificationType.ISO14443:
-                # Validate against ISO14443 pattern (8 or 14 hex chars)
-                pydantic.TypeAdapter(ISO14443).validate_python(id_value)
-            elif self.IT == IdentificationType.ISO15693:
-                pydantic.TypeAdapter(ISO15693).validate_python(id_value)
-            elif self.IT == IdentificationType.EMAID:
-                pydantic.TypeAdapter(EMAID).validate_python(id_value)
-            elif self.IT == IdentificationType.EVCCID:
-                pydantic.TypeAdapter(EVCCID).validate_python(id_value)
-            elif self.IT == IdentificationType.EVCOID:
-                pydantic.TypeAdapter(EVCOID).validate_python(id_value)
-            elif self.IT == IdentificationType.ISO7812:
-                pydantic.TypeAdapter(ISO7812).validate_python(id_value)
-            elif self.IT == IdentificationType.PHONE_NUMBER:
-                pydantic.TypeAdapter(PHONE_NUMBER).validate_python(id_value)
-        except pydantic.ValidationError as e:
-            msg = f"ID value '{id_value}' does not match format for identification type '{it_value}': {e}"
-            raise ValidationError(msg) from e
-
+        self._validate_id_format(it_value, id_value)
         return self

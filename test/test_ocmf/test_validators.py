@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import decimal
 
+import pydantic
 import pytest
 
 from pyocmf.sections.payload import Payload
@@ -233,7 +234,7 @@ class TestRIRUFieldGroup:
         """RI present without RU should fail."""
         # RU is required so Pydantic will fail before our validator runs
         # This tests that the field is required
-        with pytest.raises(Exception):  # Will be ValidationError from pydantic
+        with pytest.raises(pydantic.ValidationError):
             Reading(
                 TM="2023-01-01T12:00:00,000+0000 S",
                 TX=MeterReadingReason.END,
@@ -453,7 +454,7 @@ class TestPaginationPattern:
 
     def test_t0_rejected(self) -> None:
         """T0 should be rejected (leading zero)."""
-        with pytest.raises(Exception):  # Pydantic ValidationError
+        with pytest.raises(pydantic.ValidationError):
             Payload(
                 PG="T0",  # Invalid - leading zero
                 IS=False,
@@ -464,7 +465,7 @@ class TestPaginationPattern:
 
     def test_t01_rejected(self) -> None:
         """T01 should be rejected (leading zero)."""
-        with pytest.raises(Exception):  # Pydantic ValidationError
+        with pytest.raises(pydantic.ValidationError):
             Payload(
                 PG="T01",  # Invalid - leading zero
                 IS=False,
@@ -475,7 +476,7 @@ class TestPaginationPattern:
 
     def test_f00_rejected(self) -> None:
         """F00 should be rejected (leading zeros)."""
-        with pytest.raises(Exception):  # Pydantic ValidationError
+        with pytest.raises(pydantic.ValidationError):
             Payload(
                 PG="F00",  # Invalid - leading zeros
                 IS=False,

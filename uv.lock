@@ -953,6 +953,9 @@ crypto = [
     { name = "cryptography" },
 ]
 dev = [
+    { name = "mkdocs-autorefs" },
+    { name = "mkdocs-material" },
+    { name = "mkdocstrings", extra = ["python"] },
     { name = "mypy" },
     { name = "poethepoet" },
     { name = "pytest" },
@@ -963,6 +966,14 @@ docs = [
     { name = "mkdocs-autorefs" },
     { name = "mkdocs-material" },
     { name = "mkdocstrings", extra = ["python"] },
+]
+lint = [
+    { name = "mypy" },
+    { name = "ruff" },
+    { name = "types-cryptography" },
+]
+test = [
+    { name = "pytest" },
 ]
 
 [package.metadata]
@@ -985,8 +996,11 @@ cli = [
 ]
 crypto = [{ name = "cryptography", specifier = "~=44.0" }]
 dev = [
+    { name = "mkdocs-autorefs", specifier = "~=1.2" },
+    { name = "mkdocs-material", specifier = "~=9.5" },
+    { name = "mkdocstrings", extras = ["python"], specifier = "~=0.27" },
     { name = "mypy", specifier = "~=1.1" },
-    { name = "poethepoet", specifier = "~=0.3" },
+    { name = "poethepoet", specifier = "~=0.32" },
     { name = "pytest", specifier = "~=9.0" },
     { name = "ruff", specifier = "~=0.8" },
     { name = "types-cryptography", specifier = "~=3.3" },
@@ -996,6 +1010,12 @@ docs = [
     { name = "mkdocs-material", specifier = "~=9.5" },
     { name = "mkdocstrings", extras = ["python"], specifier = "~=0.27" },
 ]
+lint = [
+    { name = "mypy", specifier = "~=1.1" },
+    { name = "ruff", specifier = "~=0.8" },
+    { name = "types-cryptography", specifier = "~=3.3" },
+]
+test = [{ name = "pytest", specifier = "~=9.0" }]
 
 [[package]]
 name = "pytest"

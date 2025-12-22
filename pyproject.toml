@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "pyocmf"
 version = "0.1.0"
-description = "Python library for parsing, validating, and verifying OCMF (Open Charge Metering Format) signatures from electric vehicle charging stations"
+description = "Python library for parsing and verifying OCMF (Open Charge Metering Format) signatures from electric vehicle charging stations"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -60,10 +60,11 @@ cli = [
 crypto = [
     "cryptography~=44.0",
 ]
-dev = [
-    "mypy~=1.1",
-    "poethepoet~=0.3",
+test = [
     "pytest~=9.0",
+]
+lint = [
+    "mypy~=1.1",
     "ruff~=0.8",
     "types-cryptography~=3.3",
 ]
@@ -72,11 +73,21 @@ docs = [
     "mkdocstrings[python]~=0.27",
     "mkdocs-autorefs~=1.2",
 ]
+dev = [
+    {include-group = "test"},
+    {include-group = "lint"},
+    {include-group = "docs"},
+    "poethepoet~=0.32",
+]
 
 [tool.uv]
 default-groups = "all"
 
 [tool.poe.tasks]
 test = "pytest test -x"
-lint = "ruff check --fix src test"
-docs = "mkdocs build"
+lint = "ruff check src test"
+lint-fix = "ruff check --fix src test"
+format = "ruff format src test"
+format-check = "ruff format --check src test"
+typecheck = "mypy src"
+docs = "mkdocs build --strict"

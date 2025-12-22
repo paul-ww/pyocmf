@@ -6,9 +6,11 @@ meter readings in OCMF format, including reading types, statuses, and values.
 
 import decimal
 import enum
+import re
 from typing import Annotated
 
 import pydantic
+from pydantic.types import StringConstraints
 
 from pyocmf.types.units import OCMFUnit
 
@@ -65,20 +67,78 @@ class TimeStatus(enum.StrEnum):
 # (e.g., "2023-06-15T14:30:45,123+0200 S" where S=Synchronized, U=Unknown, I=Informative, R=Relative)
 OCMFTimeFormat = Annotated[
     str,
-    pydantic.constr(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2},\d{3}[+-]\d{4} [UISR]$"),
+    StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2},\d{3}[+-]\d{4} [UISR]$"),
 ]
 
 # Error flags: Empty string or combination of 'E' (error) and 't' (test/tariff change)
 # (e.g., "", "E", "t", "Et")
-ErrorFlags = Annotated[str, pydantic.constr(pattern=r"^[Et]*$")]
+ErrorFlags = Annotated[str, StringConstraints(pattern=r"^[Et]*$")]
 
-# OBIS code: 6 hex byte pairs with specific separators (e.g., "01-00:01.08.00*FF")
-ObisCode = Annotated[
+# OBIS code formats: Accept either strict OCMF format or flexible IEC 62056 format
+# Strict OCMF format per spec Figure 1: 6 zero-padded hex byte pairs with asterisk
+# Example: "01-0B:01.08.00*FF"
+ObisCodeOCMF = Annotated[
     str,
-    pydantic.constr(
+    StringConstraints(
         pattern=r"^[0-9A-F]{2}-[0-9A-F]{2}:[0-9A-F]{2}\.[0-9A-F]{2}\.[0-9A-F]{2}\*[0-9A-F]{2}$"
     ),
 ]
+
+# IEC 62056-6-1/6-2 flexible format: 1-2 hex digits per group, case-insensitive, optional asterisk
+# Example: "1-b:1.8.0" or "1-0:1.8.0*198"
+ObisCodeIEC = Annotated[
+    str,
+    StringConstraints(
+        pattern=r"^[0-9A-Fa-f]{1,2}-[0-9A-Fa-f]{1,2}:[0-9A-Fa-f]{1,2}\.[0-9A-Fa-f]{1,2}\.[0-9A-Fa-f]{1,2}(\*[0-9A-Fa-f]{1,3})?$"
+    ),
+]
+
+# Accept either format
+ObisCode = ObisCodeOCMF | ObisCodeIEC
+
+# OCMF v1.4.0+ Reserved OBIS Codes for Billing-Relevant Data (Table 25)
+#
+# To ensure clear identification of billing-relevant data, OCMF defines a range of
+# manufacturer-specific OBIS codes in the 'C' field for use within OCMF, compliant
+# with IEC62056-6-1. OBIS codes are represented in hexadecimal format and categorized
+# as follows:
+#
+# Import Energy Registers (01-00:Bx.08.00*xx):
+#   - B0: Total Import Mains Energy (energy measured at the meter)
+#   - B1: Total Import Device Energy (energy measured at consuming device, e.g., car)
+#   - B2: Transaction Import Mains Energy (energy during charging session at meter)
+#   - B3: Transaction Import Device Energy (energy during charging session at device)
+#
+# Export Energy Registers (01-00:Cx.08.00*xx):
+#   - C0: Total Export Mains Energy
+#   - C1: Total Export Device Energy
+#   - C2: Transaction Export Mains Energy
+#   - C3: Transaction Export Device Energy
+#
+# Reserved for Future Use:
+#   - B4-BF, C4-C7 ranges are reserved
+#
+# Define patterns for billing-relevant accumulation registers
+ACCUMULATION_REGISTER_PATTERNS = [
+    r"01-00:B[0-3]\.08\.00\*[0-9A-Fa-f]{2}",  # Import registers B0-B3
+    r"01-00:C[0-3]\.08\.00\*[0-9A-Fa-f]{2}",  # Export registers C0-C3
+]
+
+
+def is_accumulation_register(obis_code: str) -> bool:
+    """Check if OBIS code represents an accumulation register.
+
+    Per OCMF v1.4.0+ Table 25, accumulation registers are:
+    - Import Energy: B0 (Total Mains), B1 (Total Device), B2 (Transaction Mains), B3 (Transaction Device)
+    - Export Energy: C0 (Total Mains), C1 (Total Device), C2 (Transaction Mains), C3 (Transaction Device)
+
+    Args:
+        obis_code: OBIS code string to check
+
+    Returns:
+        True if the OBIS code represents an accumulation register
+    """
+    return any(re.match(pattern, obis_code) for pattern in ACCUMULATION_REGISTER_PATTERNS)
 
 
 class Reading(pydantic.BaseModel):
@@ -112,3 +172,65 @@ class Reading(pydantic.BaseModel):
         if v == "":
             return None
         return v
+
+    @pydantic.field_validator("CL")
+    @classmethod
+    def validate_cl_with_accumulation_register(
+        cls, v: decimal.Decimal | None, info: pydantic.ValidationInfo
+    ) -> decimal.Decimal | None:
+        """CL can only appear with accumulation register readings.
+
+        Per OCMF spec Table 7: CL (Cumulated Loss) parameter can only be added
+        when RI is indicating an accumulation register reading (B0-B3, C0-C3).
+        """
+        if v is not None:
+            ri = info.data.get("RI")
+            if not ri or not is_accumulation_register(ri):
+                msg = "CL (Cumulated Loss) can only appear when RI indicates an accumulation register (B0-B3, C0-C3)"
+                raise ValueError(msg)
+        return v
+
+    @pydantic.field_validator("CL")
+    @classmethod
+    def validate_cl_reset_at_begin(
+        cls, v: decimal.Decimal | None, info: pydantic.ValidationInfo
+    ) -> decimal.Decimal | None:
+        """CL must be 0 when TX=B (transaction begin).
+
+        Per OCMF spec: CL must be reset at the beginning of a transaction.
+        """
+        if v is not None and v != 0:
+            tx = info.data.get("TX")
+            if tx == MeterReadingReason.BEGIN:
+                msg = "CL (Cumulated Loss) must be 0 when TX=B (transaction begin)"
+                raise ValueError(msg)
+        return v
+
+    @pydantic.field_validator("CL")
+    @classmethod
+    def validate_cl_non_negative(cls, v: decimal.Decimal | None) -> decimal.Decimal | None:
+        """CL must be non-negative.
+
+        Cumulated losses cannot be negative - they represent accumulated energy
+        loss due to cable resistance.
+        """
+        if v is not None and v < 0:
+            msg = "CL (Cumulated Loss) must be non-negative"
+            raise ValueError(msg)
+        return v
+
+    @pydantic.model_validator(mode="after")
+    def validate_ri_ru_group(self) -> "Reading":
+        """RI and RU must both be present or both absent (field group constraint).
+
+        Per OCMF spec Table 7: "The fields RI and RU form a group. Fields of a
+        group are either all present together or omitted together."
+        """
+        ri_present = self.RI is not None
+        ru_present = self.RU is not None
+
+        if ri_present != ru_present:
+            msg = "RI (Reading Identification) and RU (Reading Unit) must both be present or both absent"
+            raise ValueError(msg)
+
+        return self

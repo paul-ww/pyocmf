@@ -9,7 +9,7 @@ from __future__ import annotations
 import pydantic
 
 from pyocmf.exceptions import ValidationError
-from pyocmf.sections.reading import Reading
+from pyocmf.sections.reading import MeterReadingReason, Reading
 from pyocmf.types.cable_loss import CableLossCompensation
 from pyocmf.types.identifiers import (
     EMAID,
@@ -22,6 +22,10 @@ from pyocmf.types.identifiers import (
     ChargePointIdentificationType,
     IdentificationData,
     IdentificationFlag,
+    IdentificationFlagIso15118,
+    IdentificationFlagOCPP,
+    IdentificationFlagPLMN,
+    IdentificationFlagRFID,
     IdentificationType,
     PaginationString,
     UserAssignmentStatus,
@@ -58,7 +62,7 @@ class Payload(pydantic.BaseModel):
         default=IdentificationType.NONE, description="Identification Type"
     )
     ID: IdentificationData | None = pydantic.Field(default=None, description="Identification Data")
-    TT: str | None = pydantic.Field(default=None, description="Tariff Text")
+    TT: str | None = pydantic.Field(default=None, max_length=250, description="Tariff Text")
 
     CF: str | None = pydantic.Field(
         default=None, max_length=25, description="Charge Controller Firmware Version"
@@ -110,10 +114,71 @@ class Payload(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="after")
     def validate_serial_numbers(self) -> Payload:
-        """Either GS or MS must be present for signature component identification."""
+        """Either GS or MS must be present for signature component identification.
+
+        Note: OCMF spec Table 3 marks MS (Meter Serial) as mandatory (1..1), but the
+        "Relation of Serial Numbers, Charge Point and Public Key" section uses
+        conditional language about when each serial number is needed. This implementation
+        uses the lenient interpretation (at least one of GS or MS) to accommodate systems
+        where the meter is not separately identified from the gateway.
+
+        For stricter compliance with Table 3, this could be changed to require MS always.
+        """
         if not self.GS and not self.MS:
             msg = "Either Gateway Serial (GS) or Meter Serial (MS) must be provided"
             raise ValidationError(msg)
+        return self
+
+    @pydantic.model_validator(mode="after")
+    def validate_tx_sequence(self) -> Payload:
+        """Validate transaction type (TX) sequence within readings.
+
+        Per OCMF spec Table 7: Transaction sequence must follow the pattern:
+        - B (BEGIN) must come first
+        - End states (E/L/R/A/P) must come last
+        - Middle states (C/X/S/T) can appear between begin and end
+        - Cannot have B after end states
+        """
+        if not self.RD or len(self.RD) < 2:
+            return self
+
+        begin_seen = False
+        end_seen = False
+
+        for i, reading in enumerate(self.RD):
+            if reading.TX is None:
+                continue
+
+            tx = reading.TX
+
+            if tx == MeterReadingReason.BEGIN:
+                if end_seen:
+                    msg = f"Reading {i}: TX=B (Begin) cannot appear after transaction end"
+                    raise ValidationError(msg)
+                begin_seen = True
+
+            elif tx in (
+                MeterReadingReason.END,
+                MeterReadingReason.TERMINATION_LOCAL,
+                MeterReadingReason.TERMINATION_REMOTE,
+                MeterReadingReason.TERMINATION_ABORT,
+                MeterReadingReason.TERMINATION_POWER_FAILURE,
+            ):
+                if not begin_seen:
+                    msg = f"Reading {i}: TX={tx.value} (End) requires TX=B (Begin) first"
+                    raise ValidationError(msg)
+                end_seen = True
+
+            elif tx in (
+                MeterReadingReason.CHARGING,
+                MeterReadingReason.EXCEPTION,
+                MeterReadingReason.SUSPENDED,
+                MeterReadingReason.TARIFF_CHANGE,
+            ):
+                if end_seen:
+                    msg = f"Reading {i}: TX={tx.value} cannot appear after transaction end"
+                    raise ValidationError(msg)
+
         return self
 
     @pydantic.field_validator("FV", mode="before")
@@ -134,6 +199,45 @@ class Payload(pydantic.BaseModel):
             return str(v)
         return v
 
+    @pydantic.field_validator("IF")
+    @classmethod
+    def validate_flags_consistent_source(
+        cls, v: list[IdentificationFlag]
+    ) -> list[IdentificationFlag]:
+        """Ensure IF flags don't mix from different tables (RFID, OCPP, ISO15118, PLMN).
+
+        Per OCMF spec Tables 13-16: Identification flags from different source
+        tables should not be mixed in a single IF array.
+
+        Exception: All flags ending with "_NONE" can be mixed, as they indicate
+        the absence of identification via those methods.
+        """
+        if not v or len(v) <= 1:
+            return v
+
+        # Allow mixing if all flags are "_NONE" values (indicating no auth via those methods)
+        all_none = all(str(flag).endswith("_NONE") for flag in v)
+        if all_none:
+            return v
+
+        # Categorize flags by source table
+        categories = set()
+        for flag in v:
+            if isinstance(flag, IdentificationFlagRFID):
+                categories.add("RFID")
+            elif isinstance(flag, IdentificationFlagOCPP):
+                categories.add("OCPP")
+            elif isinstance(flag, IdentificationFlagIso15118):
+                categories.add("ISO15118")
+            elif isinstance(flag, IdentificationFlagPLMN):
+                categories.add("PLMN")
+
+        if len(categories) > 1:
+            msg = f"IF (Identification Flags) cannot mix flags from different sources. Found: {', '.join(sorted(categories))}"
+            raise ValidationError(msg)
+
+        return v
+
     @pydantic.model_validator(mode="after")
     def validate_id_format_by_type(self) -> Payload:
         """Validate ID format based on the Identification Type (IT).
@@ -147,8 +251,19 @@ class Payload(pydantic.BaseModel):
         - ISO7812: 8-19 digits
         - PHONE_NUMBER: valid phone number
         - LOCAL, CENTRAL, CARD_TXN_NR, KEY_CODE: no format defined (accept any string)
-        - NONE, DENIED, UNDEFINED: no ID should be provided
+        - NONE, DENIED, UNDEFINED: no ID should be provided (must be None or empty string)
         """
+        # First check: NONE/DENIED/UNDEFINED must have ID=None or empty string
+        if self.IT in (
+            IdentificationType.NONE,
+            IdentificationType.DENIED,
+            IdentificationType.UNDEFINED,
+        ):
+            if self.ID is not None and self.ID != "":
+                msg = f"ID must be None or empty when IT={self.IT.value} (no assignment type)"
+                raise ValidationError(msg)
+            return self
+
         if not self.ID or not self.IT:
             return self
 
@@ -188,7 +303,6 @@ class Payload(pydantic.BaseModel):
                 pydantic.TypeAdapter(ISO7812).validate_python(id_value)
             elif self.IT == IdentificationType.PHONE_NUMBER:
                 pydantic.TypeAdapter(PHONE_NUMBER).validate_python(id_value)
-            # NONE, DENIED, UNDEFINED don't accept ID values (currently not validated)
         except pydantic.ValidationError as e:
             msg = f"ID value '{id_value}' does not match format for identification type '{it_value}': {e}"
             raise ValidationError(msg) from e

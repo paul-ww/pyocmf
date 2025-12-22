@@ -9,12 +9,13 @@ import enum
 from typing import Annotated
 
 import pydantic
+from pydantic.types import StringConstraints
 from pydantic_extra_types import phone_numbers
 
-# Transaction context: "T" followed by optional digits (e.g., "T", "T1", "T123")
-TransactionContext = Annotated[str, pydantic.constr(pattern=r"^T[1-9]*$")]
-# Fiscal context: "F" followed by optional digits (e.g., "F", "F1", "F456")
-FiscalContext = Annotated[str, pydantic.constr(pattern=r"^F[1-9]*$")]
+# Transaction context: "T" followed by number without leading zeros (e.g., "T1", "T123", not "T0" or "T01")
+TransactionContext = Annotated[str, StringConstraints(pattern=r"^T([1-9][0-9]*)$")]
+# Fiscal context: "F" followed by number without leading zeros (e.g., "F1", "F456", not "F0" or "F00")
+FiscalContext = Annotated[str, StringConstraints(pattern=r"^F([1-9][0-9]*)$")]
 PaginationString = TransactionContext | FiscalContext
 
 

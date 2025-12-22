@@ -16,16 +16,20 @@ except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
 
 
-def test_other_examples_base64_ocmf(tmp_path: pathlib.Path) -> None:
+@pytest.fixture
+def other_examples_dir() -> pathlib.Path:
+    """Return the path to the other_examples resource directory."""
+    return pathlib.Path(__file__).parent.parent / "resources" / "other_examples"
+
+
+def test_other_examples_base64_ocmf(other_examples_dir: pathlib.Path) -> None:
     """Test OCMF parsing for base64_ocmf.xml.
 
     This file contains OCMF records with ID fields using LOCAL identification
     type, which per OCMF spec has no exact format defined and can contain any
     string value (e.g., UUIDs, arbitrary hex strings, etc.).
     """
-    xml_file = pathlib.Path(
-        "/Users/paul/Documents/pyocmf/test/resources/other_examples/base64_ocmf.xml"
-    )
+    xml_file = other_examples_dir / "base64_ocmf.xml"
 
     # Parse the XML file
     container = OcmfContainer.from_xml(xml_file)
@@ -61,15 +65,15 @@ def test_other_examples_base64_ocmf(tmp_path: pathlib.Path) -> None:
 
 
 @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography package not installed")
-def test_other_examples_base64_ocmf_signature_verification(tmp_path: pathlib.Path) -> None:
+def test_other_examples_base64_ocmf_signature_verification(
+    other_examples_dir: pathlib.Path,
+) -> None:
     """Test signature verification for base64_ocmf.xml.
 
     Verifies that the OCMF record can be successfully verified with its
     embedded public key.
     """
-    xml_file = pathlib.Path(
-        "/Users/paul/Documents/pyocmf/test/resources/other_examples/base64_ocmf.xml"
-    )
+    xml_file = other_examples_dir / "base64_ocmf.xml"
 
     # Parse the XML file
     container = OcmfContainer.from_xml(xml_file)
@@ -80,16 +84,14 @@ def test_other_examples_base64_ocmf_signature_verification(tmp_path: pathlib.Pat
     assert entry.verify_signature() is True, "Signature should be valid"
 
 
-def test_other_examples_working_ocmf(tmp_path: pathlib.Path) -> None:
+def test_other_examples_working_ocmf(other_examples_dir: pathlib.Path) -> None:
     """Test OCMF parsing for working_ocmf.xml.
 
     This file contains OCMF records with ID fields using LOCAL identification
     type, which per OCMF spec has no exact format defined and can contain any
     string value (e.g., UUIDs, arbitrary hex strings, etc.).
     """
-    xml_file = pathlib.Path(
-        "/Users/paul/Documents/pyocmf/test/resources/other_examples/working_ocmf.xml"
-    )
+    xml_file = other_examples_dir / "working_ocmf.xml"
 
     # Parse the XML file
     container = OcmfContainer.from_xml(xml_file)
@@ -125,15 +127,15 @@ def test_other_examples_working_ocmf(tmp_path: pathlib.Path) -> None:
 
 
 @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography package not installed")
-def test_other_examples_working_ocmf_signature_verification(tmp_path: pathlib.Path) -> None:
+def test_other_examples_working_ocmf_signature_verification(
+    other_examples_dir: pathlib.Path,
+) -> None:
     """Test signature verification for working_ocmf.xml.
 
     Verifies that the OCMF record can be successfully verified with its
     embedded public key.
     """
-    xml_file = pathlib.Path(
-        "/Users/paul/Documents/pyocmf/test/resources/other_examples/working_ocmf.xml"
-    )
+    xml_file = other_examples_dir / "working_ocmf.xml"
 
     # Parse the XML file
     container = OcmfContainer.from_xml(xml_file)

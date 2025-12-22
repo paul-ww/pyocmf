@@ -32,7 +32,7 @@ jobs:
       - name: Run ruff formatter check
         run: uv run poe format-check
 
-      - name: Run mypy type checker
+      - name: Run ty type checker
         run: uv run poe typecheck
 
       - name: Minimize uv cache

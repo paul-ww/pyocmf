@@ -240,7 +240,7 @@ class TestRIRUFieldGroup:
                 TX=MeterReadingReason.END,
                 RV=decimal.Decimal("100.0"),
                 RI="01-00:01.08.00*FF",  # RI present
-                RU=None,  # RU absent - should fail
+                RU=None,  # type: ignore[arg-type]  # RU absent - should fail
                 ST=MeterStatus.OK,
             )
 
@@ -268,22 +268,22 @@ class TestTXSequence:
             IT=IdentificationType.NONE,
             GS="12345",
             RD=[
-                {
-                    "TM": "2023-01-01T12:00:00,000+0000 S",
-                    "TX": "B",
-                    "RV": 0.0,
-                    "RI": "01-00:01.08.00*FF",
-                    "RU": "kWh",
-                    "ST": "G",
-                },
-                {
-                    "TM": "2023-01-01T12:10:00,000+0000 S",
-                    "TX": "E",
-                    "RV": 10.5,
-                    "RI": "01-00:01.08.00*FF",
-                    "RU": "kWh",
-                    "ST": "G",
-                },
+                Reading(
+                    TM="2023-01-01T12:00:00,000+0000 S",
+                    TX=MeterReadingReason.BEGIN,
+                    RV=decimal.Decimal("0.0"),
+                    RI="01-00:01.08.00*FF",
+                    RU=EnergyUnit.KWH,
+                    ST=MeterStatus.OK,
+                ),
+                Reading(
+                    TM="2023-01-01T12:10:00,000+0000 S",
+                    TX=MeterReadingReason.END,
+                    RV=decimal.Decimal("10.5"),
+                    RI="01-00:01.08.00*FF",
+                    RU=EnergyUnit.KWH,
+                    ST=MeterStatus.OK,
+                ),
             ],
         )
         assert len(payload.RD) == 2
@@ -296,30 +296,30 @@ class TestTXSequence:
             IT=IdentificationType.NONE,
             GS="12345",
             RD=[
-                {
-                    "TM": "2023-01-01T12:00:00,000+0000 S",
-                    "TX": "B",
-                    "RV": 0.0,
-                    "RI": "01-00:01.08.00*FF",
-                    "RU": "kWh",
-                    "ST": "G",
-                },
-                {
-                    "TM": "2023-01-01T12:05:00,000+0000 S",
-                    "TX": "C",
-                    "RV": 5.0,
-                    "RI": "01-00:01.08.00*FF",
-                    "RU": "kWh",
-                    "ST": "G",
-                },
-                {
-                    "TM": "2023-01-01T12:10:00,000+0000 S",
-                    "TX": "E",
-                    "RV": 10.5,
-                    "RI": "01-00:01.08.00*FF",
-                    "RU": "kWh",
-                    "ST": "G",
-                },
+                Reading(
+                    TM="2023-01-01T12:00:00,000+0000 S",
+                    TX=MeterReadingReason.BEGIN,
+                    RV=decimal.Decimal("0.0"),
+                    RI="01-00:01.08.00*FF",
+                    RU=EnergyUnit.KWH,
+                    ST=MeterStatus.OK,
+                ),
+                Reading(
+                    TM="2023-01-01T12:05:00,000+0000 S",
+                    TX=MeterReadingReason.CHARGING,
+                    RV=decimal.Decimal("5.0"),
+                    RI="01-00:01.08.00*FF",
+                    RU=EnergyUnit.KWH,
+                    ST=MeterStatus.OK,
+                ),
+                Reading(
+                    TM="2023-01-01T12:10:00,000+0000 S",
+                    TX=MeterReadingReason.END,
+                    RV=decimal.Decimal("10.5"),
+                    RI="01-00:01.08.00*FF",
+                    RU=EnergyUnit.KWH,
+                    ST=MeterStatus.OK,
+                ),
             ],
         )
         assert len(payload.RD) == 3
@@ -333,22 +333,22 @@ class TestTXSequence:
                 IT=IdentificationType.NONE,
                 GS="12345",
                 RD=[
-                    {
-                        "TM": "2023-01-01T12:00:00,000+0000 S",
-                        "TX": "C",
-                        "RV": 5.0,
-                        "RI": "01-00:01.08.00*FF",
-                        "RU": "kWh",
-                        "ST": "G",
-                    },
-                    {
-                        "TM": "2023-01-01T12:10:00,000+0000 S",
-                        "TX": "E",  # No BEGIN before this
-                        "RV": 10.5,
-                        "RI": "01-00:01.08.00*FF",
-                        "RU": "kWh",
-                        "ST": "G",
-                    },
+                    Reading(
+                        TM="2023-01-01T12:00:00,000+0000 S",
+                        TX=MeterReadingReason.CHARGING,
+                        RV=decimal.Decimal("5.0"),
+                        RI="01-00:01.08.00*FF",
+                        RU=EnergyUnit.KWH,
+                        ST=MeterStatus.OK,
+                    ),
+                    Reading(
+                        TM="2023-01-01T12:10:00,000+0000 S",
+                        TX=MeterReadingReason.END,  # No BEGIN before this
+                        RV=decimal.Decimal("10.5"),
+                        RI="01-00:01.08.00*FF",
+                        RU=EnergyUnit.KWH,
+                        ST=MeterStatus.OK,
+                    ),
                 ],
             )
 
@@ -361,30 +361,30 @@ class TestTXSequence:
                 IT=IdentificationType.NONE,
                 GS="12345",
                 RD=[
-                    {
-                        "TM": "2023-01-01T12:00:00,000+0000 S",
-                        "TX": "B",
-                        "RV": 0.0,
-                        "RI": "01-00:01.08.00*FF",
-                        "RU": "kWh",
-                        "ST": "G",
-                    },
-                    {
-                        "TM": "2023-01-01T12:10:00,000+0000 S",
-                        "TX": "E",
-                        "RV": 10.5,
-                        "RI": "01-00:01.08.00*FF",
-                        "RU": "kWh",
-                        "ST": "G",
-                    },
-                    {
-                        "TM": "2023-01-01T12:15:00,000+0000 S",
-                        "TX": "B",  # Cannot start new transaction
-                        "RV": 10.5,
-                        "RI": "01-00:01.08.00*FF",
-                        "RU": "kWh",
-                        "ST": "G",
-                    },
+                    Reading(
+                        TM="2023-01-01T12:00:00,000+0000 S",
+                        TX=MeterReadingReason.BEGIN,
+                        RV=decimal.Decimal("0.0"),
+                        RI="01-00:01.08.00*FF",
+                        RU=EnergyUnit.KWH,
+                        ST=MeterStatus.OK,
+                    ),
+                    Reading(
+                        TM="2023-01-01T12:10:00,000+0000 S",
+                        TX=MeterReadingReason.END,
+                        RV=decimal.Decimal("10.5"),
+                        RI="01-00:01.08.00*FF",
+                        RU=EnergyUnit.KWH,
+                        ST=MeterStatus.OK,
+                    ),
+                    Reading(
+                        TM="2023-01-01T12:15:00,000+0000 S",
+                        TX=MeterReadingReason.BEGIN,  # Cannot start new transaction
+                        RV=decimal.Decimal("10.5"),
+                        RI="01-00:01.08.00*FF",
+                        RU=EnergyUnit.KWH,
+                        ST=MeterStatus.OK,
+                    ),
                 ],
             )
 
@@ -397,30 +397,30 @@ class TestTXSequence:
                 IT=IdentificationType.NONE,
                 GS="12345",
                 RD=[
-                    {
-                        "TM": "2023-01-01T12:00:00,000+0000 S",
-                        "TX": "B",
-                        "RV": 0.0,
-                        "RI": "01-00:01.08.00*FF",
-                        "RU": "kWh",
-                        "ST": "G",
-                    },
-                    {
-                        "TM": "2023-01-01T12:10:00,000+0000 S",
-                        "TX": "E",
-                        "RV": 10.5,
-                        "RI": "01-00:01.08.00*FF",
-                        "RU": "kWh",
-                        "ST": "G",
-                    },
-                    {
-                        "TM": "2023-01-01T12:15:00,000+0000 S",
-                        "TX": "C",  # Cannot charge after end
-                        "RV": 15.0,
-                        "RI": "01-00:01.08.00*FF",
-                        "RU": "kWh",
-                        "ST": "G",
-                    },
+                    Reading(
+                        TM="2023-01-01T12:00:00,000+0000 S",
+                        TX=MeterReadingReason.BEGIN,
+                        RV=decimal.Decimal("0.0"),
+                        RI="01-00:01.08.00*FF",
+                        RU=EnergyUnit.KWH,
+                        ST=MeterStatus.OK,
+                    ),
+                    Reading(
+                        TM="2023-01-01T12:10:00,000+0000 S",
+                        TX=MeterReadingReason.END,
+                        RV=decimal.Decimal("10.5"),
+                        RI="01-00:01.08.00*FF",
+                        RU=EnergyUnit.KWH,
+                        ST=MeterStatus.OK,
+                    ),
+                    Reading(
+                        TM="2023-01-01T12:15:00,000+0000 S",
+                        TX=MeterReadingReason.CHARGING,  # Cannot charge after end
+                        RV=decimal.Decimal("15.0"),
+                        RI="01-00:01.08.00*FF",
+                        RU=EnergyUnit.KWH,
+                        ST=MeterStatus.OK,
+                    ),
                 ],
             )
 
@@ -576,7 +576,7 @@ class TestTTMaxLength:
             GS="12345",
             RD=[],
         )
-        assert len(payload.TT) == 250
+        assert payload.TT is not None and len(payload.TT) == 250
 
     def test_tt_251_chars_rejected(self) -> None:
         """TT with 251 characters should be rejected."""

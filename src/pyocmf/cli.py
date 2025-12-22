@@ -112,23 +112,29 @@ def _detect_input_type(ocmf_input: str) -> InputType:
     Returns:
         InputType.XML if input is an existing file path
         InputType.OCMF_STRING otherwise (handles both plain and hex-encoded)
+
+    Raises:
+        FileNotFoundError: If input looks like a file path but doesn't exist
     """
-    # Check if it's an OCMF string first (before file path check)
+    # Check if it's an OCMF string first
     if ocmf_input.startswith(OCMF_PREFIX):
         return InputType.OCMF_STRING
 
-    # Check if it's a file path (only check if it's a reasonable length for a file path)
-    # Most file systems limit paths to 255-4096 bytes
-    if len(ocmf_input) < 1024:
-        try:
-            path = pathlib.Path(ocmf_input)
-            if path.exists() and path.is_file():
-                return InputType.XML
-        except (OSError, ValueError):
-            # Not a valid path, treat as OCMF string
-            pass
+    # Try to treat as a file path
+    try:
+        path = pathlib.Path(ocmf_input)
+        if path.exists() and path.is_file():
+            return InputType.XML
+    except (OSError, ValueError):
+        # OSError for paths that are too long, ValueError for invalid path characters
+        # If pathlib can't handle it, treat as OCMF string
+        pass
 
-    # Treat as OCMF string (from_string handles hex auto-detection)
+    # Check if it looks like a file path (has file extension or path separators)
+    if ocmf_input.endswith(".xml") or "/" in ocmf_input or "\\" in ocmf_input:
+        raise FileNotFoundError(ocmf_input)
+
+    # Fall back to OCMF string processing
     return InputType.OCMF_STRING
 
 
@@ -157,7 +163,9 @@ def _validate_from_xml(xml_path: str, verbose: bool, all_entries: bool) -> None:
 
     container = OcmfContainer.from_xml(path)
 
-    console.print(f"[green]✓[/green] Found {len(container)} OCMF entry(ies) in XML file")
+    number_of_records = len(container)
+    record_string = "record" if number_of_records == 1 else "records"
+    console.print(f"[green]✓[/green] Found {number_of_records} OCMF {record_string} in XML file")
 
     records_to_process: list[OcmfRecord] = container.entries if all_entries else [container[0]]
 

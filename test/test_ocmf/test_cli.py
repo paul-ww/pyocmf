@@ -200,6 +200,6 @@ class TestCliRealData:
 
         assert result.exit_code == 0
         assert "Found" in result.stdout
-        assert "OCMF entry(ies) in XML file" in result.stdout
+        assert "OCMF record in XML file" in result.stdout
         assert "Successfully parsed OCMF string" in result.stdout
         assert "Signature verification: VALID" in result.stdout

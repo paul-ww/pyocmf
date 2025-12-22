@@ -64,8 +64,8 @@ test = [
     "pytest~=9.0",
 ]
 lint = [
-    "mypy~=1.1",
     "ruff~=0.8",
+    "ty~=0.0",
     "types-cryptography~=3.3",
 ]
 docs = [
@@ -89,5 +89,5 @@ lint = "ruff check src test"
 lint-fix = "ruff check --fix src test"
 format = "ruff format src test"
 format-check = "ruff format --check src test"
-typecheck = "mypy src"
+typecheck = "ty check src test"
 docs = "mkdocs build --strict"

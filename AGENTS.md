@@ -15,7 +15,7 @@ The library provides:
 - Pydantic for data validation
 - uv for dependency management and builds
 - pytest for testing
-- mypy for type checking
+- ty for type checking
 - ruff for linting and formatting
 
 **Project Structure:**
@@ -44,7 +44,7 @@ uv sync
 ```
 
 **Install development dependencies:**
-Development dependencies are automatically included with `uv sync` (includes mypy, pytest, ruff).
+Development dependencies are automatically included with `uv sync` (includes ty, pytest, ruff).
 
 **Activate virtual environment (optional):**
 ```bash
@@ -145,14 +145,19 @@ uv run ruff format --check .
 
 **Type checking:**
 ```bash
-uv run mypy src
+uv run ty check src test
+```
+
+Or using poe:
+```bash
+uv run poe typecheck
 ```
 
 **Run all code quality checks (lint + format + type check):**
 ```bash
 uv run ruff check .
 uv run ruff format --check .
-uv run mypy src
+uv run ty check src test
 ```
 
 **Code style conventions:**
@@ -172,10 +177,11 @@ uv run mypy src
   - PTH: pathlib usage
   - And more (see `pyproject.toml` for full list)
 
-**Mypy configuration:**
-- `disallow_untyped_defs = true`: All functions must have type hints
-- `disallow_incomplete_defs = true`: Type hints must be complete
-- Pydantic plugin enabled for model validation
+**ty configuration:**
+- Type checking using `ty check` command
+- Checks both `src` and `test` directories
+- All functions must have complete type hints
+- Pydantic support included
 
 **File organization:**
 - Source code in `src/pyocmf/`
@@ -210,7 +216,7 @@ The project uses GitHub Actions with two workflows:
 **Lint workflow (`.github/workflows/lint.yml`):**
 - Triggers on push/PR to `initial-version` and `main` branches
 - Runs ruff linting and formatting checks
-- Runs mypy type checking
+- Runs ty type checking
 - Uses Python version from `pyproject.toml`
 
 **Test workflow (`.github/workflows/test.yml`):**
@@ -221,8 +227,16 @@ The project uses GitHub Actions with two workflows:
 **Before committing:**
 1. Run `uv run ruff check .` and fix any issues
 2. Run `uv run ruff format .` to format code
-3. Run `uv run mypy src` and fix type errors
+3. Run `uv run ty check src test` and fix type errors
 4. Run `uv run pytest` and ensure all tests pass
+
+Or use poe commands for convenience:
+```bash
+uv run poe lint-fix    # Auto-fix linting issues
+uv run poe format      # Format code
+uv run poe typecheck   # Run type checking
+uv run poe test        # Run tests
+```
 
 ## Pull Request Guidelines
 
@@ -235,12 +249,21 @@ The project uses GitHub Actions with two workflows:
    ```bash
    uv run ruff check .
    uv run ruff format --check .
-   uv run mypy src
+   uv run ty check src test
    uv run pytest
    ```
+   
+   Or use poe commands:
+   ```bash
+   uv run poe lint
+   uv run poe format-check
+   uv run poe typecheck
+   uv run poe test
+   ```
+
 2. All tests must pass
 3. No linting or formatting errors
-4. No mypy type errors
+4. No type errors
 
 **PR requirements:**
 - Code must pass all CI checks (lint and test workflows)
@@ -261,15 +284,24 @@ uv run python                        # Interactive shell
 uv run pytest                        # Run all tests
 uv run pytest -v                     # Verbose output
 uv run pytest -k "pattern"           # Run tests matching pattern
+uv run poe test                      # Run tests (with poe)
 
 # Code Quality
 uv run ruff check .                  # Lint code
 uv run ruff check --fix .            # Lint and auto-fix
 uv run ruff format .                 # Format code
-uv run mypy src                      # Type check
+uv run ty check src test             # Type check
+
+# Code Quality (using poe)
+uv run poe lint                      # Lint code
+uv run poe lint-fix                  # Lint and auto-fix
+uv run poe format                    # Format code
+uv run poe format-check              # Check formatting without changes
+uv run poe typecheck                 # Type check
 
 # Build
 uv build                             # Build package distributions
+uv run poe docs                      # Build documentation
 
 # Dependencies
 uv add <package>                     # Add runtime dependency
@@ -308,7 +340,7 @@ git submodule update --remote
    - Verify you're using the correct Python version (3.11+)
 
 3. **Type checking errors:**
-   - mypy only checks the `src` directory, not test files
+   - ty checks both `src` and `test` directories
    - Ensure all functions have complete type annotations
    - Check Pydantic models use proper type hints
 
@@ -339,10 +371,32 @@ git submodule update --remote
 
 **When adding new features:**
 - Add corresponding tests in `test/test_ocmf/`
-- Update type hints and ensure mypy passes
+- Update type hints and ensure ty passes
 - Follow existing code organization patterns
 - Update exceptions in `exceptions.py` if adding new error types
 - Export public APIs through `__init__.py`
+
+## Task Automation with Poe
+
+The project uses [Poe the Poet](https://poethepoet.natn.io/) for task automation. All poe tasks are defined in `pyproject.toml` under `[tool.poe.tasks]`.
+
+**Available poe tasks:**
+
+```bash
+uv run poe test           # Run tests with pytest (stops on first failure)
+uv run poe lint           # Run ruff linter
+uv run poe lint-fix       # Run ruff linter with auto-fix
+uv run poe format         # Format code with ruff
+uv run poe format-check   # Check code formatting without changes
+uv run poe typecheck      # Run ty type checker
+uv run poe docs           # Build documentation with mkdocs
+```
+
+**Why use poe tasks?**
+- Shorter, more memorable commands
+- Consistent interface across different tools
+- Easy to extend with new tasks
+- All tasks defined in one place (`pyproject.toml`)
 
 ## Code Commenting Guidelines
 

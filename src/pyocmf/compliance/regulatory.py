@@ -63,6 +63,71 @@ class EichrechtIssue:
         return f"{prefix}{self.message} ({self.code})"
 
 
+def _get_billing_relevant_begin_reading(payload: Payload) -> Reading:
+    """Get the billing-relevant reading from a transaction begin payload.
+
+    Per Eichrecht requirements, the first reading (RD[0]) in a begin payload
+    is used for billing and compliance calculations.
+
+    Args:
+        payload: Transaction begin payload (must have RD)
+
+    Returns:
+        First reading from payload.RD
+    """
+    return payload.RD[0]
+
+
+def _get_billing_relevant_end_reading(payload: Payload) -> Reading:
+    """Get the billing-relevant reading from a transaction end payload.
+
+    Per Eichrecht requirements, the last reading (RD[-1]) in an end payload
+    is used for billing and compliance calculations.
+
+    Args:
+        payload: Transaction end payload (must have RD)
+
+    Returns:
+        Last reading from payload.RD
+    """
+    return payload.RD[-1]
+
+
+def _check_field_match(
+    begin_value: object,
+    end_value: object,
+    field_name: str,
+    issue_code: IssueCode,
+    description: str,
+) -> EichrechtIssue | None:
+    """Check if a field matches between begin and end readings.
+
+    Handles string conversion for OBIS objects, enums, etc.
+    Returns None if values match, EichrechtIssue if mismatch.
+
+    Args:
+        begin_value: Value from begin reading/payload
+        end_value: Value from end reading/payload
+        field_name: Field name for error reporting
+        issue_code: IssueCode to use if mismatch
+        description: Human-readable field description
+
+    Returns:
+        EichrechtIssue if mismatch, None if match
+    """
+    # Convert to strings for comparison (handles OBIS objects, enums, etc.)
+    begin_str = str(begin_value) if begin_value is not None else None
+    end_str = str(end_value) if end_value is not None else None
+
+    if begin_str != end_str:
+        return EichrechtIssue(
+            code=issue_code,
+            message=f"{description} must match: begin='{begin_value}', end='{end_value}'",
+            field=field_name,
+        )
+    return None
+
+
 def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[EichrechtIssue]:
     """Check a single reading for Eichrecht compliance.
 
@@ -155,6 +220,109 @@ def _check_timestamp_ordering(
     return None
 
 
+def _validate_transaction_types(
+    begin_reading: Reading,
+    end_reading: Reading,
+    end_reading_count: int,
+) -> list[EichrechtIssue]:
+    """Validate that TX types are correct for begin/end readings.
+
+    Args:
+        begin_reading: Reading from transaction begin
+        end_reading: Reading from transaction end
+        end_reading_count: Total number of readings in end payload (for error reporting)
+
+    Returns:
+        List of issues found (empty if valid)
+    """
+    issues = []
+    if begin_reading.TX != MeterReadingReason.BEGIN:
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.BEGIN_TX,
+                message=f"Begin reading must have TX='B', got '{begin_reading.TX}'",
+                field="RD[0].TX",
+            )
+        )
+    if end_reading.TX is None or not end_reading.TX.is_end_reading():
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.END_TX,
+                message=f"'{end_reading.TX}' is not a valid end reading type",
+                field=f"RD[{end_reading_count - 1}].TX",
+            )
+        )
+    return issues
+
+
+def _validate_field_consistency(
+    begin: Payload,
+    end: Payload,
+    begin_reading: Reading,
+    end_reading: Reading,
+) -> list[EichrechtIssue]:
+    """Validate that key fields match between begin and end.
+
+    Args:
+        begin: Transaction begin payload
+        end: Transaction end payload
+        begin_reading: Reading from transaction begin
+        end_reading: Reading from transaction end
+
+    Returns:
+        List of issues found (empty if valid)
+    """
+    issues = []
+    # Serial numbers
+    begin_serial = begin.GS or begin.MS
+    end_serial = end.GS or end.MS
+    if issue := _check_field_match(
+        begin_serial, end_serial, "GS/MS", IssueCode.SERIAL_MISMATCH, "Serial numbers"
+    ):
+        issues.append(issue)
+    # OBIS codes
+    if issue := _check_field_match(
+        begin_reading.RI, end_reading.RI, "RI", IssueCode.OBIS_MISMATCH, "OBIS codes"
+    ):
+        issues.append(issue)
+    # Units
+    if issue := _check_field_match(
+        begin_reading.RU, end_reading.RU, "RU", IssueCode.UNIT_MISMATCH, "Units"
+    ):
+        issues.append(issue)
+    return issues
+
+
+def _validate_value_progression(
+    begin_reading: Reading,
+    end_reading: Reading,
+) -> list[EichrechtIssue]:
+    """Validate that meter values and timestamps progress correctly.
+
+    Args:
+        begin_reading: Reading from transaction begin
+        end_reading: Reading from transaction end
+
+    Returns:
+        List of issues found (empty if valid)
+    """
+    issues = []
+    # Value progression
+    if begin_reading.RV is not None and end_reading.RV is not None:
+        if end_reading.RV < begin_reading.RV:
+            issues.append(
+                EichrechtIssue(
+                    code=IssueCode.VALUE_REGRESSION,
+                    message=f"End value ({end_reading.RV}) must be >= begin value ({begin_reading.RV})",
+                    field="RV",
+                )
+            )
+    # Timestamp ordering
+    if timestamp_issue := _check_timestamp_ordering(begin_reading, end_reading):
+        issues.append(timestamp_issue)
+    return issues
+
+
 def check_eichrecht_transaction(
     begin: Payload,
     end: Payload,
@@ -181,93 +349,28 @@ def check_eichrecht_transaction(
         )
         return issues
 
-    # 2. Find the billing-relevant readings (first for begin, last for end)
-    begin_reading = begin.RD[0]
-    end_reading = end.RD[-1]
+    # 2. Find the billing-relevant readings
+    begin_reading = _get_billing_relevant_begin_reading(begin)
+    end_reading = _get_billing_relevant_end_reading(end)
 
-    # 3. Verify transaction types
-    if begin_reading.TX != MeterReadingReason.BEGIN:
-        issues.append(
-            EichrechtIssue(
-                code=IssueCode.BEGIN_TX,
-                message=f"Begin reading must have TX='B', got '{begin_reading.TX}'",
-                field="RD[0].TX",
-            )
-        )
+    # Validate transaction types
+    issues.extend(_validate_transaction_types(begin_reading, end_reading, len(end.RD)))
 
-    if not end_reading.TX.is_end_reading():
-        issues.append(
-            EichrechtIssue(
-                code=IssueCode.END_TX,
-                message=f"'{end_reading.TX}' is not a valid end reading type",
-                field=f"RD[{len(end.RD) - 1}].TX",
-            )
-        )
-
-    # 4. Check individual readings
+    # Individual reading validation
     issues.extend(check_eichrecht_reading(begin_reading, is_begin=True))
     issues.extend(check_eichrecht_reading(end_reading, is_begin=False))
 
-    # 5. Verify serial numbers match
-    begin_serial = begin.GS or begin.MS
-    end_serial = end.GS or end.MS
-    if begin_serial != end_serial:
-        issues.append(
-            EichrechtIssue(
-                code=IssueCode.SERIAL_MISMATCH,
-                message=f"Serial numbers must match: begin='{begin_serial}', end='{end_serial}'",
-                field="GS/MS",
-            )
-        )
+    # Cross-reading validations
+    issues.extend(_validate_field_consistency(begin, end, begin_reading, end_reading))
+    issues.extend(_validate_value_progression(begin_reading, end_reading))
 
-    # 6. Verify OBIS codes match
-    # Compare OBIS objects by their string representation
-    begin_obis = str(begin_reading.RI) if begin_reading.RI else None
-    end_obis = str(end_reading.RI) if end_reading.RI else None
-    if begin_obis != end_obis:
-        issues.append(
-            EichrechtIssue(
-                code=IssueCode.OBIS_MISMATCH,
-                message=f"OBIS codes must match: begin='{begin_obis}', end='{end_obis}'",
-                field="RI",
-            )
-        )
-
-    # 7. Verify units match
-    if begin_reading.RU != end_reading.RU:
-        issues.append(
-            EichrechtIssue(
-                code=IssueCode.UNIT_MISMATCH,
-                message=f"Units must match: begin='{begin_reading.RU}', end='{end_reading.RU}'",
-                field="RU",
-            )
-        )
-
-    # 8. Verify reading value progression (end >= begin)
-    if begin_reading.RV is not None and end_reading.RV is not None:
-        if end_reading.RV < begin_reading.RV:
-            issues.append(
-                EichrechtIssue(
-                    code=IssueCode.VALUE_REGRESSION,
-                    message=f"End value ({end_reading.RV}) must be >= begin value ({begin_reading.RV})",
-                    field="RV",
-                )
-            )
-
-    # 9. Verify timestamp ordering
-    if timestamp_issue := _check_timestamp_ordering(begin_reading, end_reading):
-        issues.append(timestamp_issue)
-
-    # 10. Verify identification consistency (if present)
-    if begin.ID != end.ID:
-        issues.append(
-            EichrechtIssue(
-                code=IssueCode.ID_MISMATCH,
-                message=f"Identification data should match: begin='{begin.ID}', end='{end.ID}'",
-                field="ID",
-                severity=IssueSeverity.WARNING,
-            )
-        )
+    # Informational checks (warnings only)
+    if issue := _check_field_match(
+        begin.ID, end.ID, "ID", IssueCode.ID_MISMATCH, "Identification data"
+    ):
+        # Override severity to WARNING (ID mismatch is informational)
+        issue.severity = IssueSeverity.WARNING
+        issues.append(issue)
 
     return issues
 

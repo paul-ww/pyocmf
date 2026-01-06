@@ -24,7 +24,7 @@ class TestTransactionPairValidation:
         timestamp: str = "2023-01-01T12:00:00,000+0000 S",
     ) -> OCMF:
         """Create a transaction begin OCMF record."""
-        payload = Payload.model_construct(
+        payload = Payload(
             FV="1.0",
             GI="TEST_GW",
             GS=serial,
@@ -56,7 +56,7 @@ class TestTransactionPairValidation:
         value: str = "100.0",
     ) -> OCMF:
         """Create a transaction end OCMF record."""
-        payload = Payload.model_construct(
+        payload = Payload(
             FV="1.0",
             GI="TEST_GW",
             GS=serial,

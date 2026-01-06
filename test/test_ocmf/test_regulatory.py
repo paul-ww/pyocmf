@@ -116,7 +116,7 @@ class TestEichrechtTransactionValidation:
 
     def create_valid_begin_payload(self) -> Payload:
         """Create a valid transaction begin payload."""
-        return Payload.model_construct(
+        return Payload(
             FV="1.0",
             GI="TEST_GW",
             GS="12345",
@@ -141,7 +141,7 @@ class TestEichrechtTransactionValidation:
 
     def create_valid_end_payload(self) -> Payload:
         """Create a valid transaction end payload."""
-        return Payload.model_construct(
+        return Payload(
             FV="1.0",
             GI="TEST_GW",
             GS="12345",  # Same serial as begin

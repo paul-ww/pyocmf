@@ -27,7 +27,7 @@ class TestVerifyEichrecht:
 
     def create_compliant_ocmf(self) -> OCMF:
         """Create a compliant OCMF record."""
-        payload = Payload.model_construct(
+        payload = Payload(
             FV="1.0",
             GI="TEST_GW",
             GS="12345",
@@ -145,7 +145,7 @@ class TestVerifyMethod:
     def test_verify_with_transaction_pair(self, transparency_xml_dir: pathlib.Path) -> None:
         """verify() should validate transaction pairs when other is provided."""
         # Create a simple transaction pair programmatically
-        begin_payload = Payload.model_construct(
+        begin_payload = Payload(
             FV="1.0",
             GI="TEST",
             GS="123",
@@ -164,7 +164,7 @@ class TestVerifyMethod:
             IS=False,
             IL=UserAssignmentStatus.NO_ASSIGNMENT,
         )
-        end_payload = Payload.model_construct(
+        end_payload = Payload(
             FV="1.0",
             GI="TEST",
             GS="123",
@@ -197,7 +197,7 @@ class TestVerifyEichrechtMultipleReadings:
 
     def test_multiple_readings_validated(self) -> None:
         """All readings in a payload should be validated."""
-        payload = Payload.model_construct(
+        payload = Payload(
             FV="1.0",
             GI="TEST_GW",
             GS="12345",

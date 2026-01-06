@@ -138,7 +138,7 @@ class TestIFFlagMixing:
 
     def test_rfid_flags_only_allowed(self) -> None:
         """Multiple RFID flags from same table should be allowed."""
-        payload = Payload.model_construct(
+        payload = Payload(
             PG="T1",
             IS=True,
             IF=[
@@ -154,7 +154,7 @@ class TestIFFlagMixing:
 
     def test_ocpp_flags_only_allowed(self) -> None:
         """Multiple OCPP flags from same table should be allowed."""
-        payload = Payload.model_construct(
+        payload = Payload(
             PG="T1",
             IS=True,
             IF=[
@@ -202,7 +202,7 @@ class TestIFFlagMixing:
 
     def test_can_mix_all_none_flags(self) -> None:
         """All _NONE flags can be mixed (indicates no auth via those methods)."""
-        payload = Payload.model_construct(
+        payload = Payload(
             PG="T1",
             IS=False,
             IF=[
@@ -274,7 +274,7 @@ class TestTXSequence:
 
     def test_valid_sequence_begin_to_end(self) -> None:
         """Valid sequence: B → E."""
-        payload = Payload.model_construct(
+        payload = Payload(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,
@@ -302,7 +302,7 @@ class TestTXSequence:
 
     def test_valid_sequence_begin_charging_end(self) -> None:
         """Valid sequence: B → C → E."""
-        payload = Payload.model_construct(
+        payload = Payload(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,
@@ -443,7 +443,7 @@ class TestPaginationPattern:
     def test_valid_transaction_pagination(self) -> None:
         """Valid transaction pagination: T1, T12, T999."""
         for pg in ["T1", "T12", "T999", "T1234567"]:
-            payload = Payload.model_construct(
+            payload = Payload(
                 PG=pg,
                 IS=False,
                 IT=IdentificationType.NONE,
@@ -455,7 +455,7 @@ class TestPaginationPattern:
     def test_valid_fiscal_pagination(self) -> None:
         """Valid fiscal pagination: F1, F42, F999."""
         for pg in ["F1", "F42", "F999", "F7654321"]:
-            payload = Payload.model_construct(
+            payload = Payload(
                 PG=pg,
                 IS=False,
                 IT=IdentificationType.NONE,
@@ -503,7 +503,7 @@ class TestIDValidation:
 
     def test_id_none_when_it_none(self) -> None:
         """ID must be None when IT=NONE."""
-        payload = Payload.model_construct(
+        payload = Payload(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,
@@ -515,7 +515,7 @@ class TestIDValidation:
 
     def test_id_empty_string_when_it_none(self) -> None:
         """ID can be empty string when IT=NONE (backward compatibility)."""
-        payload = Payload.model_construct(
+        payload = Payload(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,
@@ -527,7 +527,7 @@ class TestIDValidation:
 
     def test_id_none_when_it_denied(self) -> None:
         """ID must be None/empty when IT=DENIED."""
-        payload = Payload.model_construct(
+        payload = Payload(
             PG="T1",
             IS=False,
             IT=IdentificationType.DENIED,
@@ -539,7 +539,7 @@ class TestIDValidation:
 
     def test_id_none_when_it_undefined(self) -> None:
         """ID must be None/empty when IT=UNDEFINED."""
-        payload = Payload.model_construct(
+        payload = Payload(
             PG="T1",
             IS=False,
             IT=IdentificationType.UNDEFINED,
@@ -580,7 +580,7 @@ class TestTTMaxLength:
     def test_tt_within_250_chars_valid(self) -> None:
         """TT with 250 characters should be valid."""
         tt_250 = "A" * 250
-        payload = Payload.model_construct(
+        payload = Payload(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,
@@ -606,7 +606,7 @@ class TestTTMaxLength:
 
     def test_tt_none_allowed(self) -> None:
         """TT can be None (optional field)."""
-        payload = Payload.model_construct(
+        payload = Payload(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,

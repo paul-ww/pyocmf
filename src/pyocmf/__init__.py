@@ -19,6 +19,7 @@ from pyocmf.exceptions import (
     XmlParsingError,
 )
 from pyocmf.ocmf import OCMF
+from pyocmf.types.obis import OBIS
 from pyocmf.utils.xml import OcmfContainer, OcmfRecord
 
 __all__ = [
@@ -26,6 +27,7 @@ __all__ = [
     "__version__",
     # Core
     "OCMF",
+    "OBIS",
     # XML utilities
     "OcmfContainer",
     "OcmfRecord",
@@ -50,4 +52,5 @@ __all__ = [
     "SignatureVerificationError",
     "PublicKeyError",
     "OcmfRecord",
+    "OBIS",
 ]

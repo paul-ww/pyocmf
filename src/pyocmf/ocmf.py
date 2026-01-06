@@ -142,3 +142,88 @@ class OCMF(pydantic.BaseModel):
             signature_encoding=self.signature.SE,
             public_key_hex=public_key.key if isinstance(public_key, PublicKey) else public_key,
         )
+
+    def verify_eichrecht(self, other: OCMF | None = None) -> list[str]:
+        """Check German calibration law (Eichrecht) compliance.
+
+        This checks that the OCMF data complies with German Eichrecht requirements
+        (MID 2014/32/EU and PTB requirements) for billing-relevant meter readings.
+
+        Args:
+            other: Optional paired transaction OCMF record. If provided, checks
+                that this record and the other form a valid transaction pair
+                (e.g., begin + end). If None, checks only this single record.
+
+        Returns:
+            List of compliance issue descriptions (empty if fully compliant)
+
+        Examples:
+            >>> # Check single reading
+            >>> ocmf = OCMF.from_string("OCMF|{...}|...")
+            >>> issues = ocmf.verify_eichrecht()
+            >>> if issues:
+            ...     print("Compliance issues:", issues)
+
+            >>> # Check transaction pair
+            >>> begin = OCMF.from_string("OCMF|{...TX:B...}|...")
+            >>> end = OCMF.from_string("OCMF|{...TX:E...}|...")
+            >>> issues = begin.verify_eichrecht(end)
+        """
+        from pyocmf import compliance
+
+        if other is None:
+            # Check single record
+            if not self.payload.RD:
+                return ["No readings (RD) present in payload"]
+
+            issues = []
+            for i, reading in enumerate(self.payload.RD):
+                reading_issues = compliance.check_eichrecht_reading(
+                    reading, is_begin=(i == 0 and reading.TX.value == "B")
+                )
+                issues.extend([str(issue) for issue in reading_issues])
+            return issues
+        else:
+            # Check transaction pair
+            issues = compliance.check_eichrecht_transaction(self.payload, other.payload)
+            return [str(issue) for issue in issues]
+
+    def verify(
+        self,
+        public_key: PublicKey | str,
+        other: OCMF | None = None,
+        eichrecht: bool = True,
+    ) -> tuple[bool, list[str]]:
+        """Verify both cryptographic signature and legal compliance.
+
+        This is a convenience method that combines signature verification and
+        Eichrecht compliance checking in a single call.
+
+        Args:
+            public_key: Public key for signature verification (hex-encoded if string)
+            other: Optional paired transaction OCMF record for transaction compliance checking
+            eichrecht: Whether to perform Eichrecht compliance checking (default: True)
+
+        Returns:
+            Tuple of (signature_valid, compliance_issues)
+            - signature_valid: True if cryptographic signature is valid
+            - compliance_issues: List of Eichrecht compliance issue descriptions
+              (empty if fully compliant or eichrecht=False)
+
+        Raises:
+            SignatureVerificationError: If signature verification cannot be performed
+
+        Examples:
+            >>> # Verify complete transaction
+            >>> begin = OCMF.from_string("OCMF|{...TX:B...}|...")
+            >>> end = OCMF.from_string("OCMF|{...TX:E...}|...")
+            >>> sig_valid, issues = begin.verify(public_key, end)
+            >>> if sig_valid and not issues:
+            ...     print("Transaction is valid and compliant!")
+
+            >>> # Verify signature only
+            >>> sig_valid, _ = ocmf.verify(public_key, eichrecht=False)
+        """
+        signature_valid = self.verify_signature(public_key)
+        compliance_issues = self.verify_eichrecht(other) if eichrecht else []
+        return signature_valid, compliance_issues

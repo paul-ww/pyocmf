@@ -91,6 +91,13 @@ class Payload(pydantic.BaseModel):
         if not readings_data:
             return data
 
+        # Check if readings are already Reading objects (skip inheritance)
+        from pyocmf.sections.reading import Reading
+
+        if readings_data and isinstance(readings_data[0], Reading):
+            # Already Reading objects, skip inheritance
+            return data
+
         inheritable_fields = ["TM", "TX", "RI", "RU", "RT", "EF", "ST"]
         last_values: dict[str, str] = {}
         processed_readings = []

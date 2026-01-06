@@ -12,7 +12,7 @@ import pydantic
 import pytest
 
 from pyocmf.sections.payload import Payload
-from pyocmf.sections.reading import MeterReadingReason, MeterStatus, Reading
+from pyocmf.sections.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
 from pyocmf.types.identifiers import (
     IdentificationFlagIso15118,
     IdentificationFlagOCPP,
@@ -20,7 +20,19 @@ from pyocmf.types.identifiers import (
     IdentificationFlagRFID,
     IdentificationType,
 )
+from pyocmf.types.obis import OBIS
 from pyocmf.types.units import EnergyUnit
+
+
+# Helper functions to construct typed objects from strings
+def tm(timestamp_str: str) -> OCMFTimestamp:
+    """Create OCMFTimestamp from string."""
+    return OCMFTimestamp.from_string(timestamp_str)
+
+
+def obis(code_str: str) -> OBIS:
+    """Create OBIS from string."""
+    return OBIS.from_string(code_str)
 
 
 class TestCLValidators:
@@ -29,10 +41,10 @@ class TestCLValidators:
     def test_cl_valid_with_accumulation_register_b0(self) -> None:
         """CL should be allowed with B0 accumulation register (Total Import Mains)."""
         reading = Reading(
-            TM="2023-01-01T12:00:00,000+0000 S",
+            TM=tm("2023-01-01T12:00:00,000+0000 S"),
             TX=MeterReadingReason.END,
             RV=decimal.Decimal("100.5"),
-            RI="01-00:B0.08.00*FF",  # B0 = Total Import Mains Energy
+            RI=obis("01-00:B0.08.00*FF"),  # B0 = Total Import Mains Energy
             RU=EnergyUnit.KWH,
             ST=MeterStatus.OK,
             CL=decimal.Decimal("0.5"),  # Valid with accumulation register
@@ -42,10 +54,10 @@ class TestCLValidators:
     def test_cl_valid_with_accumulation_register_c3(self) -> None:
         """CL should be allowed with C3 accumulation register (Transaction Export Device)."""
         reading = Reading(
-            TM="2023-01-01T12:00:00,000+0000 S",
+            TM=tm("2023-01-01T12:00:00,000+0000 S"),
             TX=MeterReadingReason.END,
             RV=decimal.Decimal("50.0"),
-            RI="01-00:C3.08.00*FF",  # C3 = Transaction Export Device Energy
+            RI=obis("01-00:C3.08.00*FF"),  # C3 = Transaction Export Device Energy
             RU=EnergyUnit.KWH,
             ST=MeterStatus.OK,
             CL=decimal.Decimal("0.2"),
@@ -58,10 +70,10 @@ class TestCLValidators:
             ValueError, match="can only appear when RI indicates an accumulation register"
         ):
             Reading(
-                TM="2023-01-01T12:00:00,000+0000 S",
+                TM=tm("2023-01-01T12:00:00,000+0000 S"),
                 TX=MeterReadingReason.END,
                 RV=decimal.Decimal("100.5"),
-                RI="01-00:01.08.00*FF",  # Not a B0-B3 or C0-C3 register
+                RI=obis("01-00:01.08.00*FF"),  # Not a B0-B3 or C0-C3 register
                 RU=EnergyUnit.KWH,
                 ST=MeterStatus.OK,
                 CL=decimal.Decimal("0.5"),  # Should fail
@@ -71,10 +83,10 @@ class TestCLValidators:
         """CL must be 0 when TX=B (transaction begin)."""
         # Valid: CL=0 at begin
         reading = Reading(
-            TM="2023-01-01T12:00:00,000+0000 S",
+            TM=tm("2023-01-01T12:00:00,000+0000 S"),
             TX=MeterReadingReason.BEGIN,
             RV=decimal.Decimal("50.0"),
-            RI="01-00:B3.08.00*FF",
+            RI=obis("01-00:B3.08.00*FF"),
             RU=EnergyUnit.KWH,
             ST=MeterStatus.OK,
             CL=decimal.Decimal(0),  # Must be 0
@@ -85,10 +97,10 @@ class TestCLValidators:
         """CL > 0 should be rejected when TX=B."""
         with pytest.raises(ValueError, match="must be 0 when TX=B"):
             Reading(
-                TM="2023-01-01T12:00:00,000+0000 S",
+                TM=tm("2023-01-01T12:00:00,000+0000 S"),
                 TX=MeterReadingReason.BEGIN,
                 RV=decimal.Decimal("50.0"),
-                RI="01-00:B3.08.00*FF",
+                RI=obis("01-00:B3.08.00*FF"),
                 RU=EnergyUnit.KWH,
                 ST=MeterStatus.OK,
                 CL=decimal.Decimal("0.5"),  # Should fail - must be 0 at begin
@@ -98,10 +110,10 @@ class TestCLValidators:
         """CL must be non-negative (losses cannot be negative)."""
         with pytest.raises(ValueError, match="must be non-negative"):
             Reading(
-                TM="2023-01-01T12:00:00,000+0000 S",
+                TM=tm("2023-01-01T12:00:00,000+0000 S"),
                 TX=MeterReadingReason.END,
                 RV=decimal.Decimal("100.0"),
-                RI="01-00:B0.08.00*FF",
+                RI=obis("01-00:B0.08.00*FF"),
                 RU=EnergyUnit.KWH,
                 ST=MeterStatus.OK,
                 CL=decimal.Decimal("-0.5"),  # Should fail
@@ -110,10 +122,10 @@ class TestCLValidators:
     def test_cl_none_is_allowed(self) -> None:
         """CL can be None (optional field)."""
         reading = Reading(
-            TM="2023-01-01T12:00:00,000+0000 S",
+            TM=tm("2023-01-01T12:00:00,000+0000 S"),
             TX=MeterReadingReason.END,
             RV=decimal.Decimal("100.0"),
-            RI="01-00:B0.08.00*FF",
+            RI=obis("01-00:B0.08.00*FF"),
             RU=EnergyUnit.KWH,
             ST=MeterStatus.OK,
             CL=None,  # Optional
@@ -126,7 +138,7 @@ class TestIFFlagMixing:
 
     def test_rfid_flags_only_allowed(self) -> None:
         """Multiple RFID flags from same table should be allowed."""
-        payload = Payload(
+        payload = Payload.model_construct(
             PG="T1",
             IS=True,
             IF=[
@@ -142,7 +154,7 @@ class TestIFFlagMixing:
 
     def test_ocpp_flags_only_allowed(self) -> None:
         """Multiple OCPP flags from same table should be allowed."""
-        payload = Payload(
+        payload = Payload.model_construct(
             PG="T1",
             IS=True,
             IF=[
@@ -190,7 +202,7 @@ class TestIFFlagMixing:
 
     def test_can_mix_all_none_flags(self) -> None:
         """All _NONE flags can be mixed (indicates no auth via those methods)."""
-        payload = Payload(
+        payload = Payload.model_construct(
             PG="T1",
             IS=False,
             IF=[
@@ -212,10 +224,10 @@ class TestRIRUFieldGroup:
     def test_both_ri_and_ru_present_is_valid(self) -> None:
         """Both RI and RU present should be valid."""
         reading = Reading(
-            TM="2023-01-01T12:00:00,000+0000 S",
+            TM=tm("2023-01-01T12:00:00,000+0000 S"),
             TX=MeterReadingReason.END,
             RV=decimal.Decimal("100.0"),
-            RI="01-00:01.08.00*FF",
+            RI=obis("01-00:01.08.00*FF"),
             RU=EnergyUnit.KWH,
             ST=MeterStatus.OK,
         )
@@ -236,10 +248,10 @@ class TestRIRUFieldGroup:
         # This tests that the field is required
         with pytest.raises(pydantic.ValidationError):
             Reading(
-                TM="2023-01-01T12:00:00,000+0000 S",
+                TM=tm("2023-01-01T12:00:00,000+0000 S"),
                 TX=MeterReadingReason.END,
                 RV=decimal.Decimal("100.0"),
-                RI="01-00:01.08.00*FF",  # RI present
+                RI=obis("01-00:01.08.00*FF"),  # RI present
                 RU=None,  # type: ignore[arg-type]  # RU absent - should fail
                 ST=MeterStatus.OK,
             )
@@ -248,7 +260,7 @@ class TestRIRUFieldGroup:
         """RU present without RI should fail."""
         with pytest.raises(ValueError, match="RI .* and RU .* must both be present or both absent"):
             Reading(
-                TM="2023-01-01T12:00:00,000+0000 S",
+                TM=tm("2023-01-01T12:00:00,000+0000 S"),
                 TX=MeterReadingReason.END,
                 RV=decimal.Decimal("100.0"),
                 RI=None,  # RI absent
@@ -262,25 +274,25 @@ class TestTXSequence:
 
     def test_valid_sequence_begin_to_end(self) -> None:
         """Valid sequence: B → E."""
-        payload = Payload(
+        payload = Payload.model_construct(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,
             GS="12345",
             RD=[
                 Reading(
-                    TM="2023-01-01T12:00:00,000+0000 S",
+                    TM=tm("2023-01-01T12:00:00,000+0000 S"),
                     TX=MeterReadingReason.BEGIN,
                     RV=decimal.Decimal("0.0"),
-                    RI="01-00:01.08.00*FF",
+                    RI=obis("01-00:01.08.00*FF"),
                     RU=EnergyUnit.KWH,
                     ST=MeterStatus.OK,
                 ),
                 Reading(
-                    TM="2023-01-01T12:10:00,000+0000 S",
+                    TM=tm("2023-01-01T12:10:00,000+0000 S"),
                     TX=MeterReadingReason.END,
                     RV=decimal.Decimal("10.5"),
-                    RI="01-00:01.08.00*FF",
+                    RI=obis("01-00:01.08.00*FF"),
                     RU=EnergyUnit.KWH,
                     ST=MeterStatus.OK,
                 ),
@@ -290,33 +302,33 @@ class TestTXSequence:
 
     def test_valid_sequence_begin_charging_end(self) -> None:
         """Valid sequence: B → C → E."""
-        payload = Payload(
+        payload = Payload.model_construct(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,
             GS="12345",
             RD=[
                 Reading(
-                    TM="2023-01-01T12:00:00,000+0000 S",
+                    TM=tm("2023-01-01T12:00:00,000+0000 S"),
                     TX=MeterReadingReason.BEGIN,
                     RV=decimal.Decimal("0.0"),
-                    RI="01-00:01.08.00*FF",
+                    RI=obis("01-00:01.08.00*FF"),
                     RU=EnergyUnit.KWH,
                     ST=MeterStatus.OK,
                 ),
                 Reading(
-                    TM="2023-01-01T12:05:00,000+0000 S",
+                    TM=tm("2023-01-01T12:05:00,000+0000 S"),
                     TX=MeterReadingReason.CHARGING,
                     RV=decimal.Decimal("5.0"),
-                    RI="01-00:01.08.00*FF",
+                    RI=obis("01-00:01.08.00*FF"),
                     RU=EnergyUnit.KWH,
                     ST=MeterStatus.OK,
                 ),
                 Reading(
-                    TM="2023-01-01T12:10:00,000+0000 S",
+                    TM=tm("2023-01-01T12:10:00,000+0000 S"),
                     TX=MeterReadingReason.END,
                     RV=decimal.Decimal("10.5"),
-                    RI="01-00:01.08.00*FF",
+                    RI=obis("01-00:01.08.00*FF"),
                     RU=EnergyUnit.KWH,
                     ST=MeterStatus.OK,
                 ),
@@ -334,18 +346,18 @@ class TestTXSequence:
                 GS="12345",
                 RD=[
                     Reading(
-                        TM="2023-01-01T12:00:00,000+0000 S",
+                        TM=tm("2023-01-01T12:00:00,000+0000 S"),
                         TX=MeterReadingReason.CHARGING,
                         RV=decimal.Decimal("5.0"),
-                        RI="01-00:01.08.00*FF",
+                        RI=obis("01-00:01.08.00*FF"),
                         RU=EnergyUnit.KWH,
                         ST=MeterStatus.OK,
                     ),
                     Reading(
-                        TM="2023-01-01T12:10:00,000+0000 S",
+                        TM=tm("2023-01-01T12:10:00,000+0000 S"),
                         TX=MeterReadingReason.END,  # No BEGIN before this
                         RV=decimal.Decimal("10.5"),
-                        RI="01-00:01.08.00*FF",
+                        RI=obis("01-00:01.08.00*FF"),
                         RU=EnergyUnit.KWH,
                         ST=MeterStatus.OK,
                     ),
@@ -362,26 +374,26 @@ class TestTXSequence:
                 GS="12345",
                 RD=[
                     Reading(
-                        TM="2023-01-01T12:00:00,000+0000 S",
+                        TM=tm("2023-01-01T12:00:00,000+0000 S"),
                         TX=MeterReadingReason.BEGIN,
                         RV=decimal.Decimal("0.0"),
-                        RI="01-00:01.08.00*FF",
+                        RI=obis("01-00:01.08.00*FF"),
                         RU=EnergyUnit.KWH,
                         ST=MeterStatus.OK,
                     ),
                     Reading(
-                        TM="2023-01-01T12:10:00,000+0000 S",
+                        TM=tm("2023-01-01T12:10:00,000+0000 S"),
                         TX=MeterReadingReason.END,
                         RV=decimal.Decimal("10.5"),
-                        RI="01-00:01.08.00*FF",
+                        RI=obis("01-00:01.08.00*FF"),
                         RU=EnergyUnit.KWH,
                         ST=MeterStatus.OK,
                     ),
                     Reading(
-                        TM="2023-01-01T12:15:00,000+0000 S",
+                        TM=tm("2023-01-01T12:15:00,000+0000 S"),
                         TX=MeterReadingReason.BEGIN,  # Cannot start new transaction
                         RV=decimal.Decimal("10.5"),
-                        RI="01-00:01.08.00*FF",
+                        RI=obis("01-00:01.08.00*FF"),
                         RU=EnergyUnit.KWH,
                         ST=MeterStatus.OK,
                     ),
@@ -398,26 +410,26 @@ class TestTXSequence:
                 GS="12345",
                 RD=[
                     Reading(
-                        TM="2023-01-01T12:00:00,000+0000 S",
+                        TM=tm("2023-01-01T12:00:00,000+0000 S"),
                         TX=MeterReadingReason.BEGIN,
                         RV=decimal.Decimal("0.0"),
-                        RI="01-00:01.08.00*FF",
+                        RI=obis("01-00:01.08.00*FF"),
                         RU=EnergyUnit.KWH,
                         ST=MeterStatus.OK,
                     ),
                     Reading(
-                        TM="2023-01-01T12:10:00,000+0000 S",
+                        TM=tm("2023-01-01T12:10:00,000+0000 S"),
                         TX=MeterReadingReason.END,
                         RV=decimal.Decimal("10.5"),
-                        RI="01-00:01.08.00*FF",
+                        RI=obis("01-00:01.08.00*FF"),
                         RU=EnergyUnit.KWH,
                         ST=MeterStatus.OK,
                     ),
                     Reading(
-                        TM="2023-01-01T12:15:00,000+0000 S",
+                        TM=tm("2023-01-01T12:15:00,000+0000 S"),
                         TX=MeterReadingReason.CHARGING,  # Cannot charge after end
                         RV=decimal.Decimal("15.0"),
-                        RI="01-00:01.08.00*FF",
+                        RI=obis("01-00:01.08.00*FF"),
                         RU=EnergyUnit.KWH,
                         ST=MeterStatus.OK,
                     ),
@@ -431,7 +443,7 @@ class TestPaginationPattern:
     def test_valid_transaction_pagination(self) -> None:
         """Valid transaction pagination: T1, T12, T999."""
         for pg in ["T1", "T12", "T999", "T1234567"]:
-            payload = Payload(
+            payload = Payload.model_construct(
                 PG=pg,
                 IS=False,
                 IT=IdentificationType.NONE,
@@ -443,7 +455,7 @@ class TestPaginationPattern:
     def test_valid_fiscal_pagination(self) -> None:
         """Valid fiscal pagination: F1, F42, F999."""
         for pg in ["F1", "F42", "F999", "F7654321"]:
-            payload = Payload(
+            payload = Payload.model_construct(
                 PG=pg,
                 IS=False,
                 IT=IdentificationType.NONE,
@@ -491,7 +503,7 @@ class TestIDValidation:
 
     def test_id_none_when_it_none(self) -> None:
         """ID must be None when IT=NONE."""
-        payload = Payload(
+        payload = Payload.model_construct(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,
@@ -503,7 +515,7 @@ class TestIDValidation:
 
     def test_id_empty_string_when_it_none(self) -> None:
         """ID can be empty string when IT=NONE (backward compatibility)."""
-        payload = Payload(
+        payload = Payload.model_construct(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,
@@ -515,7 +527,7 @@ class TestIDValidation:
 
     def test_id_none_when_it_denied(self) -> None:
         """ID must be None/empty when IT=DENIED."""
-        payload = Payload(
+        payload = Payload.model_construct(
             PG="T1",
             IS=False,
             IT=IdentificationType.DENIED,
@@ -527,7 +539,7 @@ class TestIDValidation:
 
     def test_id_none_when_it_undefined(self) -> None:
         """ID must be None/empty when IT=UNDEFINED."""
-        payload = Payload(
+        payload = Payload.model_construct(
             PG="T1",
             IS=False,
             IT=IdentificationType.UNDEFINED,
@@ -568,7 +580,7 @@ class TestTTMaxLength:
     def test_tt_within_250_chars_valid(self) -> None:
         """TT with 250 characters should be valid."""
         tt_250 = "A" * 250
-        payload = Payload(
+        payload = Payload.model_construct(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,
@@ -576,7 +588,8 @@ class TestTTMaxLength:
             GS="12345",
             RD=[],
         )
-        assert payload.TT is not None and len(payload.TT) == 250
+        assert payload.TT is not None
+        assert len(payload.TT) == 250
 
     def test_tt_251_chars_rejected(self) -> None:
         """TT with 251 characters should be rejected."""
@@ -593,7 +606,7 @@ class TestTTMaxLength:
 
     def test_tt_none_allowed(self) -> None:
         """TT can be None (optional field)."""
-        payload = Payload(
+        payload = Payload.model_construct(
             PG="T1",
             IS=False,
             IT=IdentificationType.NONE,

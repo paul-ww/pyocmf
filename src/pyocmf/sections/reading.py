@@ -4,14 +4,19 @@ This module defines the various enums and models used for representing
 meter readings in OCMF format, including reading types, statuses, and values.
 """
 
+from __future__ import annotations
+
 import decimal
 import enum
 import re
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Annotated
 
 import pydantic
 from pydantic.types import StringConstraints
 
+from pyocmf.types.obis import OBIS, OBISCode
 from pyocmf.types.units import OCMFUnit
 
 
@@ -35,6 +40,16 @@ class MeterReadingReason(enum.StrEnum):
     TERMINATION_POWER_FAILURE = "P"
     SUSPENDED = "S"
     TARIFF_CHANGE = "T"
+
+    def is_end_reading(self) -> bool:
+        """Check if the reading reason indicates the end of a transaction."""
+        return self in {
+            MeterReadingReason.END,
+            MeterReadingReason.TERMINATION_LOCAL,
+            MeterReadingReason.TERMINATION_REMOTE,
+            MeterReadingReason.TERMINATION_ABORT,
+            MeterReadingReason.TERMINATION_POWER_FAILURE,
+        }
 
 
 class MeterStatus(enum.StrEnum):
@@ -70,9 +85,92 @@ OCMFTimeFormat = Annotated[
     StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2},\d{3}[+-]\d{4} [UISR]$"),
 ]
 
+
+@dataclass(frozen=True)
+class OCMFTimestamp:
+    """Structured representation of an OCMF timestamp.
+
+    Combines a timezone-aware datetime with a time synchronization status.
+    Automatically serializes to/from OCMF string format.
+    """
+
+    timestamp: datetime
+    status: TimeStatus
+
+    def __str__(self) -> str:
+        """Serialize to OCMF timestamp format."""
+        return serialize_ocmf_timestamp(self.timestamp, self.status)
+
+    @classmethod
+    def from_string(cls, timestamp_str: str) -> OCMFTimestamp:
+        """Parse from OCMF timestamp string."""
+        dt, status = parse_ocmf_timestamp(timestamp_str)
+        return cls(timestamp=dt, status=status)
+
+
 # Error flags: Empty string or combination of 'E' (error) and 't' (test/tariff change)
 # (e.g., "", "E", "t", "Et")
 ErrorFlags = Annotated[str, StringConstraints(pattern=r"^[Et]*$")]
+
+
+def parse_ocmf_timestamp(timestamp_str: str) -> tuple[datetime, TimeStatus]:
+    """Parse an OCMF timestamp string to a datetime object and status.
+
+    OCMF timestamps have the format: "2023-06-15T14:30:45,123+0200 S"
+    Where the last character is the time status flag (S/U/I/R).
+
+    Args:
+        timestamp_str: OCMF timestamp string
+
+    Returns:
+        Tuple of (parsed datetime object, time status)
+
+    Raises:
+        ValueError: If the timestamp cannot be parsed
+    """
+    # Extract the status flag at the end (e.g., " S")
+    if " " in timestamp_str:
+        ts_part, status_part = timestamp_str.rsplit(" ", 1)
+        status = TimeStatus(status_part)
+    else:
+        ts_part = timestamp_str
+        status = TimeStatus.UNKNOWN_OR_UNSYNCHRONIZED
+
+    # Replace comma with period for milliseconds (OCMF uses comma, ISO uses period)
+    ts_normalized = ts_part.replace(",", ".")
+
+    # Parse as ISO 8601
+    dt = datetime.fromisoformat(ts_normalized)
+
+    return dt, status
+
+
+def serialize_ocmf_timestamp(dt: datetime, status: TimeStatus = TimeStatus.SYNCHRONIZED) -> str:
+    """Serialize a datetime object to OCMF timestamp format.
+
+    Args:
+        dt: Datetime object (must be timezone-aware)
+        status: Time synchronization status
+
+    Returns:
+        OCMF-formatted timestamp string
+
+    Raises:
+        ValueError: If datetime is not timezone-aware
+    """
+    if dt.tzinfo is None:
+        error_message = "Datetime must be timezone-aware for OCMF format"
+        raise ValueError(error_message)
+
+    # Format as ISO 8601 with timezone
+    iso_str = dt.isoformat(timespec="milliseconds")
+
+    # Replace period with comma for milliseconds (OCMF requirement)
+    ocmf_str = iso_str.replace(".", ",")
+
+    # Add status flag
+    return f"{ocmf_str} {status.value}"
+
 
 # OBIS code formats: Accept either strict OCMF format or flexible IEC 62056 format
 # Strict OCMF format per spec Figure 1: 6 zero-padded hex byte pairs with asterisk
@@ -148,13 +246,13 @@ class Reading(pydantic.BaseModel):
     the meter value, timestamp, status, and other relevant information.
     """
 
-    TM: OCMFTimeFormat = pydantic.Field(description="Time (ISO 8601 + time status) - REQUIRED")
+    TM: OCMFTimestamp = pydantic.Field(description="Time (ISO 8601 + time status) - REQUIRED")
     TX: MeterReadingReason | None = pydantic.Field(default=None, description="Transaction")
     RV: decimal.Decimal | None = pydantic.Field(
         default=None,
         description="Reading Value - Conditional (required when RI present)",
     )
-    RI: ObisCode | None = pydantic.Field(
+    RI: OBISCode | None = pydantic.Field(
         default=None, description="Reading Identification (OBIS code) - Conditional"
     )
     RU: OCMFUnit = pydantic.Field(description="Reading Unit - REQUIRED")
@@ -164,6 +262,22 @@ class Reading(pydantic.BaseModel):
         default=None, description="Error Flags (can contain 'E', 't', or both)"
     )
     ST: MeterStatus = pydantic.Field(description="Status - REQUIRED")
+
+    @pydantic.field_validator("TM", mode="before")
+    @classmethod
+    def parse_timestamp(cls, v: str | OCMFTimestamp) -> OCMFTimestamp:
+        """Parse OCMF timestamp string to OCMFTimestamp object."""
+        if isinstance(v, OCMFTimestamp):
+            return v
+        if isinstance(v, str):
+            return OCMFTimestamp.from_string(v)
+        msg = f"TM must be a string or OCMFTimestamp, got {type(v)}"
+        raise TypeError(msg)
+
+    @pydantic.field_serializer("TM")
+    def serialize_timestamp(self, tm: OCMFTimestamp) -> str:
+        """Serialize OCMFTimestamp to OCMF string format."""
+        return str(tm)
 
     @pydantic.field_validator("EF", mode="before")
     @classmethod
@@ -185,7 +299,15 @@ class Reading(pydantic.BaseModel):
         """
         if v is not None:
             ri = info.data.get("RI")
-            if not ri or not is_accumulation_register(ri):
+            if not ri:
+                msg = "CL (Cumulated Loss) can only appear when RI indicates an accumulation register (B0-B3, C0-C3)"
+                raise ValueError(msg)
+            # RI is now an OBIS object, use its property
+            if isinstance(ri, OBIS) and not ri.is_accumulation_register:
+                msg = "CL (Cumulated Loss) can only appear when RI indicates an accumulation register (B0-B3, C0-C3)"
+                raise ValueError(msg)
+            # Fallback for string validation (shouldn't happen with OBISCode annotation)
+            if isinstance(ri, str) and not is_accumulation_register(ri):
                 msg = "CL (Cumulated Loss) can only appear when RI indicates an accumulation register (B0-B3, C0-C3)"
                 raise ValueError(msg)
         return v
@@ -220,7 +342,7 @@ class Reading(pydantic.BaseModel):
         return v
 
     @pydantic.model_validator(mode="after")
-    def validate_ri_ru_group(self) -> "Reading":
+    def validate_ri_ru_group(self) -> Reading:
         """RI and RU must both be present or both absent (field group constraint).
 
         Per OCMF spec Table 7: "The fields RI and RU form a group. Fields of a
@@ -234,3 +356,21 @@ class Reading(pydantic.BaseModel):
             raise ValueError(msg)
 
         return self
+
+    @property
+    def timestamp(self) -> datetime:
+        """Get the parsed datetime from TM field.
+
+        Returns:
+            Timezone-aware datetime object
+        """
+        return self.TM.timestamp
+
+    @property
+    def time_status(self) -> TimeStatus:
+        """Get the time synchronization status from TM field.
+
+        Returns:
+            Time status (SYNCHRONIZED, UNKNOWN_OR_UNSYNCHRONIZED, etc.)
+        """
+        return self.TM.status

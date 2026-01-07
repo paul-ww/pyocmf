@@ -4,11 +4,11 @@ import pathlib
 
 import pytest
 
-from pyocmf.exceptions import PyOCMFError
 from pyocmf.ocmf import OCMF
 from pyocmf.sections.payload import Payload
 from pyocmf.sections.signature import Signature
-from pyocmf.utils.xml import OcmfContainer
+
+from .helpers import parse_xml_with_expected_behavior, should_skip_xml_file
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
@@ -43,27 +43,15 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
     3. Re-parsing the serialized string produces identical models
     4. Invalid/non-OCMF files raise appropriate exceptions
     """
-    file_name_lower = xml_file.name.lower()
-    parent_dir = xml_file.parent.name
+    should_skip, skip_reason = should_skip_xml_file(xml_file)
+    if should_skip:
+        pytest.skip(skip_reason or "File should be skipped")
 
-    if "rsa" in file_name_lower:
-        pytest.skip("Skipping unsupported OCMF feature file")
-    return
+    container = parse_xml_with_expected_behavior(xml_file)
 
-    if (
-        any(keyword in file_name_lower for keyword in ["metra", "edl", "isa-edl"])
-        or parent_dir == "emh-emoc"
-        or "invalid" in file_name_lower
-        or "mennekes" in file_name_lower
-        or "wirelane" in file_name_lower
-        or "template" in file_name_lower
-        or "test_input_xml_two_values" in file_name_lower
-    ):
-        with pytest.raises(PyOCMFError):
-            OcmfContainer.from_xml(xml_file)
+    if container is None:
         return
 
-    container = OcmfContainer.from_xml(xml_file)
     assert len(container) > 0, f"Expected OCMF data in {xml_file.name}"
 
     for entry in container:
@@ -73,4 +61,8 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
         assert isinstance(ocmf_model.payload, Payload)
         assert isinstance(ocmf_model.signature, Signature)
 
-        assert ocmf_model == OCMF.from_string(ocmf_model.to_string(hex=True))
+        roundtrip_model = OCMF.from_string(ocmf_model.to_string(hex=True))
+
+        assert ocmf_model.header == roundtrip_model.header
+        assert ocmf_model.payload == roundtrip_model.payload
+        assert ocmf_model.signature == roundtrip_model.signature

@@ -7,71 +7,12 @@ Transparenzsoftware test suite to ensure compatibility and correctness.
 from __future__ import annotations
 
 import pathlib
-from typing import TYPE_CHECKING
 
 import pytest
 
 from pyocmf.compliance import IssueSeverity, check_eichrecht_transaction
-from pyocmf.utils.xml import OcmfContainer
 
-if TYPE_CHECKING:
-    from pyocmf.utils.xml import OcmfRecord
-
-
-@pytest.fixture
-def transparenzsoftware_xml_dir() -> pathlib.Path:
-    """Return the path to the Transparenzsoftware XML test resources."""
-    return (
-        pathlib.Path(__file__).parent.parent
-        / "resources"
-        / "transparenzsoftware"
-        / "src"
-        / "test"
-        / "resources"
-        / "xml"
-    )
-
-
-def get_transaction_pair(
-    xml_path: pathlib.Path,
-) -> tuple[OcmfRecord, OcmfRecord] | None:
-    """Extract begin and end transaction from an XML file.
-
-    Identifies transaction pairs by examining the TX (transaction) field
-    in the OCMF readings data.
-
-    Args:
-        xml_path: Path to the XML file
-
-    Returns:
-        Tuple of (begin_record, end_record) if both present, None otherwise
-    """
-    try:
-        container = OcmfContainer.from_xml(xml_path)
-    except (ValueError, FileNotFoundError):
-        return None
-
-    if len(container) < 2:
-        return None
-
-    begin_record: OcmfRecord | None = None
-    end_record: OcmfRecord | None = None
-
-    for record in container:
-        # Check if this record contains a begin reading (TX='B')
-        if record.ocmf.payload.RD:
-            for reading in record.ocmf.payload.RD:
-                if reading.TX and reading.TX.value == "B":
-                    begin_record = record
-                    break
-                if reading.TX and reading.TX.is_end_reading():
-                    end_record = record
-                    break
-
-    if begin_record and end_record:
-        return (begin_record, end_record)
-
-    return None
+from .helpers import get_transaction_pair
 
 
 @pytest.mark.parametrize(
@@ -92,7 +33,7 @@ def get_transaction_pair(
     ],
 )
 def test_eichrecht_compliance_from_transparenzsoftware(
-    transparenzsoftware_xml_dir: pathlib.Path,
+    transparency_xml_dir: pathlib.Path,
     xml_file: str,
     should_pass: bool,
     description: str,
@@ -103,12 +44,12 @@ def test_eichrecht_compliance_from_transparenzsoftware(
     expected results for the official Transparenzsoftware test suite.
 
     Args:
-        transparenzsoftware_xml_dir: Directory containing XML test files
+        transparency_xml_dir: Directory containing XML test files
         xml_file: Name of the XML file to test
         should_pass: Whether the transaction should pass Eichrecht validation
         description: Human-readable description of the test case
     """
-    xml_path = transparenzsoftware_xml_dir / xml_file
+    xml_path = transparency_xml_dir / xml_file
 
     if not xml_path.exists():
         pytest.skip(f"Test file not found: {xml_file}")
@@ -147,25 +88,25 @@ def test_eichrecht_compliance_from_transparenzsoftware(
 
 
 def test_transparenzsoftware_test_files_exist(
-    transparenzsoftware_xml_dir: pathlib.Path,
+    transparency_xml_dir: pathlib.Path,
 ) -> None:
     """Verify that the Transparenzsoftware test files are available.
 
     This test ensures the git submodule is properly initialized.
     """
-    assert transparenzsoftware_xml_dir.exists(), (
+    assert transparency_xml_dir.exists(), (
         "Transparenzsoftware XML directory not found. Did you run 'git submodule update --init --recursive'?"
     )
 
-    xml_files = list(transparenzsoftware_xml_dir.glob("*.xml"))
+    xml_files = list(transparency_xml_dir.glob("*.xml"))
     assert len(xml_files) > 0, "No XML test files found in Transparenzsoftware directory"
 
 
 def test_transaction_pair_extraction_valid(
-    transparenzsoftware_xml_dir: pathlib.Path,
+    transparency_xml_dir: pathlib.Path,
 ) -> None:
     """Test that we can correctly extract transaction pairs from valid files."""
-    xml_path = transparenzsoftware_xml_dir / "test_ocmf_ebee_01.xml"
+    xml_path = transparency_xml_dir / "test_ocmf_ebee_01.xml"
 
     if not xml_path.exists():
         pytest.skip("Test file not found")
@@ -181,10 +122,10 @@ def test_transaction_pair_extraction_valid(
 
 
 def test_transaction_pair_extraction_invalid(
-    transparenzsoftware_xml_dir: pathlib.Path,
+    transparency_xml_dir: pathlib.Path,
 ) -> None:
     """Test that extraction returns None for files without complete transactions."""
-    xml_path = transparenzsoftware_xml_dir / "test_ocmf_keba_kcp30.xml"
+    xml_path = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
     if not xml_path.exists():
         pytest.skip("Test file not found")

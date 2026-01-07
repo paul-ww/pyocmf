@@ -136,7 +136,9 @@ def _extract_public_key(element: ET.Element) -> PublicKey | None:
     pk = element.find("publicKey")
     if pk is not None and pk.text:
         try:
-            return PublicKey.from_string(pk.text.strip())
+            # Remove all whitespace from the public key string
+            key_str = "".join(pk.text.split())
+            return PublicKey.from_string(key_str)
         except (ImportError, ValueError):
             return None
     return None

@@ -1,96 +1,26 @@
-"""German Eichrecht (calibration law) compliance checking.
+"""Transaction-level validation for Eichrecht compliance.
 
-This module provides compliance checkers for ensuring OCMF data complies with
-German calibration law requirements (MID 2014/32/EU and PTB requirements).
+This module provides validation functions for complete charging transactions
+(begin/end pairs) according to German calibration law (Eichrecht) requirements.
 """
 
 from __future__ import annotations
 
-import enum
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pyocmf.ocmf import OCMF
+from pyocmf.compliance.models import EichrechtIssue, IssueCode, IssueSeverity
+from pyocmf.compliance.reading_validator import (
+    _get_billing_relevant_begin_reading,
+    _get_billing_relevant_end_reading,
+    check_eichrecht_reading,
+)
+from pyocmf.sections.reading import MeterReadingReason
+from pyocmf.types.identifiers import UserAssignmentStatus
 
 if TYPE_CHECKING:
+    from pyocmf.ocmf import OCMF
     from pyocmf.sections.payload import Payload
     from pyocmf.sections.reading import Reading
-
-from pyocmf.sections.reading import MeterReadingReason, MeterStatus
-
-
-class IssueSeverity(enum.StrEnum):
-    """Severity level of a compliance issue."""
-
-    ERROR = "error"
-    WARNING = "warning"
-
-
-class IssueCode(enum.StrEnum):
-    """Eichrecht compliance issue codes."""
-
-    # Reading-level issues
-    METER_STATUS = "METER_STATUS"
-    ERROR_FLAGS = "ERROR_FLAGS"
-    TIME_SYNC = "TIME_SYNC"
-    CL_BEGIN = "CL_BEGIN"
-    CL_NEGATIVE = "CL_NEGATIVE"
-
-    # Transaction-level issues
-    NO_READINGS = "NO_READINGS"
-    BEGIN_TX = "BEGIN_TX"
-    END_TX = "END_TX"
-    SERIAL_MISMATCH = "SERIAL_MISMATCH"
-    OBIS_MISMATCH = "OBIS_MISMATCH"
-    UNIT_MISMATCH = "UNIT_MISMATCH"
-    VALUE_REGRESSION = "VALUE_REGRESSION"
-    TIME_REGRESSION = "TIME_REGRESSION"
-    ID_MISMATCH = "ID_MISMATCH"
-
-
-@dataclass
-class EichrechtIssue:
-    """Represents a calibration law compliance issue."""
-
-    code: IssueCode
-    message: str
-    field: str | None = None
-    severity: IssueSeverity = IssueSeverity.ERROR
-
-    def __str__(self) -> str:
-        """String representation of the issue."""
-        prefix = f"[{self.field}] " if self.field else ""
-        return f"{prefix}{self.message} ({self.code})"
-
-
-def _get_billing_relevant_begin_reading(payload: Payload) -> Reading:
-    """Get the billing-relevant reading from a transaction begin payload.
-
-    Per Eichrecht requirements, the first reading (RD[0]) in a begin payload
-    is used for billing and compliance calculations.
-
-    Args:
-        payload: Transaction begin payload (must have RD)
-
-    Returns:
-        First reading from payload.RD
-    """
-    return payload.RD[0]
-
-
-def _get_billing_relevant_end_reading(payload: Payload) -> Reading:
-    """Get the billing-relevant reading from a transaction end payload.
-
-    Per Eichrecht requirements, the last reading (RD[-1]) in an end payload
-    is used for billing and compliance calculations.
-
-    Args:
-        payload: Transaction end payload (must have RD)
-
-    Returns:
-        Last reading from payload.RD
-    """
-    return payload.RD[-1]
 
 
 def _check_field_match(
@@ -126,75 +56,6 @@ def _check_field_match(
             field=field_name,
         )
     return None
-
-
-def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[EichrechtIssue]:
-    """Check a single reading for Eichrecht compliance.
-
-    Args:
-        reading: The reading to check
-        is_begin: Whether this is a transaction begin reading (affects CL checking)
-
-    Returns:
-        List of compliance issues (empty if compliant)
-    """
-    issues: list[EichrechtIssue] = []
-
-    # 1. Meter status must be OK ("G" = good)
-    if reading.ST != MeterStatus.OK:
-        issues.append(
-            EichrechtIssue(
-                code=IssueCode.METER_STATUS,
-                message=f"Meter status must be 'G' (OK) for billing-relevant readings, got '{reading.ST}'",
-                field="ST",
-            )
-        )
-
-    # 2. Error flags must be empty for billing
-    if reading.EF and reading.EF.strip():
-        issues.append(
-            EichrechtIssue(
-                code=IssueCode.ERROR_FLAGS,
-                message=f"Error flags must be empty for billing-relevant readings, got '{reading.EF}'",
-                field="EF",
-            )
-        )
-
-    # 3. Time synchronization check (informational)
-    from pyocmf.sections.reading import TimeStatus
-
-    if reading.time_status != TimeStatus.SYNCHRONIZED:
-        # S = synchronized time (required for legal certainty)
-        # U/I/R = unsynchronized/informative/relative (warnings only)
-        issues.append(
-            EichrechtIssue(
-                code=IssueCode.TIME_SYNC,
-                message=f"Time should be synchronized (status 'S') for billing, got '{reading.time_status.value}'",
-                field="TM",
-                severity=IssueSeverity.WARNING,
-            )
-        )
-
-    # 4. Cumulated loss (CL) compliance check
-    if reading.CL is not None:
-        if is_begin and reading.CL != 0:
-            issues.append(
-                EichrechtIssue(
-                    code=IssueCode.CL_BEGIN,
-                    message=f"Cumulated loss (CL) must be 0 at transaction begin, got {reading.CL}",
-                    field="CL",
-                )
-            )
-        if reading.CL < 0:
-            issues.append(
-                EichrechtIssue(
-                    code=IssueCode.CL_NEGATIVE,
-                    message=f"Cumulated loss (CL) must be non-negative, got {reading.CL}",
-                    field="CL",
-                )
-            )
-
-    return issues
 
 
 def _check_timestamp_ordering(
@@ -253,6 +114,39 @@ def _validate_transaction_types(
             )
         )
     return issues
+
+
+def _validate_identification_level(payload: Payload, context: str) -> EichrechtIssue | None:
+    """Validate that identification level is acceptable for billing.
+
+    Per Eichrecht requirements, certain identification levels indicate
+    errors or security issues and are not acceptable for legal billing.
+
+    Args:
+        payload: The payload to check
+        context: Context string for error message ("begin" or "end")
+
+    Returns:
+        EichrechtIssue if invalid, None if valid
+    """
+    if payload.IL is None:
+        return None
+
+    invalid_levels = {
+        UserAssignmentStatus.UID_MISMATCH,
+        UserAssignmentStatus.CERT_INCORRECT,
+        UserAssignmentStatus.CERT_EXPIRED,
+        UserAssignmentStatus.CERT_UNVERIFIED,
+    }
+
+    if payload.IL in invalid_levels:
+        return EichrechtIssue(
+            code=IssueCode.ID_LEVEL_INVALID,
+            message=f"Identification level '{payload.IL}' indicates error and is not acceptable for billing ({context})",
+            field="IL",
+        )
+
+    return None
 
 
 def _validate_field_consistency(
@@ -363,6 +257,12 @@ def check_eichrecht_transaction(
     # Cross-reading validations
     issues.extend(_validate_field_consistency(begin, end, begin_reading, end_reading))
     issues.extend(_validate_value_progression(begin_reading, end_reading))
+
+    # Identification level validation
+    if issue := _validate_identification_level(begin, "begin"):
+        issues.append(issue)
+    if issue := _validate_identification_level(end, "end"):
+        issues.append(issue)
 
     # Informational checks (warnings only)
     if issue := _check_field_match(

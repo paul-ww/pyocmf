@@ -1,4 +1,4 @@
-"""Tests for OCMF verify_eichrecht() and verify() methods."""
+"""Tests for OCMF check_eichrecht() and verify() methods."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import pathlib
 
 import pytest
 
+from pyocmf.compliance.models import IssueSeverity
 from pyocmf.ocmf import OCMF
 from pyocmf.sections.payload import Payload
 from pyocmf.sections.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
@@ -22,8 +23,8 @@ except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
 
 
-class TestVerifyEichrecht:
-    """Test OCMF.verify_eichrecht() method."""
+class TestCheckEichrecht:
+    """Test OCMF.check_eichrecht() method."""
 
     def create_compliant_ocmf(self) -> OCMF:
         """Create a compliant OCMF record."""
@@ -52,32 +53,32 @@ class TestVerifyEichrecht:
         signature = Signature(SD="deadbeef")
         return OCMF(header="OCMF", payload=payload, signature=signature)
 
-    def test_verify_eichrecht_single_compliant(self) -> None:
+    def test_check_eichrecht_single_compliant(self) -> None:
         """A compliant single record should pass Eichrecht validation."""
         ocmf = self.create_compliant_ocmf()
-        issues = ocmf.verify_eichrecht()
-        # May have warnings but no errors containing "must"
-        assert all("must" not in issue.lower() or "warning" in issue.lower() for issue in issues)
+        issues = ocmf.check_eichrecht()
+        errors = [issue for issue in issues if issue.severity == IssueSeverity.ERROR]
+        assert len(errors) == 0
 
-    def test_verify_eichrecht_single_non_compliant(self) -> None:
+    def test_check_eichrecht_single_non_compliant(self) -> None:
         """A non-compliant record should produce issues."""
         ocmf = self.create_compliant_ocmf()
         ocmf.payload.RD[0].ST = MeterStatus.TIMEOUT  # Bad status!
 
-        issues = ocmf.verify_eichrecht()
+        issues = ocmf.check_eichrecht()
         assert len(issues) > 0
-        assert any("must be 'G'" in issue for issue in issues)
+        assert any("must be 'G'" in issue.message for issue in issues)
 
-    def test_verify_eichrecht_no_readings(self) -> None:
+    def test_check_eichrecht_no_readings(self) -> None:
         """Validation should fail if no readings present."""
         ocmf = self.create_compliant_ocmf()
         ocmf.payload.RD = []
 
-        issues = ocmf.verify_eichrecht()
+        issues = ocmf.check_eichrecht()
         assert len(issues) > 0
-        assert any("No readings" in issue for issue in issues)
+        assert any("No readings" in issue.message for issue in issues)
 
-    def test_verify_eichrecht_transaction_pair(self) -> None:
+    def test_check_eichrecht_transaction_pair(self) -> None:
         """Validation should work for transaction pairs."""
         begin = self.create_compliant_ocmf()
 
@@ -87,12 +88,11 @@ class TestVerifyEichrecht:
         end.payload.RD[0].TX = MeterReadingReason.END
         end.payload.RD[0].RV = decimal.Decimal("100.0")
 
-        issues = begin.verify_eichrecht(end)
-        # Should pass (may have warnings but no critical errors)
-        errors = [i for i in issues if "must" in i.lower() and "warning" not in i.lower()]
+        issues = begin.check_eichrecht(end)
+        errors = [issue for issue in issues if issue.severity == IssueSeverity.ERROR]
         assert len(errors) == 0
 
-    def test_verify_eichrecht_transaction_pair_regression(self) -> None:
+    def test_check_eichrecht_transaction_pair_regression(self) -> None:
         """Transaction pair with value regression should fail."""
         begin = self.create_compliant_ocmf()
         begin.payload.RD[0].RV = decimal.Decimal("100.0")
@@ -101,8 +101,8 @@ class TestVerifyEichrecht:
         end.payload.RD[0].TX = MeterReadingReason.END
         end.payload.RD[0].RV = decimal.Decimal("50.0")  # Less than begin!
 
-        issues = begin.verify_eichrecht(end)
-        assert any("must be >=" in issue for issue in issues)
+        issues = begin.check_eichrecht(end)
+        assert any("must be >=" in issue.message for issue in issues)
 
 
 @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography package not installed")
@@ -188,12 +188,12 @@ class TestVerifyMethod:
         end = OCMF(header="OCMF", payload=end_payload, signature=Signature(SD="deadbeef"))
 
         # Can't verify signature without parsing from string, so just test Eichrecht
-        issues = begin.verify_eichrecht(end)
+        issues = begin.check_eichrecht(end)
         assert isinstance(issues, list)
 
 
-class TestVerifyEichrechtMultipleReadings:
-    """Test verify_eichrecht with multiple readings in a single payload."""
+class TestCheckEichrechtMultipleReadings:
+    """Test check_eichrecht with multiple readings in a single payload."""
 
     def test_multiple_readings_validated(self) -> None:
         """All readings in a payload should be validated."""
@@ -231,6 +231,6 @@ class TestVerifyEichrechtMultipleReadings:
         signature = Signature(SD="deadbeef")
         ocmf = OCMF(header="OCMF", payload=payload, signature=signature)
 
-        issues = ocmf.verify_eichrecht()
+        issues = ocmf.check_eichrecht()
         # Should detect the bad status in second reading
-        assert any("must be 'G'" in issue for issue in issues)
+        assert any("must be 'G'" in issue.message for issue in issues)

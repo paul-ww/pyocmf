@@ -217,6 +217,43 @@ def _validate_value_progression(
     return issues
 
 
+def _validate_pagination_consistency(
+    begin: Payload,
+    end: Payload,
+) -> EichrechtIssue | None:
+    """Validate that pagination numbers are consecutive (if present).
+
+    Per OCMF spec, pagination should increment by 1 between begin/end pairs.
+
+    Args:
+        begin: Transaction begin payload
+        end: Transaction end payload
+
+    Returns:
+        EichrechtIssue if pagination is inconsistent, None if valid or not present
+    """
+    if not (begin.PG and end.PG):
+        return None
+
+    try:
+        begin_num = int(begin.PG[1:])
+        end_num = int(end.PG[1:])
+        if end_num != begin_num + 1:
+            return EichrechtIssue(
+                code=IssueCode.PAGINATION_INCONSISTENT,
+                message=f"Pagination must be consecutive: begin='{begin.PG}', end='{end.PG}'",
+                field="PG",
+            )
+    except (ValueError, IndexError):
+        return EichrechtIssue(
+            code=IssueCode.PAGINATION_INCONSISTENT,
+            message=f"Failed to parse pagination numbers: begin='{begin.PG}', end='{end.PG}'",
+            field="PG",
+        )
+
+    return None
+
+
 def check_eichrecht_transaction(
     begin: Payload,
     end: Payload,
@@ -264,6 +301,10 @@ def check_eichrecht_transaction(
     if issue := _validate_identification_level(end, "end"):
         issues.append(issue)
 
+    # Pagination consistency
+    if issue := _validate_pagination_consistency(begin, end):
+        issues.append(issue)
+
     # Informational checks (warnings only)
     if issue := _check_field_match(
         begin.ID, end.ID, "ID", IssueCode.ID_MISMATCH, "Identification data"
@@ -280,8 +321,7 @@ def validate_transaction_pair(begin: OCMF, end: OCMF) -> bool:
 
     This performs structural validation to ensure the records can be
     treated as a begin/end pair. It checks for Eichrecht compliance errors
-    (warnings are ignored) plus additional structural requirements like
-    consecutive pagination.
+    (warnings are ignored).
 
     For detailed issue reporting, use check_eichrecht_transaction() directly.
 
@@ -298,22 +338,5 @@ def validate_transaction_pair(begin: OCMF, end: OCMF) -> bool:
         >>> validate_transaction_pair(begin, end)
         True
     """
-    # Check Eichrecht compliance (ignore warnings)
     issues = check_eichrecht_transaction(begin.payload, end.payload)
-    if any(issue.severity == IssueSeverity.ERROR for issue in issues):
-        return False
-
-    # Additional structural check: pagination should be consecutive (if present)
-    if begin.payload.PG and end.payload.PG:
-        try:
-            # Extract pagination numbers (e.g., "T1" -> 1, "T2" -> 2)
-            begin_num = int(begin.payload.PG[1:])
-            end_num = int(end.payload.PG[1:])
-            # End should be begin + 1 for a proper pair
-            if end_num != begin_num + 1:
-                return False
-        except (ValueError, IndexError):
-            # If we can't parse pagination, skip this check
-            pass
-
-    return True
+    return not any(issue.severity == IssueSeverity.ERROR for issue in issues)

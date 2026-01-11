@@ -7,7 +7,12 @@ from dataclasses import dataclass
 
 from pyocmf.constants import OCMF_HEADER, OCMF_PREFIX
 from pyocmf.core.ocmf import OCMF
-from pyocmf.exceptions import DataNotFoundError, SignatureVerificationError, XmlParsingError
+from pyocmf.exceptions import (
+    DataNotFoundError,
+    PublicKeyError,
+    SignatureVerificationError,
+    XmlParsingError,
+)
 from pyocmf.models.public_key import PublicKey
 
 
@@ -103,6 +108,6 @@ def _extract_public_key(element: ET.Element) -> PublicKey | None:
         try:
             key_str = "".join(pk.text.split())
             return PublicKey.from_string(key_str)
-        except (ImportError, ValueError):
+        except (ImportError, ValueError, PublicKeyError):
             return None
     return None

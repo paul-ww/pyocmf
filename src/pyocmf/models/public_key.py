@@ -10,14 +10,45 @@ from pyocmf.exceptions import Base64DecodingError, PublicKeyError
 from pyocmf.types.encoding import HexStr
 
 try:
+    from cryptography.exceptions import UnsupportedAlgorithm
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import ec
 except ImportError:
     serialization = None  # type: ignore[assignment]
     ec = None  # type: ignore[assignment]
+    UnsupportedAlgorithm = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from pyocmf.enums.crypto import SignatureMethod
+
+
+def _try_parse_raw_p256_coordinates(key_bytes: bytes) -> tuple[str, str, int, int] | None:
+    if ec is None or serialization is None:
+        return None
+
+    if len(key_bytes) != 64:
+        return None
+
+    try:
+        # Raw coordinates: X (32 bytes) || Y (32 bytes)
+        # Construct uncompressed point format: 04 || X || Y
+        point_bytes = b"\x04" + key_bytes
+        public_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), point_bytes)
+
+        curve_name = public_key.curve.name
+        key_size = public_key.curve.key_size
+        block_length = key_size // 8
+
+        # Store as DER-encoded for consistency
+        der_bytes = public_key.public_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        der_hex = der_bytes.hex()
+
+        return (der_hex, curve_name, key_size, block_length)
+    except Exception:
+        return None
 
 
 class PublicKey(pydantic.BaseModel):
@@ -78,8 +109,23 @@ class PublicKey(pydantic.BaseModel):
                 block_length=block_length,
             )
         except (ValueError, TypeError) as e:
+            result = _try_parse_raw_p256_coordinates(key_bytes)
+            if result is not None:
+                key_hex, curve_name, key_size, block_length = result
+                return cls(
+                    key=key_hex,
+                    curve=curve_name,
+                    size=key_size,
+                    block_length=block_length,
+                )
+
             msg = f"Failed to parse public key: {e}"
             raise PublicKeyError(msg) from e
+        except Exception as e:
+            if UnsupportedAlgorithm is not None and type(e).__name__ == "UnsupportedAlgorithm":
+                msg = f"Unsupported elliptic curve in public key: {e}"
+                raise PublicKeyError(msg) from e
+            raise
 
     @property
     def key_type_identifier(self) -> KeyType:

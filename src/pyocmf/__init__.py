@@ -1,5 +1,3 @@
-"""Python library for parsing and validating Open Charge Metering Format (OCMF) data."""
-
 __version__ = "0.1.0"
 
 from pyocmf.exceptions import (

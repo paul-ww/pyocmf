@@ -25,12 +25,8 @@ select = [
     "FURB",
     "PGH",
     "BLE",
-    "I",
-    "D",  # pydocstyle - docstring linting
+    "I"
 ]
 
 [lint.mccabe]
 max-complexity = 12  # Slightly higher limit for CLI commands
-
-[lint.pydocstyle]
-convention = "google"  # Use Google-style docstrings (alternatives: "numpy", "pep257")

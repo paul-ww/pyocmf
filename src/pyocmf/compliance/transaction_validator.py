@@ -1,9 +1,3 @@
-"""Transaction-level validation for Eichrecht compliance.
-
-This module provides validation functions for complete charging transactions
-(begin/end pairs) according to German calibration law (Eichrecht) requirements.
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -30,21 +24,6 @@ def _check_field_match(
     issue_code: IssueCode,
     description: str,
 ) -> EichrechtIssue | None:
-    """Check if a field matches between begin and end readings.
-
-    Handles string conversion for OBIS objects, enums, etc.
-    Returns None if values match, EichrechtIssue if mismatch.
-
-    Args:
-        begin_value: Value from begin reading/payload
-        end_value: Value from end reading/payload
-        field_name: Field name for error reporting
-        issue_code: IssueCode to use if mismatch
-        description: Human-readable field description
-
-    Returns:
-        EichrechtIssue if mismatch, None if match
-    """
     # Convert to strings for comparison (handles OBIS objects, enums, etc.)
     begin_str = str(begin_value) if begin_value is not None else None
     end_str = str(end_value) if end_value is not None else None
@@ -61,7 +40,6 @@ def _check_field_match(
 def _check_timestamp_ordering(
     begin_reading: Reading, end_reading: Reading
 ) -> EichrechtIssue | None:
-    """Check that end timestamp is >= begin timestamp."""
     if not (begin_reading.TM and end_reading.TM):
         return None
 
@@ -86,16 +64,6 @@ def _validate_transaction_types(
     end_reading: Reading,
     end_reading_count: int,
 ) -> list[EichrechtIssue]:
-    """Validate that TX types are correct for begin/end readings.
-
-    Args:
-        begin_reading: Reading from transaction begin
-        end_reading: Reading from transaction end
-        end_reading_count: Total number of readings in end payload (for error reporting)
-
-    Returns:
-        List of issues found (empty if valid)
-    """
     issues = []
     if begin_reading.TX != MeterReadingReason.BEGIN:
         issues.append(
@@ -117,18 +85,6 @@ def _validate_transaction_types(
 
 
 def _validate_identification_level(payload: Payload, context: str) -> EichrechtIssue | None:
-    """Validate that identification level is acceptable for billing.
-
-    Per Eichrecht requirements, certain identification levels indicate
-    errors or security issues and are not acceptable for legal billing.
-
-    Args:
-        payload: The payload to check
-        context: Context string for error message ("begin" or "end")
-
-    Returns:
-        EichrechtIssue if invalid, None if valid
-    """
     if payload.IL is None:
         return None
 
@@ -155,17 +111,6 @@ def _validate_field_consistency(
     begin_reading: Reading,
     end_reading: Reading,
 ) -> list[EichrechtIssue]:
-    """Validate that key fields match between begin and end.
-
-    Args:
-        begin: Transaction begin payload
-        end: Transaction end payload
-        begin_reading: Reading from transaction begin
-        end_reading: Reading from transaction end
-
-    Returns:
-        List of issues found (empty if valid)
-    """
     issues = []
     # Serial numbers
     begin_serial = begin.GS or begin.MS
@@ -191,15 +136,6 @@ def _validate_value_progression(
     begin_reading: Reading,
     end_reading: Reading,
 ) -> list[EichrechtIssue]:
-    """Validate that meter values and timestamps progress correctly.
-
-    Args:
-        begin_reading: Reading from transaction begin
-        end_reading: Reading from transaction end
-
-    Returns:
-        List of issues found (empty if valid)
-    """
     issues = []
     # Value progression
     if begin_reading.RV is not None and end_reading.RV is not None:
@@ -221,17 +157,6 @@ def _validate_pagination_consistency(
     begin: Payload,
     end: Payload,
 ) -> EichrechtIssue | None:
-    """Validate that pagination numbers are consecutive (if present).
-
-    Per OCMF spec, pagination should increment by 1 between begin/end pairs.
-
-    Args:
-        begin: Transaction begin payload
-        end: Transaction end payload
-
-    Returns:
-        EichrechtIssue if pagination is inconsistent, None if valid or not present
-    """
     if not (begin.PG and end.PG):
         return None
 
@@ -317,26 +242,6 @@ def check_eichrecht_transaction(
 
 
 def validate_transaction_pair(begin: OCMF, end: OCMF) -> bool:
-    """Validate that two OCMF records form a valid transaction pair.
-
-    This performs structural validation to ensure the records can be
-    treated as a begin/end pair. It checks for Eichrecht compliance errors
-    (warnings are ignored).
-
-    For detailed issue reporting, use check_eichrecht_transaction() directly.
-
-    Args:
-        begin: OCMF record with transaction begin (TX=B)
-        end: OCMF record with transaction end (TX=E/L/R/A/P)
-
-    Returns:
-        True if the records form a valid transaction pair (no errors)
-
-    Examples:
-        >>> begin = OCMF.from_string("OCMF|{...TX:B...}|...")
-        >>> end = OCMF.from_string("OCMF|{...TX:E...}|...")
-        >>> validate_transaction_pair(begin, end)
-        True
-    """
+    """Validate transaction pair compliance (errors only, warnings ignored)."""
     issues = check_eichrecht_transaction(begin.payload, end.payload)
     return not any(issue.severity == IssueSeverity.ERROR for issue in issues)

@@ -1,8 +1,3 @@
-"""OCMF (Open Charge Metering Format) parser and validator.
-
-This module provides the main OCMF class for parsing and validating OCMF strings.
-"""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -25,13 +20,7 @@ from pyocmf.types.public_key import PublicKey
 
 
 class OCMF(pydantic.BaseModel):
-    """OCMF data model representing the complete OCMF structure.
-
-    The OCMF format consists of three pipe-separated sections:
-    - Header: Always "OCMF"
-    - Payload: JSON object containing meter readings and metadata
-    - Signature: JSON object containing cryptographic signature data
-    """
+    """OCMF data model with three pipe-separated sections: header, payload, and signature."""
 
     header: Literal["OCMF"]
     payload: Payload
@@ -42,21 +31,8 @@ class OCMF(pydantic.BaseModel):
     def from_string(cls, ocmf_string: str) -> OCMF:
         """Parse an OCMF string into an OCMF model.
 
-        Automatically detects whether the input is a plain OCMF string or
-        hex-encoded and handles both formats.
-
-        Args:
-            ocmf_string: The OCMF string in format "OCMF|{payload_json}|{signature_json}"
-                or a hex-encoded version of that format.
-
-        Returns:
-            OCMF: The parsed OCMF model
-
-        Raises:
-            HexDecodingError: If the string appears to be hex but cannot be decoded
-            OcmfFormatError: If the string is not in valid OCMF format
-            OcmfPayloadError: If the payload cannot be parsed
-            OcmfSignatureError: If the signature cannot be parsed
+        Automatically detects whether the input is plain text (starts with "OCMF|")
+        or hex-encoded and handles both formats.
         """
         ocmf_text = ocmf_string.strip()
 
@@ -94,14 +70,9 @@ class OCMF(pydantic.BaseModel):
         return ocmf
 
     def to_string(self, hex: bool = False) -> str:
-        """Convert the OCMF model to its string representation.
+        """Convert the OCMF model to string format "OCMF|{payload}|{signature}".
 
-        Args:
-            hex: If True, return hex-encoded string. Defaults to False.
-
-        Returns:
-            str: The OCMF string in format "OCMF|{payload_json}|{signature_json}",
-                or hex-encoded if hex=True.
+        Set hex=True to return hex-encoded string instead of plain text.
         """
         payload_json = self.payload.model_dump_json(exclude_none=True)
         signature_json = self.signature.model_dump_json(exclude_none=True)
@@ -114,18 +85,9 @@ class OCMF(pydantic.BaseModel):
     def verify_signature(self, public_key: PublicKey | str) -> bool:
         """Verify the cryptographic signature of the OCMF data.
 
-        Args:
-            public_key: Public key (hex-encoded if provided as string, as per OCMF spec).
-                The spec requires public keys to be transmitted out-of-band,
-                separately from the OCMF data.
-
-        Returns:
-            bool: True if signature is valid, False otherwise
-
-        Raises:
-            SignatureVerificationError: If verification cannot be performed due to
-                missing data, unsupported algorithms, malformed keys/signatures,
-                or if the OCMF was not parsed from a string (original payload required).
+        Per OCMF spec, public keys must be transmitted out-of-band (separately from OCMF data).
+        Requires that the OCMF was parsed from a string (not constructed programmatically)
+        because signature verification needs the exact original payload bytes.
         """
         from pyocmf import verification
 
@@ -150,29 +112,11 @@ class OCMF(pydantic.BaseModel):
     ) -> list[EichrechtIssue]:
         """Check German calibration law (Eichrecht) compliance.
 
-        This checks that the OCMF data complies with German Eichrecht requirements
-        (MID 2014/32/EU and PTB requirements) for billing-relevant meter readings.
+        Validates that OCMF data complies with German Eichrecht requirements
+        (MID 2014/32/EU and PTB) for billing-relevant meter readings.
 
-        Args:
-            other: Optional paired transaction OCMF record. If provided, checks
-                that this record and the other form a valid transaction pair
-                (e.g., begin + end). If None, checks only this single record.
-            errors_only: If True, return only ERROR severity issues (filters out warnings)
-
-        Returns:
-            List of compliance issues (empty if fully compliant)
-
-        Examples:
-            >>> # Check single reading
-            >>> ocmf = OCMF.from_string("OCMF|{...}|...")
-            >>> issues = ocmf.check_eichrecht()
-            >>> for issue in issues:
-            ...     print(f"{issue.severity}: {issue.message}")
-
-            >>> # Check transaction pair
-            >>> begin = OCMF.from_string("OCMF|{...TX:B...}|...")
-            >>> end = OCMF.from_string("OCMF|{...TX:E...}|...")
-            >>> issues = begin.check_eichrecht(end, errors_only=True)
+        Provide 'other' OCMF to check transaction pair (begin + end).
+        Set errors_only=True to filter out warnings.
         """
         if other is None:
             if not self.payload.RD:
@@ -200,22 +144,6 @@ class OCMF(pydantic.BaseModel):
 
     @property
     def is_eichrecht_compliant(self) -> bool:
-        """Check if this OCMF record is Eichrecht compliant (errors only).
-
-        This is a convenience property that returns True if there are no ERROR
-        severity issues. Warnings are ignored.
-
-        For transaction pair validation, use check_eichrecht(other, errors_only=True)
-        and check if the list is empty.
-
-        Returns:
-            True if compliant (no errors), False otherwise
-
-        Examples:
-            >>> ocmf = OCMF.from_string("OCMF|{...}|...")
-            >>> if ocmf.is_eichrecht_compliant:
-            ...     print("Compliant!")
-        """
         issues = self.check_eichrecht(errors_only=True)
         return len(issues) == 0
 
@@ -227,33 +155,9 @@ class OCMF(pydantic.BaseModel):
     ) -> tuple[bool, list[EichrechtIssue]]:
         """Verify both cryptographic signature and legal compliance.
 
-        This is a convenience method that combines signature verification and
-        Eichrecht compliance checking in a single call.
-
-        Args:
-            public_key: Public key for signature verification (hex-encoded if string)
-            other: Optional paired transaction OCMF record for transaction compliance checking
-            eichrecht: Whether to perform Eichrecht compliance checking (default: True)
-
-        Returns:
-            Tuple of (signature_valid, compliance_issues)
-            - signature_valid: True if cryptographic signature is valid
-            - compliance_issues: List of EichrechtIssue objects
-              (empty if fully compliant or eichrecht=False)
-
-        Raises:
-            SignatureVerificationError: If signature verification cannot be performed
-
-        Examples:
-            >>> # Verify complete transaction
-            >>> begin = OCMF.from_string("OCMF|{...TX:B...}|...")
-            >>> end = OCMF.from_string("OCMF|{...TX:E...}|...")
-            >>> sig_valid, issues = begin.verify(public_key, end)
-            >>> if sig_valid and not issues:
-            ...     print("Transaction is valid and compliant!")
-
-            >>> # Verify signature only
-            >>> sig_valid, _ = ocmf.verify(public_key, eichrecht=False)
+        Combines signature verification and Eichrecht compliance checking.
+        Returns (signature_valid, compliance_issues).
+        Set eichrecht=False to skip compliance checking.
         """
         signature_valid = self.verify_signature(public_key)
         compliance_issues = self.check_eichrecht(other) if eichrecht else []

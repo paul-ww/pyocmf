@@ -1,9 +1,3 @@
-"""Eichrecht compliance issue models and types.
-
-This module defines the data structures used for representing compliance
-validation issues in the context of German calibration law (Eichrecht).
-"""
-
 from __future__ import annotations
 
 import enum
@@ -11,15 +5,11 @@ from dataclasses import dataclass
 
 
 class IssueSeverity(enum.StrEnum):
-    """Severity level of a compliance issue."""
-
     ERROR = "error"
     WARNING = "warning"
 
 
 class IssueCode(enum.StrEnum):
-    """Eichrecht compliance issue codes."""
-
     # Reading-level issues
     METER_STATUS = "METER_STATUS"
     ERROR_FLAGS = "ERROR_FLAGS"
@@ -43,14 +33,11 @@ class IssueCode(enum.StrEnum):
 
 @dataclass
 class EichrechtIssue:
-    """Represents a calibration law compliance issue."""
-
     code: IssueCode
     message: str
     field: str | None = None
     severity: IssueSeverity = IssueSeverity.ERROR
 
     def __str__(self) -> str:
-        """String representation of the issue."""
         prefix = f"[{self.field}] " if self.field else ""
         return f"{prefix}{self.message} ({self.code})"

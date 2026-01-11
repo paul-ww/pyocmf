@@ -1,5 +1,3 @@
-"""CLI for OCMF validation and signature verification."""
-
 from __future__ import annotations
 
 import pathlib
@@ -28,8 +26,6 @@ console = Console()
 
 
 class InputType(StrEnum):
-    """Type of OCMF input."""
-
     XML = "xml"
     OCMF_STRING = "ocmf_string"
 
@@ -107,15 +103,6 @@ def validate(
 
 
 def _detect_input_type(ocmf_input: str) -> InputType:
-    """Detect the type of input provided.
-
-    Returns:
-        InputType.XML if input is an existing file path
-        InputType.OCMF_STRING otherwise (handles both plain and hex-encoded)
-
-    Raises:
-        FileNotFoundError: If input looks like a file path but doesn't exist
-    """
     # Check if it's an OCMF string first
     if ocmf_input.startswith(OCMF_PREFIX):
         return InputType.OCMF_STRING
@@ -139,7 +126,6 @@ def _detect_input_type(ocmf_input: str) -> InputType:
 
 
 def _validate_single_ocmf(ocmf: OCMF, verbose: bool, public_key: str | None) -> None:
-    """Validate and optionally verify a single OCMF object."""
     console.print("[green]✓[/green] Successfully parsed OCMF string")
     console.print("[green]✓[/green] OCMF validation passed")
 
@@ -155,7 +141,6 @@ def _validate_single_ocmf(ocmf: OCMF, verbose: bool, public_key: str | None) -> 
 
 
 def _validate_from_xml(xml_path: str, verbose: bool, all_entries: bool) -> None:
-    """Validate OCMF data from XML file."""
     path = pathlib.Path(xml_path)
     if not path.exists():
         msg = f"XML file not found: {xml_path}"
@@ -187,7 +172,6 @@ def _validate_from_xml(xml_path: str, verbose: bool, all_entries: bool) -> None:
 
 
 def _verify_signature(ocmf: OCMF, public_key: str) -> None:
-    """Verify OCMF signature with the provided public key."""
     try:
         is_valid = ocmf.verify_signature(public_key)
 
@@ -216,7 +200,6 @@ def _verify_signature(ocmf: OCMF, public_key: str) -> None:
 
 
 def _display_ocmf_details(ocmf: OCMF) -> None:
-    """Display detailed OCMF structure."""
     console.print("\n[bold]OCMF Structure:[/bold]")
 
     console.print("\n[bold cyan]Payload:[/bold cyan]")
@@ -253,7 +236,6 @@ def _display_ocmf_details(ocmf: OCMF) -> None:
 
 
 def main() -> None:
-    """Entry point for the CLI."""
     app()
 
 

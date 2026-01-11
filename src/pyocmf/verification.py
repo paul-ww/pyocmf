@@ -1,9 +1,3 @@
-"""Cryptographic signature verification for OCMF data.
-
-This module requires the 'cryptography' package to be installed.
-Install with: pip install pyocmf[crypto]
-"""
-
 from __future__ import annotations
 
 import base64
@@ -29,11 +23,6 @@ from pyocmf.exceptions import EncodingError, PublicKeyError, SignatureVerificati
 
 
 def check_cryptography_available() -> None:
-    """Check if cryptography library is available.
-
-    Raises:
-        ImportError: If cryptography is not installed
-    """
     if not CRYPTOGRAPHY_AVAILABLE:
         msg = (
             "Signature verification requires the 'cryptography' package. "
@@ -43,17 +32,6 @@ def check_cryptography_available() -> None:
 
 
 def get_hash_algorithm(signature_method: SignatureMethod | None) -> type[hashes.HashAlgorithm]:
-    """Get the hash algorithm from the signature method.
-
-    Args:
-        signature_method: The ECDSA signature method
-
-    Returns:
-        The hash algorithm class
-
-    Raises:
-        SignatureVerificationError: If algorithm is missing or unsupported
-    """
     check_cryptography_available()
 
     if signature_method is None:
@@ -74,18 +52,6 @@ def get_hash_algorithm(signature_method: SignatureMethod | None) -> type[hashes.
 
 
 def decode_signature_data(signature_data: str, encoding: SignatureEncodingType | None) -> bytes:
-    """Decode the signature data based on its encoding type.
-
-    Args:
-        signature_data: The encoded signature data
-        encoding: The encoding type (hex or base64)
-
-    Returns:
-        The decoded signature bytes
-
-    Raises:
-        SignatureVerificationError: If decoding fails
-    """
     from pyocmf.types.crypto import SignatureEncodingType
 
     if encoding == SignatureEncodingType.HEX or encoding is None:
@@ -112,22 +78,12 @@ def verify_signature(
     signature_encoding: SignatureEncodingType | None,
     public_key_hex: str,
 ) -> bool:
-    """Verify an ECDSA signature against payload data.
+    """Verify ECDSA signature against payload using the provided public key.
 
-    Args:
-        payload_json: The JSON string of the payload to verify
-        signature_data: The signature data (hex or base64 encoded)
-        signature_method: The ECDSA signature algorithm
-        signature_encoding: The encoding of the signature data
-        public_key_hex: Hex-encoded DER public key
+    Requires the 'cryptography' package (install with: pip install pyocmf[crypto]).
 
-    Returns:
-        True if signature is valid, False otherwise
-
-    Raises:
-        SignatureVerificationError: If verification cannot be performed or if
-            the public key curve doesn't match the signature algorithm
-        ImportError: If cryptography package is not installed
+    Raises SignatureVerificationError if the public key curve doesn't match the
+    signature algorithm or if verification cannot be performed.
     """
     check_cryptography_available()
 

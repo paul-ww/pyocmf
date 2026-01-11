@@ -1,9 +1,3 @@
-"""OCMF data compliance checking and business rules.
-
-This module provides compliance checkers for OCMF data, including
-Eichrecht (German calibration law) compliance and transaction validation.
-"""
-
 from pyocmf.compliance.models import (
     EichrechtIssue,
     IssueCode,

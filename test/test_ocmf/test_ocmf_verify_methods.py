@@ -1,5 +1,3 @@
-"""Tests for OCMF check_eichrecht() and verify() methods."""
-
 from __future__ import annotations
 
 import decimal
@@ -24,10 +22,7 @@ except ImportError:
 
 
 class TestCheckEichrecht:
-    """Test OCMF.check_eichrecht() method."""
-
     def create_compliant_ocmf(self) -> OCMF:
-        """Create a compliant OCMF record."""
         payload = Payload(
             FV="1.0",
             GI="TEST_GW",
@@ -54,14 +49,12 @@ class TestCheckEichrecht:
         return OCMF(header="OCMF", payload=payload, signature=signature)
 
     def test_check_eichrecht_single_compliant(self) -> None:
-        """A compliant single record should pass Eichrecht validation."""
         ocmf = self.create_compliant_ocmf()
         issues = ocmf.check_eichrecht()
         errors = [issue for issue in issues if issue.severity == IssueSeverity.ERROR]
         assert len(errors) == 0
 
     def test_check_eichrecht_single_non_compliant(self) -> None:
-        """A non-compliant record should produce issues."""
         ocmf = self.create_compliant_ocmf()
         ocmf.payload.RD[0].ST = MeterStatus.TIMEOUT  # Bad status!
 
@@ -70,7 +63,6 @@ class TestCheckEichrecht:
         assert any("must be 'G'" in issue.message for issue in issues)
 
     def test_check_eichrecht_no_readings(self) -> None:
-        """Validation should fail if no readings present."""
         ocmf = self.create_compliant_ocmf()
         ocmf.payload.RD = []
 
@@ -79,7 +71,6 @@ class TestCheckEichrecht:
         assert any("No readings" in issue.message for issue in issues)
 
     def test_check_eichrecht_transaction_pair(self) -> None:
-        """Validation should work for transaction pairs."""
         begin = self.create_compliant_ocmf()
 
         end = self.create_compliant_ocmf()
@@ -93,7 +84,6 @@ class TestCheckEichrecht:
         assert len(errors) == 0
 
     def test_check_eichrecht_transaction_pair_regression(self) -> None:
-        """Transaction pair with value regression should fail."""
         begin = self.create_compliant_ocmf()
         begin.payload.RD[0].RV = decimal.Decimal("100.0")
 
@@ -107,12 +97,9 @@ class TestCheckEichrecht:
 
 @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography package not installed")
 class TestVerifyMethod:
-    """Test OCMF.verify() convenience method."""
-
     def test_verify_combines_signature_and_eichrecht(
         self, transparency_xml_dir: pathlib.Path
     ) -> None:
-        """verify() should return both signature validity and compliance issues."""
         from pyocmf.utils.xml import OcmfContainer
 
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
@@ -128,7 +115,6 @@ class TestVerifyMethod:
         assert isinstance(issues, list)
 
     def test_verify_with_eichrecht_disabled(self, transparency_xml_dir: pathlib.Path) -> None:
-        """verify() with eichrecht=False should skip compliance checks."""
         from pyocmf.utils.xml import OcmfContainer
 
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
@@ -143,7 +129,6 @@ class TestVerifyMethod:
         assert len(issues) == 0  # No Eichrecht validation performed
 
     def test_verify_with_transaction_pair(self, transparency_xml_dir: pathlib.Path) -> None:
-        """verify() should validate transaction pairs when other is provided."""
         # Create a simple transaction pair programmatically
         begin_payload = Payload(
             FV="1.0",
@@ -193,10 +178,7 @@ class TestVerifyMethod:
 
 
 class TestCheckEichrechtMultipleReadings:
-    """Test check_eichrecht with multiple readings in a single payload."""
-
     def test_multiple_readings_validated(self) -> None:
-        """All readings in a payload should be validated."""
         payload = Payload(
             FV="1.0",
             GI="TEST_GW",

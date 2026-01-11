@@ -1,10 +1,3 @@
-"""User and charge point identification types for OCMF.
-
-This module defines various identification types, validation functions,
-and enums for representing user authentication and charge point identification
-in OCMF format.
-"""
-
 import enum
 from typing import Annotated
 
@@ -20,12 +13,6 @@ PaginationString = TransactionContext | FiscalContext
 
 
 class UserAssignmentStatus(enum.StrEnum):
-    """Security level of user identification and assignment.
-
-    Indicates the trustworthiness and verification level of the user
-    identification method used for the charging session.
-    """
-
     NO_ASSIGNMENT = "NONE"
     UNSECURED = "HEARSAY"
     TRUSTED = "TRUSTED"
@@ -39,8 +26,6 @@ class UserAssignmentStatus(enum.StrEnum):
 
 
 class IdentificationFlagRFID(enum.StrEnum):
-    """RFID-based user identification methods."""
-
     NO_ASSIGNMENT_VIA_RFID = "RFID_NONE"
     ASSIGNMENT_VIA_EXTERNAL_RFID_CARD_READER = "RFID_PLAIN"
     ASSIGNMENT_VIA_PROTECTED_RFID_CARD_READER = "RFID_RELATED"
@@ -48,8 +33,6 @@ class IdentificationFlagRFID(enum.StrEnum):
 
 
 class IdentificationFlagOCPP(enum.StrEnum):
-    """OCPP-based user identification methods."""
-
     NO_USER_ASSIGNMENT_BY_OCPP = "OCPP_NONE"
     ASSIGNMENT_BY_OCPP_REMOTESTART_METHOD = "OCPP_RS"
     ASSIGNMENT_BY_OCPP_AUTHORIZE_METHOD = "OCPP_AUTH"
@@ -61,23 +44,17 @@ class IdentificationFlagOCPP(enum.StrEnum):
 
 
 class IdentificationFlagIso15118(enum.StrEnum):
-    """ISO 15118-based user identification methods."""
-
     NO_USER_ASSIGNMENT_BY_ISO_15118 = "ISO15118_NONE"
     PLUG_AND_CHARGE_WAS_USED = "ISO15118_PNC"
 
 
 class IdentificationFlagPLMN(enum.StrEnum):
-    """PLMN (mobile network) based user identification methods."""
-
     NO_USER_ASSIGNMENT = "PLMN_NONE"
     CALL = "PLMN_RING"
     SHORT_MESSAGE = "PLMN_SMS"
 
 
 class IdentificationType(enum.StrEnum):
-    """Types of user identification credentials."""
-
     NONE = "NONE"
     DENIED = "DENIED"
     UNDEFINED = "UNDEFINED"
@@ -130,7 +107,5 @@ IdentificationData = (
 
 
 class ChargePointIdentificationType(enum.StrEnum):
-    """Types of charge point identification schemes."""
-
     EVSEID = "EVSEID"
     CBIDC = "CBIDC"

@@ -1,5 +1,3 @@
-"""End-to-end roundtrip tests for OCMF parsing using transparenzsoftware test files."""
-
 import pathlib
 
 import pytest
@@ -12,7 +10,6 @@ from .helpers import parse_xml_with_expected_behavior, should_skip_xml_file
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    """Generate test parameters for test_ocmf_roundtrip."""
     if "xml_file" in metafunc.fixturenames:
         transparency_xml_dir = (
             metafunc.config.rootpath
@@ -35,14 +32,11 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 
 def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
-    """Test OCMF parsing and roundtripping for each transparenzsoftware XML file.
-
-    This end-to-end test verifies that:
-    1. Valid OCMF files can be parsed
-    2. Parsed OCMF can be serialized back to string
-    3. Re-parsing the serialized string produces identical models
-    4. Invalid/non-OCMF files raise appropriate exceptions
-    """
+    # End-to-end test verifying OCMF parsing and roundtripping:
+    # 1. Valid OCMF files can be parsed
+    # 2. Parsed OCMF can be serialized back to string
+    # 3. Re-parsing the serialized string produces identical models
+    # 4. Invalid/non-OCMF files raise appropriate exceptions
     should_skip, skip_reason = should_skip_xml_file(xml_file)
     if should_skip:
         pytest.skip(skip_reason or "File should be skipped")

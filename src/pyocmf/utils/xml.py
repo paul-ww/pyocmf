@@ -1,5 +1,3 @@
-"""XML parsing utilities for extracting OCMF data from transparency software XML files."""
-
 from __future__ import annotations
 
 import pathlib
@@ -15,24 +13,10 @@ from pyocmf.types.public_key import PublicKey
 
 @dataclass
 class OcmfRecord:
-    """A single OCMF record with its associated public key.
-
-    Represents a signed meter value as defined in the OCMF specification,
-    paired with the public key needed for signature verification.
-    """
-
     ocmf: OCMF
     public_key: PublicKey | None = None
 
     def verify_signature(self) -> bool:
-        """Verify the signature using the associated public key.
-
-        Returns:
-            bool: True if signature is valid
-
-        Raises:
-            SignatureVerificationError: If no public key is available or verification fails
-        """
         if self.public_key is None:
             msg = "No public key available for signature verification"
             raise SignatureVerificationError(msg)
@@ -41,14 +25,7 @@ class OcmfRecord:
 
 
 class OcmfContainer:
-    """Container for OCMF data parsed from XML transaction files.
-
-    This class provides a clean interface for extracting OCMF data and
-    associated public keys from transparency software XML files.
-    """
-
     def __init__(self, entries: list[OcmfRecord]) -> None:
-        """Initialize container with a list of OCMF entries."""
         self._entries = entries
 
     @classmethod
@@ -94,28 +71,19 @@ class OcmfContainer:
 
     @property
     def entries(self) -> list[OcmfRecord]:
-        """All OCMF entries in the container."""
         return self._entries
 
     def __len__(self) -> int:
-        """Return number of OCMF entries."""
         return len(self._entries)
 
     def __iter__(self) -> Iterator[OcmfRecord]:
-        """Iterate over OCMF entries."""
         return iter(self._entries)
 
     def __getitem__(self, index: int) -> OcmfRecord:
-        """Get OCMF entry by index."""
         return self._entries[index]
 
 
 def _extract_ocmf_string(element: ET.Element) -> str | None:
-    """Extract OCMF string from value element.
-
-    Checks signedData and encodedData elements for OCMF content.
-    Returns the raw string - OCMF.from_string handles hex decoding automatically.
-    """
     # Check signedData with format='OCMF'
     sd = element.find("signedData")
     if sd is not None and sd.text:
@@ -132,7 +100,6 @@ def _extract_ocmf_string(element: ET.Element) -> str | None:
 
 
 def _extract_public_key(element: ET.Element) -> PublicKey | None:
-    """Extract public key from publicKey element."""
     pk = element.find("publicKey")
     if pk is not None and pk.text:
         try:

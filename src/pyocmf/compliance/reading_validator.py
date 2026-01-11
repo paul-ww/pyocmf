@@ -1,9 +1,3 @@
-"""Single reading validation for Eichrecht compliance.
-
-This module provides validation functions for individual meter readings
-according to German calibration law (Eichrecht) requirements.
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -17,32 +11,10 @@ if TYPE_CHECKING:
 
 
 def _get_billing_relevant_begin_reading(payload: Payload) -> Reading:
-    """Get the billing-relevant reading from a transaction begin payload.
-
-    Per Eichrecht requirements, the first reading (RD[0]) in a begin payload
-    is used for billing and compliance calculations.
-
-    Args:
-        payload: Transaction begin payload (must have RD)
-
-    Returns:
-        First reading from payload.RD
-    """
     return payload.RD[0]
 
 
 def _get_billing_relevant_end_reading(payload: Payload) -> Reading:
-    """Get the billing-relevant reading from a transaction end payload.
-
-    Per Eichrecht requirements, the last reading (RD[-1]) in an end payload
-    is used for billing and compliance calculations.
-
-    Args:
-        payload: Transaction end payload (must have RD)
-
-    Returns:
-        Last reading from payload.RD
-    """
     return payload.RD[-1]
 
 

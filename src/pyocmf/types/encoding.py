@@ -1,5 +1,3 @@
-"""Encoding type validators for hex and base64 strings."""
-
 import base64
 import re
 from typing import Annotated
@@ -10,18 +8,6 @@ from pyocmf.exceptions import Base64DecodingError, EncodingTypeError, HexDecodin
 
 
 def validate_hex_string(value: str) -> str:
-    """Validate that a string contains only hexadecimal characters.
-
-    Args:
-        value: String to validate.
-
-    Returns:
-        The validated hex string.
-
-    Raises:
-        EncodingTypeError: If value is not a string.
-        HexDecodingError: If string contains non-hex characters.
-    """
     if not isinstance(value, str):
         msg = "string required"
         raise EncodingTypeError(msg, value=value, expected_type="str")
@@ -39,18 +25,6 @@ HexStr = Annotated[
 
 
 def validate_base64_string(value: str) -> str:
-    """Validate that a string is valid base64 encoding.
-
-    Args:
-        value: String to validate.
-
-    Returns:
-        The validated base64 string.
-
-    Raises:
-        EncodingTypeError: If value is not a string.
-        Base64DecodingError: If string is not valid base64.
-    """
     if not isinstance(value, str):
         msg = "string required"
         raise EncodingTypeError(msg, value=value, expected_type="str")

@@ -1,9 +1,3 @@
-"""Tests for Eichrecht compliance using Transparenzsoftware XML test files.
-
-This module tests our Eichrecht compliance checking against the official
-Transparenzsoftware test suite to ensure compatibility and correctness.
-"""
-
 from __future__ import annotations
 
 import pathlib
@@ -38,17 +32,8 @@ def test_eichrecht_compliance_from_transparenzsoftware(
     should_pass: bool,
     description: str,
 ) -> None:
-    """Test Eichrecht compliance for Transparenzsoftware XML files.
-
-    This test validates that our Eichrecht compliance checker produces
-    expected results for the official Transparenzsoftware test suite.
-
-    Args:
-        transparency_xml_dir: Directory containing XML test files
-        xml_file: Name of the XML file to test
-        should_pass: Whether the transaction should pass Eichrecht validation
-        description: Human-readable description of the test case
-    """
+    # Validates that our Eichrecht compliance checker produces expected results
+    # for the official Transparenzsoftware test suite
     xml_path = transparency_xml_dir / xml_file
 
     if not xml_path.exists():
@@ -90,12 +75,10 @@ def test_eichrecht_compliance_from_transparenzsoftware(
 def test_transparenzsoftware_test_files_exist(
     transparency_xml_dir: pathlib.Path,
 ) -> None:
-    """Verify that the Transparenzsoftware test files are available.
-
-    This test ensures the git submodule is properly initialized.
-    """
+    # Ensures the git submodule is properly initialized
     assert transparency_xml_dir.exists(), (
-        "Transparenzsoftware XML directory not found. Did you run 'git submodule update --init --recursive'?"
+        "Transparenzsoftware XML directory not found. "
+        "Did you run 'git submodule update --init --recursive'?"
     )
 
     xml_files = list(transparency_xml_dir.glob("*.xml"))
@@ -105,7 +88,6 @@ def test_transparenzsoftware_test_files_exist(
 def test_transaction_pair_extraction_valid(
     transparency_xml_dir: pathlib.Path,
 ) -> None:
-    """Test that we can correctly extract transaction pairs from valid files."""
     xml_path = transparency_xml_dir / "test_ocmf_ebee_01.xml"
 
     if not xml_path.exists():
@@ -124,7 +106,6 @@ def test_transaction_pair_extraction_valid(
 def test_transaction_pair_extraction_invalid(
     transparency_xml_dir: pathlib.Path,
 ) -> None:
-    """Test that extraction returns None for files without complete transactions."""
     xml_path = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
 
     if not xml_path.exists():

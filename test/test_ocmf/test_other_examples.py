@@ -1,5 +1,3 @@
-"""Parsing tests for other_examples XML files."""
-
 import pathlib
 
 import pytest
@@ -18,17 +16,12 @@ except ImportError:
 
 @pytest.fixture
 def other_examples_dir() -> pathlib.Path:
-    """Return the path to the other_examples resource directory."""
     return pathlib.Path(__file__).parent.parent / "resources" / "other_examples"
 
 
 def test_other_examples_base64_ocmf(other_examples_dir: pathlib.Path) -> None:
-    """Test OCMF parsing for base64_ocmf.xml.
-
-    This file contains OCMF records with ID fields using LOCAL identification
-    type, which per OCMF spec has no exact format defined and can contain any
-    string value (e.g., UUIDs, arbitrary hex strings, etc.).
-    """
+    # Per OCMF spec: LOCAL identification type has no exact format defined
+    # and can contain any string value (e.g., UUIDs, arbitrary hex strings, etc.)
     xml_file = other_examples_dir / "base64_ocmf.xml"
 
     # Parse the XML file
@@ -68,11 +61,6 @@ def test_other_examples_base64_ocmf(other_examples_dir: pathlib.Path) -> None:
 def test_other_examples_base64_ocmf_signature_verification(
     other_examples_dir: pathlib.Path,
 ) -> None:
-    """Test signature verification for base64_ocmf.xml.
-
-    Verifies that the OCMF record can be successfully verified with its
-    embedded public key.
-    """
     xml_file = other_examples_dir / "base64_ocmf.xml"
 
     # Parse the XML file
@@ -85,12 +73,8 @@ def test_other_examples_base64_ocmf_signature_verification(
 
 
 def test_other_examples_working_ocmf(other_examples_dir: pathlib.Path) -> None:
-    """Test OCMF parsing for working_ocmf.xml.
-
-    This file contains OCMF records with ID fields using LOCAL identification
-    type, which per OCMF spec has no exact format defined and can contain any
-    string value (e.g., UUIDs, arbitrary hex strings, etc.).
-    """
+    # Per OCMF spec: LOCAL identification type has no exact format defined
+    # and can contain any string value (e.g., UUIDs, arbitrary hex strings, etc.)
     xml_file = other_examples_dir / "working_ocmf.xml"
 
     # Parse the XML file
@@ -130,11 +114,6 @@ def test_other_examples_working_ocmf(other_examples_dir: pathlib.Path) -> None:
 def test_other_examples_working_ocmf_signature_verification(
     other_examples_dir: pathlib.Path,
 ) -> None:
-    """Test signature verification for working_ocmf.xml.
-
-    Verifies that the OCMF record can be successfully verified with its
-    embedded public key.
-    """
     xml_file = other_examples_dir / "working_ocmf.xml"
 
     # Parse the XML file

@@ -1,9 +1,3 @@
-"""OCMF payload section containing meter readings and metadata.
-
-This module defines the Payload model which contains all the charging session
-metadata, meter information, identification data, and meter readings.
-"""
-
 from __future__ import annotations
 
 import pydantic
@@ -33,12 +27,6 @@ from pyocmf.types.identifiers import (
 
 
 class Payload(pydantic.BaseModel):
-    """OCMF payload containing meter readings and session metadata.
-
-    The payload contains information about the gateway, meter, user identification,
-    charge point, and the actual meter readings from the charging session.
-    """
-
     model_config = pydantic.ConfigDict(extra="allow")
 
     FV: str | None = pydantic.Field(default=None, description="Format Version")
@@ -191,7 +179,6 @@ class Payload(pydantic.BaseModel):
     @pydantic.field_validator("FV", mode="before")
     @classmethod
     def convert_fv_to_string(cls, v: int | float | str | None) -> str | None:
-        """Convert numeric format version values to strings."""
         if isinstance(v, (int, float)):
             return str(v)
         return v
@@ -199,7 +186,6 @@ class Payload(pydantic.BaseModel):
     @pydantic.field_validator("CT", mode="before")
     @classmethod
     def convert_ct_empty_to_none(cls, v: str | int | None) -> str | None:
-        """Convert empty strings and zero values to None for charge point type."""
         if v == "" or v == 0:
             return None
         if isinstance(v, int):
@@ -246,7 +232,6 @@ class Payload(pydantic.BaseModel):
         return v
 
     def _validate_id_format(self, it_value: str, id_value: str) -> None:
-        """Validate ID format for format-restricted identification types."""
         format_validators = {
             IdentificationType.ISO14443.value: ISO14443,
             IdentificationType.ISO15693.value: ISO15693,

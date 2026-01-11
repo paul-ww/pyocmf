@@ -1,5 +1,3 @@
-"""Tests for CableLossCompensation model."""
-
 import decimal
 
 import pydantic
@@ -10,10 +8,7 @@ from pyocmf.types.units import ResistanceUnit
 
 
 class TestCableLossCompensation:
-    """Test the CableLossCompensation pydantic model."""
-
     def test_valid_cable_loss_with_all_fields(self) -> None:
-        """Test creating CableLossCompensation with all fields."""
         data = {
             "LN": "Cable Type A",
             "LI": 123,
@@ -28,7 +23,6 @@ class TestCableLossCompensation:
         assert cable_loss.LU == ResistanceUnit.MOHM
 
     def test_valid_cable_loss_minimal_fields(self) -> None:
-        """Test creating CableLossCompensation with only required fields."""
         data = {
             "LR": "2.5",
             "LU": "Ohm",
@@ -45,13 +39,11 @@ class TestCableLossCompensation:
         ["0.001", "1.5", "100", "0.0", "999.999", 1.5, 5],
     )
     def test_lr_accepts_various_numeric_types(self, lr_value: str | float | int) -> None:
-        """Test that LR field accepts string, float, and int values."""
         data = {"LR": lr_value, "LU": "mOhm"}
         cable_loss = CableLossCompensation.model_validate(data)
         assert isinstance(cable_loss.LR, decimal.Decimal)
 
     def test_ln_max_length_enforced(self) -> None:
-        """Test that LN field enforces max length of 20."""
         data = {
             "LN": "A" * 21,  # Too long
             "LR": "1.0",
@@ -66,7 +58,6 @@ class TestCableLossCompensation:
         )
 
     def test_missing_required_fields(self) -> None:
-        """Test that missing required fields raise ValidationError."""
         with pytest.raises(pydantic.ValidationError):
             CableLossCompensation.model_validate({"LU": "mOhm"})
 

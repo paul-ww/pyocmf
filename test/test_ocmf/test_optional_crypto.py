@@ -1,5 +1,3 @@
-"""Tests for optional cryptography dependency behavior."""
-
 import pytest
 
 from pyocmf.verification import CRYPTOGRAPHY_AVAILABLE
@@ -9,11 +7,8 @@ from pyocmf.verification import CRYPTOGRAPHY_AVAILABLE
     CRYPTOGRAPHY_AVAILABLE, reason="Test only runs when cryptography is NOT installed"
 )
 def test_helpful_error_when_cryptography_not_installed() -> None:
-    """Test that a helpful error is raised when cryptography is not installed.
-
-    This test only runs when cryptography is not installed.
-    To test manually: pip uninstall cryptography && pytest test/test_ocmf/test_optional_crypto.py
-    """
+    # This test only runs when cryptography is not installed
+    # To test manually: pip uninstall cryptography && pytest test/test_ocmf/test_optional_crypto.py
     from pyocmf.ocmf import OCMF
 
     ocmf_string = (

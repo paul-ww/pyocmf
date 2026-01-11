@@ -1,5 +1,3 @@
-"""Public key types and metadata for OCMF signature verification."""
-
 from __future__ import annotations
 
 import base64
@@ -16,26 +14,12 @@ if TYPE_CHECKING:
 
 
 class PublicKey(pydantic.BaseModel):
-    """Public key information with metadata per OCMF spec Table 23.
-
-    This model represents public key metadata as defined in the OCMF specification.
-    The key type, length, and block length are extracted from the actual key data.
-    """
-
     key: HexStr = pydantic.Field(description="Hex-encoded DER public key")
     curve: CurveType = pydantic.Field(description="Elliptic curve type")
     size: int = pydantic.Field(description="Key size in bits")
     block_length: int = pydantic.Field(description="Block length in bytes")
 
     def to_string(self, base64: bool = False) -> str:
-        """Convert the public key to a string representation.
-
-        Args:
-            base64: If True, return base64-encoded string. Defaults to False (hex).
-
-        Returns:
-            str: The public key as hex or base64 string.
-        """
         if base64:
             import base64 as b64
 
@@ -45,21 +29,7 @@ class PublicKey(pydantic.BaseModel):
 
     @classmethod
     def from_string(cls, key_string: str) -> Self:
-        """Create PublicKey by parsing a DER public key string.
-
-        Automatically detects whether the input is hex-encoded or base64-encoded.
-
-        Args:
-            key_string: Hex-encoded or base64-encoded DER public key
-
-        Returns:
-            PublicKey with extracted metadata
-
-        Raises:
-            HexDecodingError: If the string appears to be hex but cannot be decoded
-            Base64DecodingError: If the string appears to be base64 but cannot be decoded
-            PublicKeyError: If the key cannot be parsed or is not an EC key
-        """
+        """Parse DER public key string (hex or base64) and extract metadata."""
         try:
             from cryptography.hazmat.primitives import serialization
             from cryptography.hazmat.primitives.asymmetric import ec
@@ -111,18 +81,9 @@ class PublicKey(pydantic.BaseModel):
 
     @property
     def key_type_identifier(self) -> KeyType:
-        """Get the OCMF key type identifier (e.g., 'ECDSA-secp256r1')."""
         return KeyType.from_curve(self.curve)
 
     def matches_signature_algorithm(self, signature_algorithm: SignatureMethod | None) -> bool:
-        """Check if this key's curve matches the given signature algorithm.
-
-        Args:
-            signature_algorithm: OCMF signature algorithm (e.g., 'ECDSA-secp256r1-SHA256')
-
-        Returns:
-            True if the curves match, False otherwise
-        """
         if signature_algorithm is None:
             return False
 

@@ -199,7 +199,11 @@ class Payload(pydantic.BaseModel):
                 categories.add("PLMN")
 
         if len(categories) > 1:
-            msg = f"IF (Identification Flags) cannot mix flags from different sources. Found: {', '.join(sorted(categories))}"
+            found_categories = ", ".join(sorted(categories))
+            msg = (
+                f"IF (Identification Flags) cannot mix flags from different sources. "
+                f"Found: {found_categories}"
+            )
             raise ValidationError(msg)
 
         return v
@@ -221,7 +225,10 @@ class Payload(pydantic.BaseModel):
         try:
             pydantic.TypeAdapter(format_validators[it_value]).validate_python(id_value)
         except pydantic.ValidationError as e:
-            msg = f"ID value '{id_value}' does not match format for identification type '{it_value}': {e}"
+            msg = (
+                f"ID value '{id_value}' does not match format for identification "
+                f"type '{it_value}': {e}"
+            )
             raise ValidationError(msg) from e
 
     @pydantic.model_validator(mode="after")

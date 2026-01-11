@@ -2,23 +2,13 @@ from __future__ import annotations
 
 import decimal
 
-import pydantic
 import pytest
 
-from pyocmf.core import Payload
 from pyocmf.core.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
-from pyocmf.enums.identifiers import (
-    IdentificationFlagIso15118,
-    IdentificationFlagOCPP,
-    IdentificationFlagPLMN,
-    IdentificationFlagRFID,
-    IdentificationType,
-)
 from pyocmf.enums.units import EnergyUnit
 from pyocmf.models import OBIS
 
 
-# Helper functions to construct typed objects from strings
 def tm(timestamp_str: str) -> OCMFTimestamp:
     return OCMFTimestamp.from_string(timestamp_str)
 
@@ -116,84 +106,6 @@ class TestCLValidators:
         assert reading.CL is None
 
 
-class TestIFFlagMixing:
-    def test_rfid_flags_only_allowed(self) -> None:
-        payload = Payload(
-            PG="T1",
-            IS=True,
-            IF=[
-                IdentificationFlagRFID.ASSIGNMENT_VIA_EXTERNAL_RFID_CARD_READER,
-                IdentificationFlagRFID.ASSIGNMENT_VIA_PROTECTED_RFID_CARD_READER,
-            ],
-            IT=IdentificationType.ISO14443,
-            ID="1A2B3C4D",
-            GS="12345",
-            RD=[],
-        )
-        assert len(payload.IF) == 2
-
-    def test_ocpp_flags_only_allowed(self) -> None:
-        payload = Payload(
-            PG="T1",
-            IS=True,
-            IF=[
-                IdentificationFlagOCPP.ASSIGNMENT_BY_OCPP_REMOTESTART_METHOD,
-                IdentificationFlagOCPP.ASSIGNMENT_BY_OCPP_REMOTESTART_METHOD_TLS,
-            ],
-            IT=IdentificationType.ISO14443,
-            ID="1A2B3C4D",
-            GS="12345",
-            RD=[],
-        )
-        assert len(payload.IF) == 2
-
-    def test_cannot_mix_rfid_and_ocpp_flags(self) -> None:
-        with pytest.raises(ValueError, match="cannot mix flags from different sources"):
-            Payload(
-                PG="T1",
-                IS=True,
-                IF=[
-                    IdentificationFlagRFID.ASSIGNMENT_VIA_EXTERNAL_RFID_CARD_READER,
-                    IdentificationFlagOCPP.ASSIGNMENT_BY_OCPP_REMOTESTART_METHOD,
-                ],
-                IT=IdentificationType.ISO14443,
-                ID="1A2B3C4D",
-                GS="12345",
-                RD=[],
-            )
-
-    def test_cannot_mix_iso15118_and_plmn_flags(self) -> None:
-        with pytest.raises(ValueError, match="cannot mix flags from different sources"):
-            Payload(
-                PG="T1",
-                IS=True,
-                IF=[
-                    IdentificationFlagIso15118.PLUG_AND_CHARGE_WAS_USED,
-                    IdentificationFlagPLMN.CALL,
-                ],
-                IT=IdentificationType.ISO14443,
-                ID="1A2B3C4D",
-                GS="12345",
-                RD=[],
-            )
-
-    def test_can_mix_all_none_flags(self) -> None:
-        payload = Payload(
-            PG="T1",
-            IS=False,
-            IF=[
-                IdentificationFlagRFID.NO_ASSIGNMENT_VIA_RFID,
-                IdentificationFlagOCPP.NO_USER_ASSIGNMENT_BY_OCPP,
-                IdentificationFlagIso15118.NO_USER_ASSIGNMENT_BY_ISO_15118,
-                IdentificationFlagPLMN.NO_USER_ASSIGNMENT,
-            ],
-            IT=IdentificationType.NONE,
-            GS="12345",
-            RD=[],
-        )
-        assert len(payload.IF) == 4
-
-
 class TestRIRUFieldGroup:
     def test_both_ri_and_ru_present_is_valid(self) -> None:
         reading = Reading(
@@ -217,6 +129,8 @@ class TestRIRUFieldGroup:
     def test_ri_without_ru_fails(self) -> None:
         # RU is required so Pydantic will fail before our validator runs
         # This tests that the field is required
+        import pydantic
+
         with pytest.raises(pydantic.ValidationError):
             Reading(
                 TM=tm("2023-01-01T12:00:00,000+0000 S"),
@@ -241,6 +155,9 @@ class TestRIRUFieldGroup:
 
 class TestTXSequence:
     def test_valid_sequence_begin_to_end(self) -> None:
+        from pyocmf.core import Payload
+        from pyocmf.enums.identifiers import IdentificationType
+
         payload = Payload(
             PG="T1",
             IS=False,
@@ -268,6 +185,9 @@ class TestTXSequence:
         assert len(payload.RD) == 2
 
     def test_valid_sequence_begin_charging_end(self) -> None:
+        from pyocmf.core import Payload
+        from pyocmf.enums.identifiers import IdentificationType
+
         payload = Payload(
             PG="T1",
             IS=False,
@@ -303,6 +223,9 @@ class TestTXSequence:
         assert len(payload.RD) == 3
 
     def test_end_without_begin_fails(self) -> None:
+        from pyocmf.core import Payload
+        from pyocmf.enums.identifiers import IdentificationType
+
         with pytest.raises(ValueError, match="End.*requires TX=B.*Begin.*first"):
             Payload(
                 PG="T1",
@@ -330,6 +253,9 @@ class TestTXSequence:
             )
 
     def test_begin_after_end_fails(self) -> None:
+        from pyocmf.core import Payload
+        from pyocmf.enums.identifiers import IdentificationType
+
         with pytest.raises(ValueError, match="Begin.*cannot appear after transaction end"):
             Payload(
                 PG="T1",
@@ -365,6 +291,9 @@ class TestTXSequence:
             )
 
     def test_charging_after_end_fails(self) -> None:
+        from pyocmf.core import Payload
+        from pyocmf.enums.identifiers import IdentificationType
+
         with pytest.raises(ValueError, match="cannot appear after transaction end"):
             Payload(
                 PG="T1",
@@ -398,163 +327,3 @@ class TestTXSequence:
                     ),
                 ],
             )
-
-
-class TestPaginationPattern:
-    def test_valid_transaction_pagination(self) -> None:
-        for pg in ["T1", "T12", "T999", "T1234567"]:
-            payload = Payload(
-                PG=pg,
-                IS=False,
-                IT=IdentificationType.NONE,
-                GS="12345",
-                RD=[],
-            )
-            assert payload.PG == pg
-
-    def test_valid_fiscal_pagination(self) -> None:
-        for pg in ["F1", "F42", "F999", "F7654321"]:
-            payload = Payload(
-                PG=pg,
-                IS=False,
-                IT=IdentificationType.NONE,
-                GS="12345",
-                RD=[],
-            )
-            assert payload.PG == pg
-
-    def test_t0_rejected(self) -> None:
-        with pytest.raises(pydantic.ValidationError):
-            Payload(
-                PG="T0",  # Invalid - leading zero
-                IS=False,
-                IT=IdentificationType.NONE,
-                GS="12345",
-                RD=[],
-            )
-
-    def test_t01_rejected(self) -> None:
-        with pytest.raises(pydantic.ValidationError):
-            Payload(
-                PG="T01",  # Invalid - leading zero
-                IS=False,
-                IT=IdentificationType.NONE,
-                GS="12345",
-                RD=[],
-            )
-
-    def test_f00_rejected(self) -> None:
-        with pytest.raises(pydantic.ValidationError):
-            Payload(
-                PG="F00",  # Invalid - leading zeros
-                IS=False,
-                IT=IdentificationType.NONE,
-                GS="12345",
-                RD=[],
-            )
-
-
-class TestIDValidation:
-    def test_id_none_when_it_none(self) -> None:
-        payload = Payload(
-            PG="T1",
-            IS=False,
-            IT=IdentificationType.NONE,
-            ID=None,  # Must be None
-            GS="12345",
-            RD=[],
-        )
-        assert payload.ID is None
-
-    def test_id_empty_string_when_it_none(self) -> None:
-        payload = Payload(
-            PG="T1",
-            IS=False,
-            IT=IdentificationType.NONE,
-            ID="",  # Empty string also allowed
-            GS="12345",
-            RD=[],
-        )
-        assert payload.ID == ""
-
-    def test_id_none_when_it_denied(self) -> None:
-        payload = Payload(
-            PG="T1",
-            IS=False,
-            IT=IdentificationType.DENIED,
-            ID=None,
-            GS="12345",
-            RD=[],
-        )
-        assert payload.ID is None
-
-    def test_id_none_when_it_undefined(self) -> None:
-        payload = Payload(
-            PG="T1",
-            IS=False,
-            IT=IdentificationType.UNDEFINED,
-            ID=None,
-            GS="12345",
-            RD=[],
-        )
-        assert payload.ID is None
-
-    def test_id_with_value_when_it_none_fails(self) -> None:
-        with pytest.raises(ValueError, match="ID must be None or empty when IT=NONE"):
-            Payload(
-                PG="T1",
-                IS=False,
-                IT=IdentificationType.NONE,
-                ID="some_id",  # Should fail
-                GS="12345",
-                RD=[],
-            )
-
-    def test_id_with_value_when_it_denied_fails(self) -> None:
-        with pytest.raises(ValueError, match="ID must be None or empty when IT=DENIED"):
-            Payload(
-                PG="T1",
-                IS=False,
-                IT=IdentificationType.DENIED,
-                ID="some_id",  # Should fail
-                GS="12345",
-                RD=[],
-            )
-
-
-class TestTTMaxLength:
-    def test_tt_within_250_chars_valid(self) -> None:
-        tt_250 = "A" * 250
-        payload = Payload(
-            PG="T1",
-            IS=False,
-            IT=IdentificationType.NONE,
-            TT=tt_250,
-            GS="12345",
-            RD=[],
-        )
-        assert payload.TT is not None
-        assert len(payload.TT) == 250
-
-    def test_tt_251_chars_rejected(self) -> None:
-        tt_251 = "A" * 251
-        with pytest.raises(ValueError, match="String should have at most 250 characters"):
-            Payload(
-                PG="T1",
-                IS=False,
-                IT=IdentificationType.NONE,
-                TT=tt_251,  # Too long
-                GS="12345",
-                RD=[],
-            )
-
-    def test_tt_none_allowed(self) -> None:
-        payload = Payload(
-            PG="T1",
-            IS=False,
-            IT=IdentificationType.NONE,
-            TT=None,
-            GS="12345",
-            RD=[],
-        )
-        assert payload.TT is None

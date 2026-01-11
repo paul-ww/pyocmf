@@ -41,12 +41,18 @@ class OCMF(pydantic.BaseModel):
                 decoded_bytes = bytes.fromhex(ocmf_text)
                 ocmf_text = decoded_bytes.decode("utf-8")
             except ValueError as e:
-                msg = f"Invalid OCMF string: must start with '{OCMF_PREFIX}' or be valid hex-encoded. {e}"
+                msg = (
+                    f"Invalid OCMF string: must start with '{OCMF_PREFIX}' or be "
+                    f"valid hex-encoded. {e}"
+                )
                 raise HexDecodingError(msg) from e
         parts = ocmf_text.split(OCMF_SEPARATOR, 2)
 
         if len(parts) != 3 or parts[0] != OCMF_HEADER:
-            msg = f"String does not match expected OCMF format '{OCMF_HEADER}{OCMF_SEPARATOR}{{payload}}{OCMF_SEPARATOR}{{signature}}'."
+            msg = (
+                f"String does not match expected OCMF format "
+                f"'{OCMF_HEADER}{OCMF_SEPARATOR}{{payload}}{OCMF_SEPARATOR}{{signature}}'."
+            )
             raise OcmfFormatError(msg)
 
         payload_json = parts[1]

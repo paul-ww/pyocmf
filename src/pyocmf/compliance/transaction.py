@@ -46,7 +46,10 @@ def _check_timestamp_ordering(
         if end_reading.timestamp < begin_reading.timestamp:
             return EichrechtIssue(
                 code=IssueCode.TIME_REGRESSION,
-                message=f"End timestamp ({end_reading.TM}) must be >= begin timestamp ({begin_reading.TM})",
+                message=(
+                    f"End timestamp ({end_reading.TM}) must be >= "
+                    f"begin timestamp ({begin_reading.TM})"
+                ),
                 field="TM",
             )
     except ValueError as e:
@@ -97,7 +100,10 @@ def _validate_identification_level(payload: Payload, context: str) -> EichrechtI
     if payload.IL in invalid_levels:
         return EichrechtIssue(
             code=IssueCode.ID_LEVEL_INVALID,
-            message=f"Identification level '{payload.IL}' indicates error and is not acceptable for billing ({context})",
+            message=(
+                f"Identification level '{payload.IL}' indicates error and is not "
+                f"acceptable for billing ({context})"
+            ),
             field="IL",
         )
 
@@ -138,7 +144,9 @@ def _validate_value_progression(
             issues.append(
                 EichrechtIssue(
                     code=IssueCode.VALUE_REGRESSION,
-                    message=f"End value ({end_reading.RV}) must be >= begin value ({begin_reading.RV})",
+                    message=(
+                        f"End value ({end_reading.RV}) must be >= begin value ({begin_reading.RV})"
+                    ),
                     field="RV",
                 )
             )

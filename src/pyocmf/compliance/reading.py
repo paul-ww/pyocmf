@@ -34,7 +34,10 @@ def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[Ei
         issues.append(
             EichrechtIssue(
                 code=IssueCode.METER_STATUS,
-                message=f"Meter status must be 'G' (OK) for billing-relevant readings, got '{reading.ST}'",
+                message=(
+                    f"Meter status must be 'G' (OK) for billing-relevant readings, "
+                    f"got '{reading.ST}'"
+                ),
                 field="ST",
             )
         )
@@ -43,7 +46,9 @@ def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[Ei
         issues.append(
             EichrechtIssue(
                 code=IssueCode.ERROR_FLAGS,
-                message=f"Error flags must be empty for billing-relevant readings, got '{reading.EF}'",
+                message=(
+                    f"Error flags must be empty for billing-relevant readings, got '{reading.EF}'"
+                ),
                 field="EF",
             )
         )
@@ -52,7 +57,10 @@ def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[Ei
         issues.append(
             EichrechtIssue(
                 code=IssueCode.TIME_SYNC,
-                message=f"Time should be synchronized (status 'S') for billing, got '{reading.time_status.value}'",
+                message=(
+                    f"Time should be synchronized (status 'S') for billing, "
+                    f"got '{reading.time_status.value}'"
+                ),
                 field="TM",
                 severity=IssueSeverity.WARNING,
             )

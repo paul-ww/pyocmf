@@ -57,15 +57,16 @@ class Reading(pydantic.BaseModel):
     ) -> decimal.Decimal | None:
         if v is not None:
             ri = info.data.get("RI")
+            cl_error = (
+                "CL (Cumulated Loss) can only appear when RI indicates an "
+                "accumulation register (B0-B3, C0-C3)"
+            )
             if not ri:
-                msg = "CL (Cumulated Loss) can only appear when RI indicates an accumulation register (B0-B3, C0-C3)"
-                raise ValueError(msg)
+                raise ValueError(cl_error)
             if isinstance(ri, OBIS) and not ri.is_accumulation_register:
-                msg = "CL (Cumulated Loss) can only appear when RI indicates an accumulation register (B0-B3, C0-C3)"
-                raise ValueError(msg)
+                raise ValueError(cl_error)
             if isinstance(ri, str) and not is_accumulation_register(ri):
-                msg = "CL (Cumulated Loss) can only appear when RI indicates an accumulation register (B0-B3, C0-C3)"
-                raise ValueError(msg)
+                raise ValueError(cl_error)
         return v
 
     @pydantic.field_validator("CL")
@@ -94,7 +95,10 @@ class Reading(pydantic.BaseModel):
         ru_present = self.RU is not None
 
         if ri_present != ru_present:
-            msg = "RI (Reading Identification) and RU (Reading Unit) must both be present or both absent"
+            msg = (
+                "RI (Reading Identification) and RU (Reading Unit) must both be "
+                "present or both absent"
+            )
             raise ValueError(msg)
 
         return self

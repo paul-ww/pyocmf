@@ -1,10 +1,9 @@
 import pathlib
 
 import pytest
+from helpers import parse_xml_with_expected_behavior, should_skip_xml_file
 
 from pyocmf.core import OCMF, Payload, Signature
-
-from .helpers import parse_xml_with_expected_behavior, should_skip_xml_file
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:

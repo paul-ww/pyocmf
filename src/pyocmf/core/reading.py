@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import decimal
+import warnings
 
 import pydantic
 
 from pyocmf.enums.reading import ErrorFlags, MeterReadingReason, MeterStatus, TimeStatus
-from pyocmf.enums.units import OCMFUnit
+from pyocmf.enums.units import EnergyUnit, OCMFUnit, ResistanceUnit
 from pyocmf.models.obis import OBIS, OBISCode
 from pyocmf.models.timestamp import OCMFTimestamp
 from pyocmf.registries.obis import is_accumulation_register
@@ -21,8 +22,9 @@ class Reading(pydantic.BaseModel):
     RI: OBISCode | None = pydantic.Field(
         default=None, description="Reading Identification (OBIS code) - Conditional"
     )
-    RU: OCMFUnit = pydantic.Field(description="Reading Unit - REQUIRED")
-    RT: str | None = pydantic.Field(default=None, description="Reading Current Type")
+    RU: OCMFUnit | str = pydantic.Field(
+        description="Reading Unit (e.g. kWh, Wh, mOhm per OCMF spec Table 20"
+    )
     CL: decimal.Decimal | None = pydantic.Field(default=None, description="Cumulated Losses")
     EF: ErrorFlags | None = pydantic.Field(
         default=None, description="Error Flags (can contain 'E', 't', or both)"
@@ -48,6 +50,25 @@ class Reading(pydantic.BaseModel):
     def ef_empty_string_to_none(cls, v: str | None) -> ErrorFlags | None:
         if v == "":
             return None
+        return v
+
+    @pydantic.field_validator("RU")
+    @classmethod
+    def validate_reading_unit(cls, v: OCMFUnit | str) -> OCMFUnit | str:
+        """Validate RU is spec-compliant, warn if not."""
+        # Derive spec units from the enums
+        spec_units = {unit.value for unit in EnergyUnit} | {unit.value for unit in ResistanceUnit}
+        # Convert to string for comparison (works for both enum and string)
+        value_str = str(v)
+        if value_str not in spec_units:
+            warnings.warn(
+                f"Reading Unit '{value_str}' is not in OCMF spec Table 20 "
+                f"({', '.join(sorted(spec_units))}). "
+                f"This may indicate a vendor-specific or extended unit. "
+                f"Data will be accepted.",
+                UserWarning,
+                stacklevel=2,
+            )
         return v
 
     @pydantic.field_validator("CL")

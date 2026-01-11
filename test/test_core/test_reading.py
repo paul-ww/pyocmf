@@ -219,6 +219,3 @@ class TestTXSequence:
             ],
         )
         assert len(payload.RD) == 3
-
-
-

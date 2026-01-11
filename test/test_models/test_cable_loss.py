@@ -25,14 +25,14 @@ class TestCableLossCompensation:
     def test_valid_cable_loss_minimal_fields(self) -> None:
         data = {
             "LR": "2.5",
-            "LU": "Ohm",
+            "LU": "uOhm",
         }
         cable_loss = CableLossCompensation.model_validate(data)
 
         assert cable_loss.LN is None
         assert cable_loss.LI is None
         assert cable_loss.LR == decimal.Decimal("2.5")
-        assert cable_loss.LU == ResistanceUnit.OHM
+        assert cable_loss.LU == ResistanceUnit.UOHM
 
     @pytest.mark.parametrize(
         "lr_value",

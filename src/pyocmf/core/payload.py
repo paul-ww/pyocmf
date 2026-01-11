@@ -102,8 +102,13 @@ class Payload(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="after")
     def validate_serial_numbers(self) -> Payload:
-        """Either GS or MS must be present for signature component identification."""
-        if not self.GS and not self.MS:
+        """Either GS or MS must be present for signature component identification.
+
+        Per OCMF spec: GS is optional (0..1) but MS is mandatory (1..1).
+        However, at least one must be non-None (though can be empty string).
+        """
+        # Check if both are None/missing (not just falsy/empty string)
+        if self.GS is None and self.MS is None:
             msg = "Either Gateway Serial (GS) or Meter Serial (MS) must be provided"
             raise ValidationError(msg)
         return self
@@ -154,7 +159,8 @@ class Payload(pydantic.BaseModel):
             )
 
             if strict:
-                raise ValidationError(f"{msg}: {e}") from e
+                error_msg = f"{msg}: {e}"
+                raise ValidationError(error_msg) from e
             else:
                 warnings.warn(
                     f"{msg}. This may indicate non-standard RFID card format or vendor-specific "

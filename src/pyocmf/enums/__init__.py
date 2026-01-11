@@ -23,7 +23,7 @@ from pyocmf.enums.reading import (
     ReadingType,
     TimeStatus,
 )
-from pyocmf.enums.units import EnergyUnit, OCMFUnit, ResistanceUnit, TimeUnit
+from pyocmf.enums.units import EnergyUnit, OCMFUnit, ResistanceUnit
 
 __all__ = [
     "CurveType",
@@ -48,5 +48,4 @@ __all__ = [
     "EnergyUnit",
     "OCMFUnit",
     "ResistanceUnit",
-    "TimeUnit",
 ]

@@ -2,19 +2,18 @@ import enum
 
 
 class ResistanceUnit(enum.StrEnum):
+    """Resistance units as defined in OCMF spec Table 20."""
+
     MOHM = "mOhm"
-    OHM = "Ohm"
+    UOHM = "uOhm"
 
 
 class EnergyUnit(enum.StrEnum):
+    """Energy units as defined in OCMF spec Table 20."""
+
     KWH = "kWh"
     WH = "Wh"
 
 
-class TimeUnit(enum.StrEnum):
-    SEC = "sec"
-    MIN = "min"
-    H = "h"
-
-
-OCMFUnit = ResistanceUnit | EnergyUnit | TimeUnit
+# OCMFUnit includes only units defined in OCMF spec Table 20
+OCMFUnit = ResistanceUnit | EnergyUnit

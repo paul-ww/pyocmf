@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, Self
 
 import pydantic
 
+from pyocmf.enums.crypto import CurveType, KeyType
 from pyocmf.exceptions import Base64DecodingError, PublicKeyError
-from pyocmf.types.crypto import CurveType, KeyType
 from pyocmf.types.encoding import HexStr
 
 if TYPE_CHECKING:
-    from pyocmf.types.crypto import SignatureMethod
+    from pyocmf.enums.crypto import SignatureMethod
 
 
 class PublicKey(pydantic.BaseModel):

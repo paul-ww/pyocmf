@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pyocmf.compliance.models import EichrechtIssue, IssueCode, IssueSeverity
-from pyocmf.sections.reading import MeterStatus, TimeStatus
+from pyocmf.enums.reading import MeterStatus, TimeStatus
 
 if TYPE_CHECKING:
-    from pyocmf.sections.payload import Payload
-    from pyocmf.sections.reading import Reading
+    from pyocmf.core.payload import Payload
+    from pyocmf.core.reading import Reading
 
 
 def _get_billing_relevant_begin_reading(payload: Payload) -> Reading:
@@ -30,7 +30,6 @@ def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[Ei
     """
     issues: list[EichrechtIssue] = []
 
-    # 1. Meter status must be OK ("G" = good)
     if reading.ST != MeterStatus.OK:
         issues.append(
             EichrechtIssue(
@@ -40,7 +39,6 @@ def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[Ei
             )
         )
 
-    # 2. Error flags must be empty for billing
     if reading.EF and reading.EF.strip():
         issues.append(
             EichrechtIssue(
@@ -50,10 +48,7 @@ def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[Ei
             )
         )
 
-    # 3. Time synchronization check (informational)
     if reading.time_status != TimeStatus.SYNCHRONIZED:
-        # S = synchronized time (required for legal certainty)
-        # U/I/R = unsynchronized/informative/relative (warnings only)
         issues.append(
             EichrechtIssue(
                 code=IssueCode.TIME_SYNC,
@@ -63,7 +58,6 @@ def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[Ei
             )
         )
 
-    # 4. Cumulated loss (CL) compliance check
     if reading.CL is not None:
         if is_begin and reading.CL != 0:
             issues.append(

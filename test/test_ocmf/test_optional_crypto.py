@@ -1,6 +1,6 @@
 import pytest
 
-from pyocmf.verification import CRYPTOGRAPHY_AVAILABLE
+from pyocmf.crypto.verification import CRYPTOGRAPHY_AVAILABLE
 
 
 @pytest.mark.skipif(
@@ -9,7 +9,7 @@ from pyocmf.verification import CRYPTOGRAPHY_AVAILABLE
 def test_helpful_error_when_cryptography_not_installed() -> None:
     # This test only runs when cryptography is not installed
     # To test manually: pip uninstall cryptography && pytest test/test_ocmf/test_optional_crypto.py
-    from pyocmf.ocmf import OCMF
+    from pyocmf.core import OCMF
 
     ocmf_string = (
         'OCMF|{"FV":"1.0","GI":"Test","GS":"123","GV":"1.0","PG":"T1",'

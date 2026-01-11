@@ -2,7 +2,7 @@ import decimal
 
 import pydantic
 
-from pyocmf.types.units import ResistanceUnit
+from pyocmf.enums.units import ResistanceUnit
 
 
 class CableLossCompensation(pydantic.BaseModel):

@@ -2,13 +2,13 @@ import pathlib
 
 import pytest
 
+from pyocmf.enums.crypto import KeyType, SignatureMethod
 from pyocmf.exceptions import Base64DecodingError, PublicKeyError
-from pyocmf.types.crypto import KeyType, SignatureMethod
 from pyocmf.utils.xml import OcmfContainer
 
 # Check if cryptography is available
 try:
-    from pyocmf.types.public_key import PublicKey
+    from pyocmf.models import PublicKey
 
     CRYPTOGRAPHY_AVAILABLE = True
 except ImportError:

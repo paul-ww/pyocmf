@@ -2,9 +2,20 @@ from __future__ import annotations
 
 import pydantic
 
+from pyocmf.core.reading import Reading
+from pyocmf.enums.identifiers import (
+    ChargePointIdentificationType,
+    IdentificationFlag,
+    IdentificationFlagIso15118,
+    IdentificationFlagOCPP,
+    IdentificationFlagPLMN,
+    IdentificationFlagRFID,
+    IdentificationType,
+    UserAssignmentStatus,
+)
+from pyocmf.enums.reading import MeterReadingReason
 from pyocmf.exceptions import ValidationError
-from pyocmf.sections.reading import MeterReadingReason, Reading
-from pyocmf.types.cable_loss import CableLossCompensation
+from pyocmf.models.cable_loss import CableLossCompensation
 from pyocmf.types.identifiers import (
     EMAID,
     EVCCID,
@@ -13,17 +24,9 @@ from pyocmf.types.identifiers import (
     ISO14443,
     ISO15693,
     PHONE_NUMBER,
-    ChargePointIdentificationType,
     IdentificationData,
-    IdentificationFlag,
-    IdentificationFlagIso15118,
-    IdentificationFlagOCPP,
-    IdentificationFlagPLMN,
-    IdentificationFlagRFID,
-    IdentificationType,
-    PaginationString,
-    UserAssignmentStatus,
 )
+from pyocmf.types.pagination import PaginationString
 
 
 class Payload(pydantic.BaseModel):
@@ -79,11 +82,9 @@ class Payload(pydantic.BaseModel):
         if not readings_data:
             return data
 
-        # Check if readings are already Reading objects (skip inheritance)
-        from pyocmf.sections.reading import Reading
+        from pyocmf.core.reading import Reading
 
         if readings_data and isinstance(readings_data[0], Reading):
-            # Already Reading objects, skip inheritance
             return data
 
         inheritable_fields = ["TM", "TX", "RI", "RU", "RT", "EF", "ST"]
@@ -91,16 +92,13 @@ class Payload(pydantic.BaseModel):
         processed_readings = []
 
         for rd in readings_data:
-            # Inherit missing fields from previous reading
             reading_dict = {
                 field: rd.get(field, last_values.get(field))
                 for field in inheritable_fields
                 if field in rd or field in last_values
             }
-            # Add non-inheritable fields
             reading_dict.update({k: v for k, v in rd.items() if k not in inheritable_fields})
 
-            # Update last_values with current reading's inheritable fields
             last_values.update({k: v for k, v in reading_dict.items() if k in inheritable_fields})
 
             processed_readings.append(reading_dict)
@@ -109,16 +107,7 @@ class Payload(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="after")
     def validate_serial_numbers(self) -> Payload:
-        """Either GS or MS must be present for signature component identification.
-
-        Note: OCMF spec Table 3 marks MS (Meter Serial) as mandatory (1..1), but the
-        "Relation of Serial Numbers, Charge Point and Public Key" section uses
-        conditional language about when each serial number is needed. This implementation
-        uses the lenient interpretation (at least one of GS or MS) to accommodate systems
-        where the meter is not separately identified from the gateway.
-
-        For stricter compliance with Table 3, this could be changed to require MS always.
-        """
+        """Either GS or MS must be present for signature component identification."""
         if not self.GS and not self.MS:
             msg = "Either Gateway Serial (GS) or Meter Serial (MS) must be provided"
             raise ValidationError(msg)
@@ -126,14 +115,7 @@ class Payload(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="after")
     def validate_tx_sequence(self) -> Payload:
-        """Validate transaction type (TX) sequence within readings.
-
-        Per OCMF spec Table 7: Transaction sequence must follow the pattern:
-        - B (BEGIN) must come first
-        - End states (E/L/R/A/P) must come last
-        - Middle states (C/X/S/T) can appear between begin and end
-        - Cannot have B after end states
-        """
+        """Validate transaction type (TX) sequence within readings."""
         if not self.RD or len(self.RD) < 2:
             return self
 
@@ -197,23 +179,14 @@ class Payload(pydantic.BaseModel):
     def validate_flags_consistent_source(
         cls, v: list[IdentificationFlag]
     ) -> list[IdentificationFlag]:
-        """Ensure IF flags don't mix from different tables (RFID, OCPP, ISO15118, PLMN).
-
-        Per OCMF spec Tables 13-16: Identification flags from different source
-        tables should not be mixed in a single IF array.
-
-        Exception: All flags ending with "_NONE" can be mixed, as they indicate
-        the absence of identification via those methods.
-        """
+        """Ensure IF flags don't mix from different tables."""
         if not v or len(v) <= 1:
             return v
 
-        # Allow mixing if all flags are "_NONE" values (indicating no auth via those methods)
         all_none = all(str(flag).endswith("_NONE") for flag in v)
         if all_none:
             return v
 
-        # Categorize flags by source table
         categories = set()
         for flag in v:
             if isinstance(flag, IdentificationFlagRFID):
@@ -253,20 +226,7 @@ class Payload(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="after")
     def validate_id_format_by_type(self) -> Payload:
-        """Validate ID format based on the Identification Type (IT).
-
-        Per OCMF spec Table 17, each identification type has specific format requirements:
-        - ISO14443: 8 or 14 hex chars
-        - ISO15693: 16 hex chars
-        - EMAID: 14-15 alphanumeric
-        - EVCCID: max 6 chars
-        - EVCOID: specific pattern
-        - ISO7812: 8-19 digits
-        - PHONE_NUMBER: valid phone number
-        - LOCAL, CENTRAL, CARD_TXN_NR, KEY_CODE: no format defined (accept any string)
-        - NONE, DENIED, UNDEFINED: no ID should be provided (must be None or empty string)
-        """
-        # First check: NONE/DENIED/UNDEFINED must have ID=None or empty string
+        """Validate ID format based on the Identification Type (IT)."""
         if self.IT in (
             IdentificationType.NONE,
             IdentificationType.DENIED,
@@ -283,7 +243,6 @@ class Payload(pydantic.BaseModel):
         it_value = self.IT.value if isinstance(self.IT, IdentificationType) else str(self.IT)
         id_value = self.ID
 
-        # Types with no format defined - accept any string
         unrestricted_types = {
             IdentificationType.LOCAL.value,
             IdentificationType.LOCAL_1.value,
@@ -296,7 +255,6 @@ class Payload(pydantic.BaseModel):
         }
 
         if it_value in unrestricted_types:
-            # Accept any string value for these types
             return self
 
         self._validate_id_format(it_value, id_value)

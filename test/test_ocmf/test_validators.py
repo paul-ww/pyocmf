@@ -5,17 +5,17 @@ import decimal
 import pydantic
 import pytest
 
-from pyocmf.sections.payload import Payload
-from pyocmf.sections.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
-from pyocmf.types.identifiers import (
+from pyocmf.core import Payload
+from pyocmf.core.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
+from pyocmf.enums.identifiers import (
     IdentificationFlagIso15118,
     IdentificationFlagOCPP,
     IdentificationFlagPLMN,
     IdentificationFlagRFID,
     IdentificationType,
 )
-from pyocmf.types.obis import OBIS
-from pyocmf.types.units import EnergyUnit
+from pyocmf.enums.units import EnergyUnit
+from pyocmf.models import OBIS
 
 
 # Helper functions to construct typed objects from strings

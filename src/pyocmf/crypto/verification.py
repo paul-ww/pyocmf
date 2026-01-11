@@ -4,10 +4,10 @@ import base64
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pyocmf.types.crypto import SignatureEncodingType
+    from pyocmf.enums.crypto import SignatureEncodingType
 
-from pyocmf.types.crypto import HashAlgorithm, SignatureMethod
-from pyocmf.types.public_key import PublicKey
+from pyocmf.enums.crypto import HashAlgorithm, SignatureMethod
+from pyocmf.models.public_key import PublicKey
 
 try:
     from cryptography.exceptions import InvalidSignature
@@ -52,7 +52,7 @@ def get_hash_algorithm(signature_method: SignatureMethod | None) -> type[hashes.
 
 
 def decode_signature_data(signature_data: str, encoding: SignatureEncodingType | None) -> bytes:
-    from pyocmf.types.crypto import SignatureEncodingType
+    from pyocmf.enums.crypto import SignatureEncodingType
 
     if encoding == SignatureEncodingType.HEX or encoding is None:
         try:

@@ -1,8 +1,8 @@
 import pydantic
 import pytest
 
-from pyocmf.sections.payload import Payload
-from pyocmf.types.identifiers import IdentificationType
+from pyocmf.core import Payload
+from pyocmf.enums.identifiers import IdentificationType
 
 
 class TestIdValidationByType:

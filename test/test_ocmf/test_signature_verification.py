@@ -2,13 +2,13 @@ import pathlib
 
 import pytest
 
+from pyocmf.core import OCMF
 from pyocmf.exceptions import SignatureVerificationError
-from pyocmf.ocmf import OCMF
 from pyocmf.utils.xml import OcmfContainer
 
 # Check if cryptography is available by checking if verification module works
 try:
-    from pyocmf.verification import CRYPTOGRAPHY_AVAILABLE
+    from pyocmf.crypto.verification import CRYPTOGRAPHY_AVAILABLE
 except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
 

@@ -1,6 +1,6 @@
 import pytest
 
-from pyocmf.types.crypto import CurveType, HashAlgorithm, KeyType, SignatureMethod
+from pyocmf.enums.crypto import CurveType, HashAlgorithm, KeyType, SignatureMethod
 
 
 class TestKeyType:

@@ -18,7 +18,7 @@ except ImportError:
     TYPER_AVAILABLE = False
 
 try:
-    from pyocmf.verification import CRYPTOGRAPHY_AVAILABLE
+    from pyocmf.crypto.verification import CRYPTOGRAPHY_AVAILABLE
 except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
 
@@ -80,7 +80,7 @@ class TestCliValidation:
         assert "KEBA_KCP30" in result.stdout
 
     def test_validate_hex_encoded(self, cli_runner: CliRunner, sample_ocmf_string: str) -> None:
-        from pyocmf.ocmf import OCMF
+        from pyocmf.core import OCMF
 
         ocmf = OCMF.from_string(sample_ocmf_string)
         hex_string = ocmf.to_string(hex=True)

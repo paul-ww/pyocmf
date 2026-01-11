@@ -8,11 +8,11 @@ from pyocmf.compliance import (
     check_eichrecht_reading,
     check_eichrecht_transaction,
 )
-from pyocmf.sections.payload import Payload
-from pyocmf.sections.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
-from pyocmf.types.identifiers import IdentificationType, UserAssignmentStatus
-from pyocmf.types.obis import OBIS
-from pyocmf.types.units import EnergyUnit
+from pyocmf.core import Payload
+from pyocmf.core.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
+from pyocmf.enums.identifiers import IdentificationType, UserAssignmentStatus
+from pyocmf.enums.units import EnergyUnit
+from pyocmf.models import OBIS
 
 
 class TestEichrechtReadingValidation:

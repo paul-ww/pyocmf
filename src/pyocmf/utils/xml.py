@@ -6,9 +6,9 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 
 from pyocmf.constants import OCMF_HEADER, OCMF_PREFIX
+from pyocmf.core.ocmf import OCMF
 from pyocmf.exceptions import DataNotFoundError, SignatureVerificationError, XmlParsingError
-from pyocmf.ocmf import OCMF
-from pyocmf.types.public_key import PublicKey
+from pyocmf.models.public_key import PublicKey
 
 
 @dataclass
@@ -84,14 +84,12 @@ class OcmfContainer:
 
 
 def _extract_ocmf_string(element: ET.Element) -> str | None:
-    # Check signedData with format='OCMF'
     sd = element.find("signedData")
     if sd is not None and sd.text:
         text = sd.text.strip()
         if sd.get("format") == OCMF_HEADER or text.startswith(OCMF_PREFIX):
             return text
 
-    # Check encodedData with format='OCMF' (hex-encoded, handled by OCMF.from_string)
     ed = element.find("encodedData")
     if ed is not None and ed.get("format") == OCMF_HEADER and ed.text:
         return ed.text.strip()
@@ -103,7 +101,6 @@ def _extract_public_key(element: ET.Element) -> PublicKey | None:
     pk = element.find("publicKey")
     if pk is not None and pk.text:
         try:
-            # Remove all whitespace from the public key string
             key_str = "".join(pk.text.split())
             return PublicKey.from_string(key_str)
         except (ImportError, ValueError):

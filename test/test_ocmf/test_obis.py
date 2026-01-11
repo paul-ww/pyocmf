@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pyocmf.types.obis import (
+from pyocmf.registries import (
     OBISCategory,
     OBISInfo,
     get_obis_info,

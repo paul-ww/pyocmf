@@ -11,8 +11,8 @@ from rich.panel import Panel
 from rich.table import Table
 
 from pyocmf.constants import OCMF_PREFIX
+from pyocmf.core.ocmf import OCMF
 from pyocmf.exceptions import PyOCMFError, SignatureVerificationError
-from pyocmf.ocmf import OCMF
 from pyocmf.utils.xml import OcmfContainer, OcmfRecord
 
 CMD = "ocmf"
@@ -113,8 +113,6 @@ def _detect_input_type(ocmf_input: str) -> InputType:
         if path.exists() and path.is_file():
             return InputType.XML
     except (OSError, ValueError):
-        # OSError for paths that are too long, ValueError for invalid path characters
-        # If pathlib can't handle it, treat as OCMF string
         pass
 
     # Check if it looks like a file path (has file extension or path separators)

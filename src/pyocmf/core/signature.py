@@ -1,6 +1,6 @@
 import pydantic
 
-from pyocmf.types.crypto import (
+from pyocmf.enums.crypto import (
     SignatureEncodingType,
     SignatureMethod,
     SignatureMimeType,

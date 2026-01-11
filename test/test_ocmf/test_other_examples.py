@@ -2,14 +2,13 @@ import pathlib
 
 import pytest
 
-from pyocmf.sections.payload import Payload
-from pyocmf.sections.signature import Signature
-from pyocmf.types.identifiers import IdentificationType
+from pyocmf.core import Payload, Signature
+from pyocmf.enums.identifiers import IdentificationType
 from pyocmf.utils.xml import OcmfContainer
 
 # Check if cryptography is available
 try:
-    from pyocmf.verification import CRYPTOGRAPHY_AVAILABLE
+    from pyocmf.crypto.verification import CRYPTOGRAPHY_AVAILABLE
 except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
 

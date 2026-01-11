@@ -1,4 +1,4 @@
-from pyocmf.types.units import EnergyUnit, ResistanceUnit, TimeUnit
+from pyocmf.enums.units import EnergyUnit, ResistanceUnit, TimeUnit
 
 
 class TestUnitEnums:

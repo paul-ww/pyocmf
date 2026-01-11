@@ -1,10 +1,8 @@
-from pyocmf.types.crypto import HashAlgorithm, SignatureEncodingType, SignatureMethod
-from pyocmf.types.public_key import CurveType, PublicKey
+from pyocmf.enums.crypto import CurveType, HashAlgorithm, SignatureEncodingType, SignatureMethod
 
 __all__ = [
     "CurveType",
     "HashAlgorithm",
-    "PublicKey",
     "SignatureEncodingType",
     "SignatureMethod",
 ]

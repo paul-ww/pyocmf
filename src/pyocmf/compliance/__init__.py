@@ -3,8 +3,8 @@ from pyocmf.compliance.models import (
     IssueCode,
     IssueSeverity,
 )
-from pyocmf.compliance.reading_validator import check_eichrecht_reading
-from pyocmf.compliance.transaction_validator import (
+from pyocmf.compliance.reading import check_eichrecht_reading
+from pyocmf.compliance.transaction import (
     check_eichrecht_transaction,
     validate_transaction_pair,
 )

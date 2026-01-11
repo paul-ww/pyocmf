@@ -3,10 +3,6 @@ from __future__ import annotations
 import enum
 import re
 from dataclasses import dataclass
-from typing import Annotated
-
-import pydantic
-from pydantic import BeforeValidator
 
 
 class OBISCategory(enum.StrEnum):
@@ -25,7 +21,6 @@ class OBISInfo:
 
     @staticmethod
     def normalize(obis_code: str) -> str:
-        # Remove asterisk and everything after it
         return obis_code.split("*")[0]
 
     @staticmethod
@@ -40,9 +35,7 @@ class OBISInfo:
         return bool(re.match(r"01-00:[BC][23]\.08\.00$", self.code))
 
 
-# OCMF v1.4.0+ Reserved OBIS Codes for Billing (Table 25)
 BILLING_RELEVANT_OBIS = {
-    # Import Energy Registers (measured in kWh typically)
     "01-00:B0.08.00": OBISInfo(
         "01-00:B0.08.00",
         "Total Import Mains Energy (energy at meter)",
@@ -67,7 +60,6 @@ BILLING_RELEVANT_OBIS = {
         billing_relevant=True,
         category=OBISCategory.IMPORT,
     ),
-    # Export Energy Registers (for bidirectional charging)
     "01-00:C0.08.00": OBISInfo(
         "01-00:C0.08.00",
         "Total Export Mains Energy",
@@ -94,7 +86,6 @@ BILLING_RELEVANT_OBIS = {
     ),
 }
 
-# Common non-billing OBIS codes (for reference)
 COMMON_OBIS = {
     "01-00:00.08.06": OBISInfo(
         "01-00:00.08.06",
@@ -122,7 +113,6 @@ COMMON_OBIS = {
     ),
 }
 
-# Legacy OBIS codes (from older OCMF versions)
 LEGACY_OBIS = {
     "1-b:1.8.0": OBISInfo(
         "1-b:1.8.0",
@@ -138,11 +128,7 @@ LEGACY_OBIS = {
     ),
 }
 
-# Combine all known OBIS codes
 ALL_KNOWN_OBIS = {**BILLING_RELEVANT_OBIS, **COMMON_OBIS, **LEGACY_OBIS}
-
-
-# Module-level convenience functions for backward compatibility and ease of use
 
 
 def normalize_obis_code(obis_code: str) -> str:
@@ -156,15 +142,12 @@ def get_obis_info(obis_code: str) -> OBISInfo | None:
 def is_billing_relevant(obis_code: str) -> bool:
     normalized = normalize_obis_code(obis_code)
 
-    # Check exact match first
     if normalized in ALL_KNOWN_OBIS:
         return ALL_KNOWN_OBIS[normalized].billing_relevant
 
-    # Check pattern match for OCMF accumulation registers (B0-B3, C0-C3)
     if re.match(r"01-00:[BC][0-3]\.08\.00$", normalized):
         return True
 
-    # Check standard IEC energy registers
     if re.match(r"01-00:0[12]\.08\.00$", normalized):
         return True
 
@@ -176,7 +159,6 @@ def is_accumulation_register(obis_code: str) -> bool:
     if info:
         return info.is_accumulation_register()
 
-    # Fallback to pattern matching if code is unknown
     normalized = normalize_obis_code(obis_code)
     return bool(re.match(r"01-00:[BC][0-3]\.08\.00$", normalized))
 
@@ -186,7 +168,6 @@ def is_transaction_register(obis_code: str) -> bool:
     if info:
         return info.is_transaction_register()
 
-    # Fallback to pattern matching if code is unknown
     normalized = normalize_obis_code(obis_code)
     return bool(re.match(r"01-00:[BC][23]\.08\.00$", normalized))
 
@@ -201,53 +182,3 @@ def validate_obis_for_billing(obis_code: str | None) -> tuple[bool, str | None]:
         return False, f"OBIS code '{normalized}' is not billing-relevant"
 
     return True, None
-
-
-class OBIS(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(frozen=True)
-
-    code: str
-    suffix: str | None = None
-
-    @classmethod
-    def from_string(cls, obis_str: str) -> OBIS:
-        if not isinstance(obis_str, str):
-            return obis_str  # Already an OBIS object
-
-        parts = obis_str.split("*", 1)
-        return cls(
-            code=parts[0],
-            suffix=parts[1] if len(parts) > 1 else None,
-        )
-
-    @property
-    def info(self) -> OBISInfo | None:
-        return get_obis_info(self.code)
-
-    @property
-    def is_billing_relevant(self) -> bool:
-        return is_billing_relevant(self.code)
-
-    @property
-    def is_accumulation_register(self) -> bool:
-        return is_accumulation_register(self.code)
-
-    @property
-    def is_transaction_register(self) -> bool:
-        return is_transaction_register(self.code)
-
-    def __str__(self) -> str:
-        return f"{self.code}*{self.suffix}" if self.suffix else self.code
-
-    def __repr__(self) -> str:
-        if self.suffix:
-            return f"OBIS('{self.code}*{self.suffix}')"
-        return f"OBIS('{self.code}')"
-
-
-# Type annotation for Pydantic fields that accept OBIS codes
-# This allows both string input (which gets converted) and OBIS objects
-OBISCode = Annotated[
-    OBIS,
-    BeforeValidator(lambda v: OBIS.from_string(v) if isinstance(v, str) else v),
-]

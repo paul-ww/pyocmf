@@ -3,8 +3,8 @@ import decimal
 import pydantic
 import pytest
 
-from pyocmf.types.cable_loss import CableLossCompensation
-from pyocmf.types.units import ResistanceUnit
+from pyocmf.enums.units import ResistanceUnit
+from pyocmf.models import CableLossCompensation
 
 
 class TestCableLossCompensation:

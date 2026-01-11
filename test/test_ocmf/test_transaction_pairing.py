@@ -3,13 +3,11 @@ from __future__ import annotations
 import decimal
 
 from pyocmf.compliance import validate_transaction_pair
-from pyocmf.ocmf import OCMF
-from pyocmf.sections.payload import Payload
-from pyocmf.sections.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
-from pyocmf.sections.signature import Signature
-from pyocmf.types.identifiers import IdentificationType, UserAssignmentStatus
-from pyocmf.types.obis import OBIS
-from pyocmf.types.units import EnergyUnit
+from pyocmf.core import OCMF, Payload, Signature
+from pyocmf.core.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
+from pyocmf.enums.identifiers import IdentificationType, UserAssignmentStatus
+from pyocmf.enums.units import EnergyUnit
+from pyocmf.models import OBIS
 
 
 class TestTransactionPairValidation:

@@ -2,9 +2,7 @@ import pathlib
 
 import pytest
 
-from pyocmf.ocmf import OCMF
-from pyocmf.sections.payload import Payload
-from pyocmf.sections.signature import Signature
+from pyocmf.core import OCMF, Payload, Signature
 
 from .helpers import parse_xml_with_expected_behavior, should_skip_xml_file
 

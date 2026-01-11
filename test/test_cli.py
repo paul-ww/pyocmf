@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyocmf.cli import app
+from pyocmf.core import OCMF
 
 if TYPE_CHECKING:
     from typer.testing import CliRunner
@@ -80,7 +81,6 @@ class TestCliValidation:
         assert "KEBA_KCP30" in result.stdout
 
     def test_validate_hex_encoded(self, cli_runner: CliRunner, sample_ocmf_string: str) -> None:
-        from pyocmf.core import OCMF
 
         ocmf = OCMF.from_string(sample_ocmf_string)
         hex_string = ocmf.to_string(hex=True)

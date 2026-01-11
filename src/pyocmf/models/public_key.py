@@ -9,6 +9,13 @@ from pyocmf.enums.crypto import CurveType, KeyType
 from pyocmf.exceptions import Base64DecodingError, PublicKeyError
 from pyocmf.types.encoding import HexStr
 
+try:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+except ImportError:
+    serialization = None  # type: ignore[assignment]
+    ec = None  # type: ignore[assignment]
+
 if TYPE_CHECKING:
     from pyocmf.enums.crypto import SignatureMethod
 
@@ -19,26 +26,21 @@ class PublicKey(pydantic.BaseModel):
     size: int = pydantic.Field(description="Key size in bits")
     block_length: int = pydantic.Field(description="Block length in bytes")
 
-    def to_string(self, base64: bool = False) -> str:
-        if base64:
-            import base64 as b64
-
+    def to_string(self, base64_encode: bool = False) -> str:
+        if base64_encode:
             key_bytes = bytes.fromhex(self.key)
-            return b64.b64encode(key_bytes).decode("ascii")
+            return base64.b64encode(key_bytes).decode("ascii")
         return self.key
 
     @classmethod
     def from_string(cls, key_string: str) -> Self:
         """Parse DER public key string (hex or base64) and extract metadata."""
-        try:
-            from cryptography.hazmat.primitives import serialization
-            from cryptography.hazmat.primitives.asymmetric import ec
-        except ImportError as e:
+        if serialization is None or ec is None:
             msg = (
                 "Public key parsing requires the 'cryptography' package. "
                 "Install it with: pip install pyocmf[crypto]"
             )
-            raise ImportError(msg) from e
+            raise ImportError(msg)
 
         key_string = key_string.strip()
 

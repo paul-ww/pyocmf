@@ -82,8 +82,6 @@ class Payload(pydantic.BaseModel):
         if not readings_data:
             return data
 
-        from pyocmf.core.reading import Reading
-
         if readings_data and isinstance(readings_data[0], Reading):
             return data
 

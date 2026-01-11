@@ -9,6 +9,7 @@ from pyocmf.compliance.models import EichrechtIssue, IssueSeverity
 from pyocmf.constants import OCMF_HEADER, OCMF_PREFIX, OCMF_SEPARATOR
 from pyocmf.core.payload import Payload
 from pyocmf.core.signature import Signature
+from pyocmf.crypto import verification
 from pyocmf.exceptions import (
     HexDecodingError,
     OcmfFormatError,
@@ -94,7 +95,6 @@ class OCMF(pydantic.BaseModel):
         Requires that the OCMF was parsed from a string (not constructed programmatically)
         because signature verification needs the exact original payload bytes.
         """
-        from pyocmf.crypto import verification
 
         if self._original_payload_json is None:
             msg = (

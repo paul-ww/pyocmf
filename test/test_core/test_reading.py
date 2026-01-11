@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import decimal
 
+import pydantic
 import pytest
 
+from pyocmf.core import Payload
 from pyocmf.core.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
+from pyocmf.enums.identifiers import IdentificationType
 from pyocmf.enums.units import EnergyUnit
 from pyocmf.models import OBIS
 
@@ -129,7 +132,6 @@ class TestRIRUFieldGroup:
     def test_ri_without_ru_fails(self) -> None:
         # RU is required so Pydantic will fail before our validator runs
         # This tests that the field is required
-        import pydantic
 
         with pytest.raises(pydantic.ValidationError):
             Reading(
@@ -155,8 +157,6 @@ class TestRIRUFieldGroup:
 
 class TestTXSequence:
     def test_valid_sequence_begin_to_end(self) -> None:
-        from pyocmf.core import Payload
-        from pyocmf.enums.identifiers import IdentificationType
 
         payload = Payload(
             PG="T1",
@@ -185,8 +185,6 @@ class TestTXSequence:
         assert len(payload.RD) == 2
 
     def test_valid_sequence_begin_charging_end(self) -> None:
-        from pyocmf.core import Payload
-        from pyocmf.enums.identifiers import IdentificationType
 
         payload = Payload(
             PG="T1",
@@ -223,8 +221,6 @@ class TestTXSequence:
         assert len(payload.RD) == 3
 
     def test_end_without_begin_fails(self) -> None:
-        from pyocmf.core import Payload
-        from pyocmf.enums.identifiers import IdentificationType
 
         with pytest.raises(ValueError, match="End.*requires TX=B.*Begin.*first"):
             Payload(
@@ -253,8 +249,6 @@ class TestTXSequence:
             )
 
     def test_begin_after_end_fails(self) -> None:
-        from pyocmf.core import Payload
-        from pyocmf.enums.identifiers import IdentificationType
 
         with pytest.raises(ValueError, match="Begin.*cannot appear after transaction end"):
             Payload(
@@ -291,8 +285,6 @@ class TestTXSequence:
             )
 
     def test_charging_after_end_fails(self) -> None:
-        from pyocmf.core import Payload
-        from pyocmf.enums.identifiers import IdentificationType
 
         with pytest.raises(ValueError, match="cannot appear after transaction end"):
             Payload(

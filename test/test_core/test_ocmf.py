@@ -11,6 +11,7 @@ from pyocmf.core.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, 
 from pyocmf.enums.identifiers import IdentificationType, UserAssignmentStatus
 from pyocmf.enums.units import EnergyUnit
 from pyocmf.models import OBIS
+from pyocmf.utils.xml import OcmfContainer
 
 # Check if cryptography is available
 try:
@@ -98,7 +99,6 @@ class TestVerifyMethod:
     def test_verify_combines_signature_and_eichrecht(
         self, transparency_xml_dir: pathlib.Path
     ) -> None:
-        from pyocmf.utils.xml import OcmfContainer
 
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
         container = OcmfContainer.from_xml(xml_file)
@@ -113,7 +113,6 @@ class TestVerifyMethod:
         assert isinstance(issues, list)
 
     def test_verify_with_eichrecht_disabled(self, transparency_xml_dir: pathlib.Path) -> None:
-        from pyocmf.utils.xml import OcmfContainer
 
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
         container = OcmfContainer.from_xml(xml_file)

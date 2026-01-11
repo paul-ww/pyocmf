@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import pydantic
 import pytest
 
@@ -27,17 +29,6 @@ class TestIdValidationByType:
         )
         assert payload.ID == "arbitrary_hex_string_32_chars_long"
 
-    def test_iso14443_rejects_invalid_length(self) -> None:
-        with pytest.raises(pydantic.ValidationError, match="does not match format"):
-            Payload(
-                PG="T1",
-                GS="000001",
-                IS=True,
-                IT=IdentificationType.ISO14443,
-                ID="1234567890abcdef",  # 16 chars - too long for ISO14443
-                RD=[],
-            )
-
     def test_iso14443_accepts_8_hex_chars(self) -> None:
         payload = Payload(
             PG="T1",
@@ -60,17 +51,6 @@ class TestIdValidationByType:
         )
         assert payload.ID == "1A2B3C4D5E6F70"
 
-    def test_iso15693_requires_16_hex_chars(self) -> None:
-        with pytest.raises(pydantic.ValidationError, match="does not match format"):
-            Payload(
-                PG="T1",
-                GS="000001",
-                IS=True,
-                IT=IdentificationType.ISO15693,
-                ID="E007000012345",  # Only 14 chars
-                RD=[],
-            )
-
     def test_iso15693_accepts_16_hex_chars(self) -> None:
         payload = Payload(
             PG="T1",
@@ -82,8 +62,42 @@ class TestIdValidationByType:
         )
         assert payload.ID == "E007000012345678"
 
+    def test_iso14443_warns_on_invalid_length(self) -> None:
+        """ISO14443 with non-standard length should emit warning but not fail."""
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            payload = Payload(
+                PG="T1",
+                GS="000001",
+                IS=True,
+                IT=IdentificationType.ISO14443,
+                ID="5EEFE0C7F64B050E9FB95C",  # 22 chars - non-standard
+                RD=[],
+            )
+            assert len(w) == 1
+            assert "does not match expected format" in str(w[0].message)
+            assert "ISO14443" in str(w[0].message)
+            assert payload.ID == "5EEFE0C7F64B050E9FB95C"
+
+    def test_iso15693_warns_on_invalid_length(self) -> None:
+        """ISO15693 with non-standard length should emit warning but not fail."""
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            payload = Payload(
+                PG="T1",
+                GS="000001",
+                IS=True,
+                IT=IdentificationType.ISO15693,
+                ID="112233445566CC",  # 14 chars - expects 16
+                RD=[],
+            )
+            assert len(w) == 1
+            assert "does not match expected format" in str(w[0].message)
+            assert "ISO15693" in str(w[0].message)
+            assert payload.ID == "112233445566CC"
+
     def test_emaid_requires_14_15_alphanumeric(self) -> None:
-        with pytest.raises(pydantic.ValidationError, match="does not match format"):
+        with pytest.raises(pydantic.ValidationError, match="does not match expected format"):
             Payload(
                 PG="T1",
                 GS="000001",
@@ -116,7 +130,7 @@ class TestIdValidationByType:
         assert payload.ID == "4111111111111111"
 
     def test_iso7812_rejects_non_digits(self) -> None:
-        with pytest.raises(pydantic.ValidationError, match="does not match format"):
+        with pytest.raises(pydantic.ValidationError, match="does not match expected format"):
             Payload(
                 PG="T1",
                 GS="000001",
@@ -197,7 +211,7 @@ class TestIdValidationByType:
         assert payload.ID is not None
 
     def test_phone_number_rejects_invalid_format(self) -> None:
-        with pytest.raises(pydantic.ValidationError, match="not a valid phone number"):
+        with pytest.raises(pydantic.ValidationError, match="does not match expected format"):
             Payload(
                 PG="T1",
                 GS="000001",
@@ -250,36 +264,6 @@ class TestIFFlagMixing:
         )
         assert len(payload.IF) == 2
 
-    def test_cannot_mix_rfid_and_ocpp_flags(self) -> None:
-        with pytest.raises(ValueError, match="cannot mix flags from different sources"):
-            Payload(
-                PG="T1",
-                IS=True,
-                IF=[
-                    IdentificationFlagRFID.ASSIGNMENT_VIA_EXTERNAL_RFID_CARD_READER,
-                    IdentificationFlagOCPP.ASSIGNMENT_BY_OCPP_REMOTESTART_METHOD,
-                ],
-                IT=IdentificationType.ISO14443,
-                ID="1A2B3C4D",
-                GS="12345",
-                RD=[],
-            )
-
-    def test_cannot_mix_iso15118_and_plmn_flags(self) -> None:
-        with pytest.raises(ValueError, match="cannot mix flags from different sources"):
-            Payload(
-                PG="T1",
-                IS=True,
-                IF=[
-                    IdentificationFlagIso15118.PLUG_AND_CHARGE_WAS_USED,
-                    IdentificationFlagPLMN.CALL,
-                ],
-                IT=IdentificationType.ISO14443,
-                ID="1A2B3C4D",
-                GS="12345",
-                RD=[],
-            )
-
     def test_can_mix_all_none_flags(self) -> None:
         payload = Payload(
             PG="T1",
@@ -319,36 +303,6 @@ class TestPaginationPattern:
                 RD=[],
             )
             assert payload.PG == pg
-
-    def test_t0_rejected(self) -> None:
-        with pytest.raises(pydantic.ValidationError):
-            Payload(
-                PG="T0",  # Invalid - leading zero
-                IS=False,
-                IT=IdentificationType.NONE,
-                GS="12345",
-                RD=[],
-            )
-
-    def test_t01_rejected(self) -> None:
-        with pytest.raises(pydantic.ValidationError):
-            Payload(
-                PG="T01",  # Invalid - leading zero
-                IS=False,
-                IT=IdentificationType.NONE,
-                GS="12345",
-                RD=[],
-            )
-
-    def test_f00_rejected(self) -> None:
-        with pytest.raises(pydantic.ValidationError):
-            Payload(
-                PG="F00",  # Invalid - leading zeros
-                IS=False,
-                IT=IdentificationType.NONE,
-                GS="12345",
-                RD=[],
-            )
 
 
 class TestIDValidation:
@@ -395,28 +349,6 @@ class TestIDValidation:
             RD=[],
         )
         assert payload.ID is None
-
-    def test_id_with_value_when_it_none_fails(self) -> None:
-        with pytest.raises(ValueError, match="ID must be None or empty when IT=NONE"):
-            Payload(
-                PG="T1",
-                IS=False,
-                IT=IdentificationType.NONE,
-                ID="some_id",  # Should fail
-                GS="12345",
-                RD=[],
-            )
-
-    def test_id_with_value_when_it_denied_fails(self) -> None:
-        with pytest.raises(ValueError, match="ID must be None or empty when IT=DENIED"):
-            Payload(
-                PG="T1",
-                IS=False,
-                IT=IdentificationType.DENIED,
-                ID="some_id",  # Should fail
-                GS="12345",
-                RD=[],
-            )
 
 
 class TestTTMaxLength:

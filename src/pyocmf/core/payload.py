@@ -1,19 +1,16 @@
 from __future__ import annotations
 
+import warnings
+
 import pydantic
 
 from pyocmf.core.reading import Reading
 from pyocmf.enums.identifiers import (
     ChargePointIdentificationType,
     IdentificationFlag,
-    IdentificationFlagIso15118,
-    IdentificationFlagOCPP,
-    IdentificationFlagPLMN,
-    IdentificationFlagRFID,
     IdentificationType,
     UserAssignmentStatus,
 )
-from pyocmf.enums.reading import MeterReadingReason
 from pyocmf.exceptions import ValidationError
 from pyocmf.models.cable_loss import CableLossCompensation
 from pyocmf.types.identifiers import (
@@ -111,51 +108,6 @@ class Payload(pydantic.BaseModel):
             raise ValidationError(msg)
         return self
 
-    @pydantic.model_validator(mode="after")
-    def validate_tx_sequence(self) -> Payload:
-        """Validate transaction type (TX) sequence within readings."""
-        if not self.RD or len(self.RD) < 2:
-            return self
-
-        begin_seen = False
-        end_seen = False
-
-        for i, reading in enumerate(self.RD):
-            if reading.TX is None:
-                continue
-
-            tx = reading.TX
-
-            if tx == MeterReadingReason.BEGIN:
-                if end_seen:
-                    msg = f"Reading {i}: TX=B (Begin) cannot appear after transaction end"
-                    raise ValidationError(msg)
-                begin_seen = True
-
-            elif tx in (
-                MeterReadingReason.END,
-                MeterReadingReason.TERMINATION_LOCAL,
-                MeterReadingReason.TERMINATION_REMOTE,
-                MeterReadingReason.TERMINATION_ABORT,
-                MeterReadingReason.TERMINATION_POWER_FAILURE,
-            ):
-                if not begin_seen:
-                    msg = f"Reading {i}: TX={tx.value} (End) requires TX=B (Begin) first"
-                    raise ValidationError(msg)
-                end_seen = True
-
-            elif tx in (
-                MeterReadingReason.CHARGING,
-                MeterReadingReason.EXCEPTION,
-                MeterReadingReason.SUSPENDED,
-                MeterReadingReason.TARIFF_CHANGE,
-            ):
-                if end_seen:
-                    msg = f"Reading {i}: TX={tx.value} cannot appear after transaction end"
-                    raise ValidationError(msg)
-
-        return self
-
     @pydantic.field_validator("FV", mode="before")
     @classmethod
     def convert_fv_to_string(cls, v: int | float | str | None) -> str | None:
@@ -172,41 +124,14 @@ class Payload(pydantic.BaseModel):
             return str(v)
         return v
 
-    @pydantic.field_validator("IF")
-    @classmethod
-    def validate_flags_consistent_source(
-        cls, v: list[IdentificationFlag]
-    ) -> list[IdentificationFlag]:
-        """Ensure IF flags don't mix from different tables."""
-        if not v or len(v) <= 1:
-            return v
+    def _validate_id_format(self, it_value: str, id_value: str, *, strict: bool = True) -> None:
+        """Validate ID format, either strictly (raise) or permissively (warn).
 
-        all_none = all(str(flag).endswith("_NONE") for flag in v)
-        if all_none:
-            return v
-
-        categories = set()
-        for flag in v:
-            if isinstance(flag, IdentificationFlagRFID):
-                categories.add("RFID")
-            elif isinstance(flag, IdentificationFlagOCPP):
-                categories.add("OCPP")
-            elif isinstance(flag, IdentificationFlagIso15118):
-                categories.add("ISO15118")
-            elif isinstance(flag, IdentificationFlagPLMN):
-                categories.add("PLMN")
-
-        if len(categories) > 1:
-            found_categories = ", ".join(sorted(categories))
-            msg = (
-                f"IF (Identification Flags) cannot mix flags from different sources. "
-                f"Found: {found_categories}"
-            )
-            raise ValidationError(msg)
-
-        return v
-
-    def _validate_id_format(self, it_value: str, id_value: str) -> None:
+        Args:
+            it_value: Identification type value
+            id_value: Identification data value
+            strict: If True, raise ValidationError on mismatch. If False, emit warning.
+        """
         format_validators = {
             IdentificationType.ISO14443.value: ISO14443,
             IdentificationType.ISO15693.value: ISO15693,
@@ -224,30 +149,35 @@ class Payload(pydantic.BaseModel):
             pydantic.TypeAdapter(format_validators[it_value]).validate_python(id_value)
         except pydantic.ValidationError as e:
             msg = (
-                f"ID value '{id_value}' does not match format for identification "
-                f"type '{it_value}': {e}"
+                f"ID value '{id_value}' does not match expected format for identification "
+                f"type '{it_value}'"
             )
-            raise ValidationError(msg) from e
+
+            if strict:
+                raise ValidationError(f"{msg}: {e}") from e
+            else:
+                warnings.warn(
+                    f"{msg}. This may indicate non-standard RFID card format or vendor-specific "
+                    f"implementation. Data will be accepted but may not be fully spec-compliant.",
+                    UserWarning,
+                    stacklevel=4,
+                )
 
     @pydantic.model_validator(mode="after")
     def validate_id_format_by_type(self) -> Payload:
-        """Validate ID format based on the Identification Type (IT)."""
-        if self.IT in (
-            IdentificationType.NONE,
-            IdentificationType.DENIED,
-            IdentificationType.UNDEFINED,
-        ):
-            if self.ID is not None and self.ID != "":
-                msg = f"ID must be None or empty when IT={self.IT.value} (no assignment type)"
-                raise ValidationError(msg)
-            return self
+        """Validate ID format based on the Identification Type (IT).
 
+        For most types, validation is strict (raises ValidationError).
+        For ISO14443 and ISO15693, validation emits warnings but allows non-standard formats,
+        as real-world RFID cards may have vendor-specific implementations.
+        """
         if not self.ID or not self.IT:
             return self
 
         it_value = self.IT.value if isinstance(self.IT, IdentificationType) else str(self.IT)
         id_value = self.ID
 
+        # Types that accept any string value without validation
         unrestricted_types = {
             IdentificationType.LOCAL.value,
             IdentificationType.LOCAL_1.value,
@@ -257,10 +187,21 @@ class Payload(pydantic.BaseModel):
             IdentificationType.CENTRAL_2.value,
             IdentificationType.CARD_TXN_NR.value,
             IdentificationType.KEY_CODE.value,
+            IdentificationType.UNDEFINED.value,
+            IdentificationType.NONE.value,
+            IdentificationType.DENIED.value,
+        }
+
+        # Types that validate with warnings instead of errors (permissive mode)
+        permissive_types = {
+            IdentificationType.ISO14443.value,
+            IdentificationType.ISO15693.value,
         }
 
         if it_value in unrestricted_types:
             return self
 
-        self._validate_id_format(it_value, id_value)
+        # Use permissive validation (warn) for ISO types, strict for others
+        strict = it_value not in permissive_types
+        self._validate_id_format(it_value, id_value, strict=strict)
         return self

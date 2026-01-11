@@ -6,16 +6,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pyocmf.enums.crypto import SignatureEncodingType
 
-from pyocmf.enums.crypto import (
-    HashAlgorithm,
-    SignatureEncodingType,
-    SignatureMethod,
-)
+from pyocmf.enums.crypto import HashAlgorithm, SignatureMethod
 from pyocmf.models.public_key import PublicKey
 
 try:
     from cryptography.exceptions import InvalidSignature
-    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import ec
 
     CRYPTOGRAPHY_AVAILABLE = True
@@ -56,6 +52,8 @@ def get_hash_algorithm(signature_method: SignatureMethod | None) -> type[hashes.
 
 
 def decode_signature_data(signature_data: str, encoding: SignatureEncodingType | None) -> bytes:
+    from pyocmf.enums.crypto import SignatureEncodingType
+
     if encoding == SignatureEncodingType.HEX or encoding is None:
         try:
             return bytes.fromhex(signature_data)
@@ -105,6 +103,8 @@ def verify_signature(
     signature_bytes = decode_signature_data(signature_data, signature_encoding)
     hash_algorithm = get_hash_algorithm(signature_method)
     payload_bytes = payload_json.encode("utf-8")
+
+    from cryptography.hazmat.primitives import serialization
 
     key_bytes = bytes.fromhex(public_key_hex)
     crypto_public_key = serialization.load_der_public_key(key_bytes)

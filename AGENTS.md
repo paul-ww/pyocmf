@@ -161,13 +161,15 @@ uv run ty check src test
 ```
 
 **Code style conventions:**
-- Line length: 100 characters (configured in `pyproject.toml`)
+- Line length: 100 characters (configured in `ruff.toml`)
+- McCabe complexity: Maximum of 12 (configured in `ruff.toml`)
 - Type hints required: All function definitions must have complete type annotations
 - Import organization: Imports are automatically sorted by ruff (isort rules)
+- Preview mode enabled in ruff for access to experimental linting rules
 - Enabled ruff rules include:
   - E/W: pycodestyle errors and warnings
   - F: Pyflakes
-  - C901: McCabe complexity
+  - C901/C4: McCabe complexity and comprehension complexity
   - TRY: Exception handling best practices
   - N: PEP8 naming conventions
   - B: flake8-bugbear (common bugs)
@@ -175,7 +177,16 @@ uv run ty check src test
   - I: isort (import sorting)
   - PT: pytest style
   - PTH: pathlib usage
-  - And more (see `pyproject.toml` for full list)
+  - EXE: Executable shebang validation
+  - ERA: eradicate (find dead code)
+  - DTZ: datetime-tz (datetime best practices)
+  - EM: error-message formatting
+  - FA: future annotations
+  - PIE: flake8-pie (misc performance and style)
+  - FURB: refurb (modern Python idioms)
+  - PGH: pygrep hooks
+  - BLE: blind exception catching
+  - See `ruff.toml` for complete configuration
 
 **ty configuration:**
 - Type checking using `ty check` command
@@ -207,7 +218,7 @@ uv pip install -e .
 Version is defined in `pyproject.toml` under `[project]` section.
 
 **Build system:**
-Uses `uv_build>=0.8.3,<0.9.0` as the build backend (configured in `pyproject.toml`).
+Uses `uv_build>=0.8.3` as the build backend (configured in `pyproject.toml`).
 
 ## CI/CD Pipeline
 

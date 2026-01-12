@@ -56,6 +56,51 @@ def sample_public_key() -> str:
     )
 
 
+class TestAllCommand:
+    @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
+    def test_all_with_public_key(
+        self,
+        cli_runner: CliRunner,
+        sample_ocmf_string: str,
+        sample_public_key: str,
+    ) -> None:
+        result = cli_runner.invoke(
+            app, ["all", sample_ocmf_string, "--public-key", sample_public_key]
+        )
+
+        assert result.exit_code == 0
+        assert "Signature verification: VALID" in result.stdout
+        assert "COMPLIANT" in result.stdout
+
+    def test_all_without_public_key(
+        self,
+        cli_runner: CliRunner,
+        sample_ocmf_string: str,
+    ) -> None:
+        result = cli_runner.invoke(app, ["all", sample_ocmf_string])
+
+        assert result.exit_code == 0
+        assert "No public key available" in result.stdout
+        assert "COMPLIANT" in result.stdout
+
+    @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
+    def test_all_with_verbose(
+        self,
+        cli_runner: CliRunner,
+        sample_ocmf_string: str,
+        sample_public_key: str,
+    ) -> None:
+        result = cli_runner.invoke(
+            app,
+            ["all", sample_ocmf_string, "--public-key", sample_public_key, "--verbose"],
+        )
+
+        assert result.exit_code == 0
+        assert "Signature verification: VALID" in result.stdout
+        assert "COMPLIANT WITH WARNINGS" in result.stdout
+        assert "OCMF Structure:" in result.stdout
+
+
 class TestVerifyCommand:
     @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
     def test_verify_valid_signature(

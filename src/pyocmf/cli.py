@@ -22,6 +22,7 @@ app = typer.Typer(
     name=CMD,
     help="Verify OCMF signatures and check regulatory compliance",
     add_completion=False,
+    no_args_is_help=True,
 )
 console = Console()
 
@@ -29,6 +30,61 @@ console = Console()
 class InputType(StrEnum):
     XML = "xml"
     OCMF_STRING = "ocmf_string"
+
+
+@app.command(name="all")
+def all_checks(
+    ocmf_input: Annotated[
+        str,
+        typer.Argument(help="OCMF string, hex-encoded string, or path to XML file"),
+    ],
+    public_key: Annotated[
+        str | None,
+        typer.Option("--public-key", "-k", help="Hex-encoded public key"),
+    ] = None,
+    verbose: Annotated[
+        bool,
+        typer.Option("--verbose", "-v", help="Show detailed OCMF structure and warnings"),
+    ] = False,
+) -> None:
+    """Run both signature verification and compliance check (default command)."""
+    try:
+        input_type = _detect_input_type(ocmf_input)
+
+        # Parse OCMF and extract public key (for XML files)
+        if input_type == InputType.XML:
+            path = pathlib.Path(ocmf_input)
+            container = OcmfContainer.from_xml(path)
+            record = container[0]
+            ocmf = record.ocmf
+            key_to_use = public_key or (record.public_key.key if record.public_key else None)
+        else:
+            ocmf = OCMF.from_string(ocmf_input)
+            key_to_use = public_key
+
+        # First: verify signature
+        if key_to_use:
+            _verify_signature(ocmf, key_to_use)
+        else:
+            console.print(
+                "[yellow]⚠[/yellow] No public key available - skipping signature verification"
+            )
+
+        # Second: check compliance
+        console.print()  # Add spacing
+        issues = ocmf.check_eichrecht(errors_only=not verbose)
+        _display_compliance_result(issues, ocmf.is_eichrecht_compliant)
+
+        # Optional: display structure
+        if verbose:
+            _display_ocmf_structure(ocmf)
+
+    except PyOCMFError as e:
+        console.print(f"[red]✗[/red] OCMF parsing failed: {e}")
+        sys.exit(1)
+    except FileNotFoundError as e:
+        console.print(f"[red]✗[/red] File not found: {e}")
+        sys.exit(1)
 
 
 @app.command()
@@ -50,7 +106,7 @@ def verify(
         typer.Option("--all", help="Process all entries in XML file"),
     ] = False,
 ) -> None:
-    """Verify cryptographic signature (requires pyocmf[crypto])."""
+    """Verify cryptographic signature only (requires pyocmf[crypto])."""
     try:
         input_type = _detect_input_type(ocmf_input)
 
@@ -159,15 +215,8 @@ def _read_input(ocmf_input: str) -> str:
     return ocmf_input
 
 
-def _verify_single_ocmf(ocmf: OCMF, verbose: bool, public_key: str | None) -> None:
-    if not public_key:
-        console.print("[yellow]⚠[/yellow] No public key provided")
-        if ocmf.signature.SA:
-            console.print("[yellow]ℹ[/yellow] Signature present but not verified")
-        if verbose:
-            _display_ocmf_structure(ocmf)
-        return
-
+def _verify_signature(ocmf: OCMF, public_key: str) -> None:
+    """Verify signature and display results."""
     try:
         is_valid = ocmf.verify_signature(public_key)
 
@@ -191,6 +240,18 @@ def _verify_single_ocmf(ocmf: OCMF, verbose: bool, public_key: str | None) -> No
         console.print(f"\n[red]✗[/red] {e}")
         console.print("[yellow]ℹ[/yellow] Install with: pip install pyocmf[crypto]")
         sys.exit(1)
+
+
+def _verify_single_ocmf(ocmf: OCMF, verbose: bool, public_key: str | None) -> None:
+    if not public_key:
+        console.print("[yellow]⚠[/yellow] No public key provided")
+        if ocmf.signature.SA:
+            console.print("[yellow]ℹ[/yellow] Signature present but not verified")
+        if verbose:
+            _display_ocmf_structure(ocmf)
+        return
+
+    _verify_signature(ocmf, public_key)
 
     if verbose:
         _display_ocmf_structure(ocmf)
@@ -223,25 +284,24 @@ def _display_compliance_result(
     label_str = f" {label}" if label else ""
 
     if not issues:
-        console.print(f"[green]✓[/green] COMPLIANT{label_str}")
+        console.print(
+            f"\n[green]✓[/green] Eichrecht compliance: "
+            f"[bold green]COMPLIANT{label_str}[/bold green]"
+        )
         return
 
     errors = [i for i in issues if i.severity == IssueSeverity.ERROR]
     warnings = [i for i in issues if i.severity == IssueSeverity.WARNING]
 
-    status = "✗ NOT COMPLIANT" if errors else "⚠ WARNINGS FOUND"
-    status_color = "red" if errors else "yellow"
-
-    error_count = len(errors)
-    warning_count = len(warnings)
-    summary_parts = []
     if errors:
-        summary_parts.append(f"{error_count} error{'s' if error_count != 1 else ''}")
-    if warnings:
-        summary_parts.append(f"{warning_count} warning{'s' if warning_count != 1 else ''}")
-    summary = ", ".join(summary_parts)
-
-    console.print(f"[{status_color}]{status}{label_str} ({summary})[/{status_color}]")
+        console.print(
+            f"\n[red]✗[/red] Eichrecht compliance: [bold red]NOT COMPLIANT{label_str}[/bold red]"
+        )
+    else:
+        console.print(
+            f"\n[yellow]⚠[/yellow] Eichrecht compliance: "
+            f"[bold yellow]COMPLIANT WITH WARNINGS{label_str}[/bold yellow]"
+        )
 
     if errors:
         console.print("\n[bold red]Errors:[/bold red]")
@@ -314,6 +374,19 @@ def _display_ocmf_structure(ocmf: OCMF) -> None:
 
 
 def main() -> None:
+    import sys
+
+    # If no subcommand provided, default to 'all' command
+    if len(sys.argv) == 1:
+        app(["--help"])
+    elif (
+        len(sys.argv) >= 2
+        and not sys.argv[1].startswith("-")
+        and sys.argv[1] not in ["verify", "check", "inspect", "all"]
+    ):
+        # User provided input without subcommand, use 'all'
+        sys.argv.insert(1, "all")
+
     app()
 
 

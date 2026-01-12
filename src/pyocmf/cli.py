@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from pyocmf.compliance import EichrechtIssue, IssueSeverity
 from pyocmf.constants import OCMF_PREFIX
 from pyocmf.core.ocmf import OCMF
 from pyocmf.exceptions import PyOCMFError, SignatureVerificationError
@@ -19,7 +20,7 @@ CMD = "ocmf"
 
 app = typer.Typer(
     name=CMD,
-    help="Validate and verify Open Charge Metering Format (OCMF) data",
+    help="Verify OCMF signatures and check regulatory compliance",
     add_completion=False,
 )
 console = Console()
@@ -31,71 +32,98 @@ class InputType(StrEnum):
 
 
 @app.command()
-def validate(
+def verify(
     ocmf_input: Annotated[
         str,
-        typer.Argument(
-            help="OCMF string, hex-encoded string, or path to XML file",
-        ),
+        typer.Argument(help="OCMF string, hex-encoded string, or path to XML file"),
     ],
     public_key: Annotated[
         str | None,
-        typer.Option(
-            "--public-key",
-            "-k",
-            help="Hex-encoded public key for signature verification",
-        ),
+        typer.Option("--public-key", "-k", help="Hex-encoded public key"),
     ] = None,
     verbose: Annotated[
         bool,
-        typer.Option(
-            "--verbose",
-            "-v",
-            help="Show detailed OCMF structure",
-        ),
+        typer.Option("--verbose", "-v", help="Show detailed OCMF structure"),
     ] = False,
     all_entries: Annotated[
         bool,
-        typer.Option(
-            "--all",
-            help="Process all OCMF entries in XML file (default: first only)",
-        ),
+        typer.Option("--all", help="Process all entries in XML file"),
     ] = False,
 ) -> None:
-    """Validate an OCMF string and optionally verify its signature.
-
-    The input format is auto-detected:
-    - If input is an existing file path, it's treated as XML
-    - If input starts with "OCMF|", it's treated as an OCMF string
-    - Otherwise, it's treated as hex-encoded OCMF
-
-    Examples:
-        # Validate OCMF string
-        ocmf 'OCMF|{...}|{...}'
-
-        # Validate and verify signature
-        ocmf 'OCMF|{...}|{...}' --public-key 3059301306...
-
-        # Validate hex-encoded OCMF
-        ocmf 4f434d467c7b...
-
-        # Validate from XML file (auto-extracts public key)
-        ocmf charging_session.xml
-
-        # Validate all entries in XML file
-        ocmf charging_session.xml --all
-    """
+    """Verify cryptographic signature (requires pyocmf[crypto])."""
     try:
-        # Auto-detect input type
         input_type = _detect_input_type(ocmf_input)
 
         if input_type == InputType.XML:
-            _validate_from_xml(ocmf_input, verbose, all_entries)
-        else:  # InputType.OCMF_STRING (handles both plain and hex-encoded)
-            _validate_single_ocmf(OCMF.from_string(ocmf_input), verbose, public_key)
+            _verify_from_xml(ocmf_input, verbose, all_entries, public_key)
+        else:
+            _verify_single_ocmf(OCMF.from_string(ocmf_input), verbose, public_key)
 
     except PyOCMFError as e:
-        console.print(f"[red]✗[/red] OCMF validation failed: {e}")
+        console.print(f"[red]✗[/red] OCMF parsing failed: {e}")
+        sys.exit(1)
+    except FileNotFoundError as e:
+        console.print(f"[red]✗[/red] File not found: {e}")
+        sys.exit(1)
+
+
+@app.command()
+def check(
+    input1: Annotated[
+        str,
+        typer.Argument(help="OCMF string, hex-encoded string, or path to XML file"),
+    ],
+    input2: Annotated[
+        str | None,
+        typer.Argument(help="Second OCMF for transaction pair (optional)"),
+    ] = None,
+    verbose: Annotated[
+        bool,
+        typer.Option("--verbose", "-v", help="Show warnings in addition to errors"),
+    ] = False,
+) -> None:
+    """Check Eichrecht regulatory compliance."""
+    try:
+        ocmf1 = OCMF.from_string(_read_input(input1))
+
+        if input2:
+            ocmf2 = OCMF.from_string(_read_input(input2))
+            issues = ocmf1.check_eichrecht(other=ocmf2, errors_only=not verbose)
+            is_compliant = not any(i.severity == IssueSeverity.ERROR for i in issues)
+            label = "transaction pair"
+        else:
+            issues = ocmf1.check_eichrecht(errors_only=not verbose)
+            is_compliant = ocmf1.is_eichrecht_compliant
+            label = None
+
+        _display_compliance_result(issues, is_compliant, label)
+
+    except PyOCMFError as e:
+        console.print(f"[red]✗[/red] OCMF parsing failed: {e}")
+        sys.exit(1)
+    except FileNotFoundError as e:
+        console.print(f"[red]✗[/red] File not found: {e}")
+        sys.exit(1)
+
+
+@app.command()
+def inspect(
+    ocmf_input: Annotated[
+        str,
+        typer.Argument(help="OCMF string, hex-encoded string, or path to XML file"),
+    ],
+) -> None:
+    """Display parsed OCMF structure."""
+    try:
+        input_type = _detect_input_type(ocmf_input)
+
+        if input_type == InputType.XML:
+            _inspect_from_xml(ocmf_input)
+        else:
+            _display_ocmf_structure(OCMF.from_string(ocmf_input))
+
+    except PyOCMFError as e:
+        console.print(f"[red]✗[/red] OCMF parsing failed: {e}")
         sys.exit(1)
     except FileNotFoundError as e:
         console.print(f"[red]✗[/red] File not found: {e}")
@@ -103,11 +131,9 @@ def validate(
 
 
 def _detect_input_type(ocmf_input: str) -> InputType:
-    # Check if it's an OCMF string first
     if ocmf_input.startswith(OCMF_PREFIX):
         return InputType.OCMF_STRING
 
-    # Try to treat as a file path
     try:
         path = pathlib.Path(ocmf_input)
         if path.exists() and path.is_file():
@@ -115,61 +141,33 @@ def _detect_input_type(ocmf_input: str) -> InputType:
     except (OSError, ValueError):
         pass
 
-    # Check if it looks like a file path (has file extension or path separators)
     if ocmf_input.endswith(".xml") or "/" in ocmf_input or "\\" in ocmf_input:
         raise FileNotFoundError(ocmf_input)
 
-    # Fall back to OCMF string processing
     return InputType.OCMF_STRING
 
 
-def _validate_single_ocmf(ocmf: OCMF, verbose: bool, public_key: str | None) -> None:
-    console.print("[green]✓[/green] Successfully parsed OCMF string")
-    console.print("[green]✓[/green] OCMF validation passed")
+def _read_input(ocmf_input: str) -> str:
+    """Read OCMF data from string or file."""
+    input_type = _detect_input_type(ocmf_input)
 
-    if verbose:
-        _display_ocmf_details(ocmf)
+    if input_type == InputType.XML:
+        path = pathlib.Path(ocmf_input)
+        container = OcmfContainer.from_xml(path)
+        return container[0].ocmf.to_string()
 
-    if public_key:
-        _verify_signature(ocmf, public_key)
-    elif ocmf.signature.SA:
-        console.print(
-            "\n[yellow]ℹ[/yellow] Signature present but not verified (use --public-key to verify)"
-        )
+    return ocmf_input
 
 
-def _validate_from_xml(xml_path: str, verbose: bool, all_entries: bool) -> None:
-    path = pathlib.Path(xml_path)
-    if not path.exists():
-        msg = f"XML file not found: {xml_path}"
-        raise FileNotFoundError(msg)
-
-    container = OcmfContainer.from_xml(path)
-
-    number_of_records = len(container)
-    record_string = "record" if number_of_records == 1 else "records"
-    console.print(f"[green]✓[/green] Found {number_of_records} OCMF {record_string} in XML file")
-
-    records_to_process: list[OcmfRecord] = container.entries if all_entries else [container[0]]
-
-    for i, record in enumerate(records_to_process, 1):
-        if len(records_to_process) > 1:
-            console.print(f"\n[bold cyan]Entry {i}/{len(records_to_process)}:[/bold cyan]")
-
-        console.print("[green]✓[/green] Successfully parsed OCMF string")
-        console.print("[green]✓[/green] OCMF validation passed")
-
+def _verify_single_ocmf(ocmf: OCMF, verbose: bool, public_key: str | None) -> None:
+    if not public_key:
+        console.print("[yellow]⚠[/yellow] No public key provided")
+        if ocmf.signature.SA:
+            console.print("[yellow]ℹ[/yellow] Signature present but not verified")
         if verbose:
-            _display_ocmf_details(record.ocmf)
+            _display_ocmf_structure(ocmf)
+        return
 
-        # Auto-verify with public key from XML if available
-        if record.public_key:
-            _verify_signature(record.ocmf, record.public_key.key)
-        elif record.ocmf.signature.SA:
-            console.print("\n[yellow]ℹ[/yellow] Signature present but no public key found in XML")
-
-
-def _verify_signature(ocmf: OCMF, public_key: str) -> None:
     try:
         is_valid = ocmf.verify_signature(public_key)
 
@@ -177,11 +175,9 @@ def _verify_signature(ocmf: OCMF, public_key: str) -> None:
             console.print(
                 "\n[green]✓[/green] Signature verification: [bold green]VALID[/bold green]"
             )
-
             table = Table(show_header=False, box=None, padding=(0, 2))
             table.add_row("Algorithm:", ocmf.signature.SA or "N/A")
             table.add_row("Encoding:", ocmf.signature.SE or "hex")
-
             console.print(table)
         else:
             console.print("\n[red]✗[/red] Signature verification: [bold red]INVALID[/bold red]")
@@ -196,8 +192,95 @@ def _verify_signature(ocmf: OCMF, public_key: str) -> None:
         console.print("[yellow]ℹ[/yellow] Install with: pip install pyocmf[crypto]")
         sys.exit(1)
 
+    if verbose:
+        _display_ocmf_structure(ocmf)
 
-def _display_ocmf_details(ocmf: OCMF) -> None:
+
+def _verify_from_xml(
+    xml_path: str, verbose: bool, all_entries: bool, public_key: str | None
+) -> None:
+    path = pathlib.Path(xml_path)
+    if not path.exists():
+        raise FileNotFoundError(xml_path)
+
+    container = OcmfContainer.from_xml(path)
+    records_to_process: list[OcmfRecord] = container.entries if all_entries else [container[0]]
+
+    console.print(f"[green]✓[/green] Found {len(container)} OCMF record(s) in XML file")
+
+    for i, record in enumerate(records_to_process, 1):
+        if len(records_to_process) > 1:
+            console.print(f"\n[bold cyan]Entry {i}/{len(records_to_process)}:[/bold cyan]")
+
+        key_to_use = public_key or (record.public_key.key if record.public_key else None)
+        _verify_single_ocmf(record.ocmf, verbose, key_to_use)
+
+
+def _display_compliance_result(
+    issues: list[EichrechtIssue], is_compliant: bool, label: str | None = None
+) -> None:
+    """Display compliance check results."""
+    label_str = f" {label}" if label else ""
+
+    if not issues:
+        console.print(f"[green]✓[/green] COMPLIANT{label_str}")
+        return
+
+    errors = [i for i in issues if i.severity == IssueSeverity.ERROR]
+    warnings = [i for i in issues if i.severity == IssueSeverity.WARNING]
+
+    status = "✗ NOT COMPLIANT" if errors else "⚠ WARNINGS FOUND"
+    status_color = "red" if errors else "yellow"
+
+    error_count = len(errors)
+    warning_count = len(warnings)
+    summary_parts = []
+    if errors:
+        summary_parts.append(f"{error_count} error{'s' if error_count != 1 else ''}")
+    if warnings:
+        summary_parts.append(f"{warning_count} warning{'s' if warning_count != 1 else ''}")
+    summary = ", ".join(summary_parts)
+
+    console.print(f"[{status_color}]{status}{label_str} ({summary})[/{status_color}]")
+
+    if errors:
+        console.print("\n[bold red]Errors:[/bold red]")
+        for issue in errors:
+            _display_issue(issue)
+
+    if warnings:
+        console.print("\n[bold yellow]Warnings:[/bold yellow]")
+        for issue in warnings:
+            _display_issue(issue)
+
+    if not is_compliant:
+        sys.exit(1)
+
+
+def _display_issue(issue: EichrechtIssue) -> None:
+    """Display a single compliance issue."""
+    field_str = f"[{issue.field}] " if issue.field else ""
+    console.print(f"  {field_str}{issue.message} ({issue.code.value})")
+
+
+def _inspect_from_xml(xml_path: str) -> None:
+    path = pathlib.Path(xml_path)
+    if not path.exists():
+        raise FileNotFoundError(xml_path)
+
+    container = OcmfContainer.from_xml(path)
+    console.print(f"Found {len(container)} OCMF record(s) in XML file\n")
+
+    for i, record in enumerate(container.entries, 1):
+        if i > 1:
+            console.print()
+        if len(container) > 1:
+            console.print(f"[bold cyan]Entry {i}/{len(container)}:[/bold cyan]")
+        _display_ocmf_structure(record.ocmf)
+
+
+def _display_ocmf_structure(ocmf: OCMF) -> None:
+    """Display the parsed OCMF structure."""
     console.print("\n[bold]OCMF Structure:[/bold]")
 
     console.print("\n[bold cyan]Payload:[/bold cyan]")
@@ -206,7 +289,6 @@ def _display_ocmf_details(ocmf: OCMF) -> None:
     payload_table.add_row("Gateway ID:", ocmf.payload.GI)
     payload_table.add_row("Gateway Serial:", ocmf.payload.GS)
     payload_table.add_row("Pagination:", ocmf.payload.PG)
-
     console.print(payload_table)
 
     if ocmf.payload.RD:
@@ -218,7 +300,6 @@ def _display_ocmf_details(ocmf: OCMF) -> None:
             reading_table.add_row("Value:", f"{reading.RV} {reading.RU}")
             reading_table.add_row("Identifier:", str(reading.RI) if reading.RI else "N/A")
             reading_table.add_row("Status:", reading.ST)
-
             console.print(Panel(reading_table, title=f"Reading {i}", border_style="cyan"))
 
     console.print("\n[bold cyan]Signature:[/bold cyan]")
@@ -229,7 +310,6 @@ def _display_ocmf_details(ocmf: OCMF) -> None:
         "Data:",
         f"{ocmf.signature.SD[:32]}..." if len(ocmf.signature.SD) > 32 else ocmf.signature.SD,
     )
-
     console.print(sig_table)
 
 

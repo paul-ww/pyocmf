@@ -95,7 +95,6 @@ class OCMF(pydantic.BaseModel):
         Requires that the OCMF was parsed from a string (not constructed programmatically)
         because signature verification needs the exact original payload bytes.
         """
-
         if self._original_payload_json is None:
             msg = (
                 "Cannot verify signature: original payload JSON not available. "

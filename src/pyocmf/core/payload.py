@@ -136,6 +136,7 @@ class Payload(pydantic.BaseModel):
             it_value: Identification type value
             id_value: Identification data value
             strict: If True, raise ValidationError on mismatch. If False, emit warning.
+
         """
         format_validators = {
             IdentificationType.ISO14443.value: ISO14443,

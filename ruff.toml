@@ -23,7 +23,20 @@ select = [
     "FURB",
     "PGH",
     "BLE",
-    "I"
+    "I",
+    "D",  # pydocstyle - docstring formatting and quality
+]
+
+ignore = [
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D107",
+    "D203",
+    "D213",
 ]
 
 [lint.mccabe]

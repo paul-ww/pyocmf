@@ -186,6 +186,10 @@ uv run ty check src test
   - FURB: refurb (modern Python idioms)
   - PGH: pygrep hooks
   - BLE: blind exception catching
+  - D (selective): Docstring formatting and quality checks
+    - Enforces proper formatting for existing docstrings (indentation, quotes, punctuation)
+    - Validates section structure (Args, Returns, Raises)
+    - Does NOT require docstrings on all functions (only validates when present)
   - See `ruff.toml` for complete configuration
 
 **ty configuration:**
@@ -493,9 +497,19 @@ Before writing a comment, ask:
 3. **Does this explain WHY, not WHAT?** → Good comment
 4. **Will this help future maintainers?** → Good comment
 
-### Special Cases for Comments
+### When to Use Docstrings
 
-**Public APIs and Docstrings**
+**Docstrings ARE required for:**
+- **Public APIs** - Any function, class, or method that external users will call
+- **Complex business logic** - When the implementation involves non-obvious OCMF rules or calculations
+- **Non-obvious behavior** - Edge cases, side effects, or important constraints that aren't apparent from type hints
+
+**Docstrings are NOT needed for:**
+- **Private/internal functions** - If the function name, parameters, and type hints clearly convey intent
+- **Obvious operations** - Simple getters, setters, or straightforward data transformations
+- **Self-explanatory code** - When good variable names and clear structure tell the story
+
+**Public API Example (docstring required):**
 ```python
 def parse_ocmf_from_xml(xml_path: Path) -> OCMF:
     """Parse an OCMF model from an XML file.
@@ -513,6 +527,35 @@ def parse_ocmf_from_xml(xml_path: Path) -> OCMF:
         ValidationError: If the OCMF data fails validation
     """
     # ... implementation
+```
+
+**Internal Function Example (no docstring needed):**
+```python
+def _validate_pagination_sequence(current: int, previous: int) -> bool:
+    """Not needed - function name and types are self-explanatory."""
+    return current == previous + 1
+```
+
+Better as:
+```python
+def _validate_pagination_sequence(current: int, previous: int) -> bool:
+    return current == previous + 1
+```
+
+**Complex Internal Logic Example (docstring helpful):**
+```python
+def _calculate_cable_loss_compensation(
+    reading_value: float,
+    cable_resistance: float,
+    current: float,
+) -> float:
+    """Calculate energy loss in charging cable per OCMF spec section 7.3.
+    
+    The compensation accounts for I²R losses in the charging cable between
+    the meter and the vehicle. This is required for billing accuracy under
+    German Eichrecht when cable resistance exceeds 10 mΩ.
+    """
+    # ... complex calculation
 ```
 
 **Configuration and Constants**
@@ -567,17 +610,24 @@ def process_ocmf_data():
 
 ### Quality Checklist
 
-Before committing, ensure your comments:
-- [ ] Explain WHY, not WHAT
+Before committing, ensure your code and comments:
+- [ ] **Public APIs have docstrings** - All user-facing functions/classes are documented
+- [ ] **Internal code is self-documenting** - Good names and clear structure eliminate need for comments
+- [ ] **Comments explain WHY, not WHAT** - Code shows what it does, comments explain reasoning
+- [ ] **Docstrings are concise but complete** - Include Args, Returns, Raises when relevant
+- [ ] **No unnecessary docstrings** - Private functions with clear names don't need them
 - [ ] Are grammatically correct and clear
 - [ ] Will remain accurate as code evolves
-- [ ] Add genuine value to code understanding
 - [ ] Are placed appropriately (above the code they describe)
 - [ ] Use proper spelling and professional language
-- [ ] Follow Python docstring conventions for public APIs (Google/NumPy style)
+- [ ] Follow Python docstring conventions (Google/NumPy style)
 
 ### Summary
 
-Remember: **The best comment is the one you don't need to write because the code is self-documenting.**
+**Code should be self-documenting first.** Write clear, descriptive names and well-structured code that doesn't need explanation.
 
-Prefer descriptive variable and function names over comments. When in doubt, let the type hints and Pydantic models document the data structure.
+**Docstrings are for public APIs and complex business logic.** Users of your library need documentation. Internal implementation should speak for itself.
+
+**Comments explain WHY, not WHAT.** If you need a comment, it should explain reasoning, constraints, or non-obvious decisions—not describe what the code does.
+
+When in doubt: Good names + type hints + Pydantic models > comments > docstrings for internal code.

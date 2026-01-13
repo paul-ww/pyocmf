@@ -25,7 +25,7 @@ app.command()(commands.inspect)
 
 
 def main() -> None:
-    """Main entry point with default command handling."""
+    """Run the CLI with default command handling."""
     # If no subcommand provided, default to 'all' command
     if len(sys.argv) == 1:
         app(["--help"])

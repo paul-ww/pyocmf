@@ -27,6 +27,7 @@ def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[Ei
 
     Returns:
         List of compliance issues (empty if compliant)
+
     """
     issues: list[EichrechtIssue] = []
 

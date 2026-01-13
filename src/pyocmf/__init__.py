@@ -1,19 +1,26 @@
+"""Open Charge Metering Format (OCMF) Library.
+
+Parsing, validation, and compliance checking for OCMF metering data from
+electric vehicle charging stations.
+"""
+
 __version__ = "0.2.0"
 
 # Core models
-# Compliance
+# Compliance checking
 from pyocmf.compliance import (
     EichrechtIssue,
     IssueCode,
     IssueSeverity,
     check_eichrecht_reading,
     check_eichrecht_transaction,
+    validate_transaction_pair,
 )
 from pyocmf.core import OCMF, Payload, Reading, Signature
-from pyocmf.enums.crypto import SignatureMethod
-from pyocmf.enums.identifiers import IdentificationType, UserAssignmentStatus
 
 # Common enums
+from pyocmf.enums.crypto import SignatureMethod
+from pyocmf.enums.identifiers import IdentificationType, UserAssignmentStatus
 from pyocmf.enums.reading import MeterReadingReason, MeterStatus, ReadingType, TimeStatus
 from pyocmf.enums.units import EnergyUnit
 
@@ -35,29 +42,29 @@ from pyocmf.exceptions import (
     XmlParsingError,
 )
 
-# Models
+# Data models
 from pyocmf.models import OBIS, CableLossCompensation, OCMFTimestamp, PublicKey
 
 # Registries
 from pyocmf.registries.obis import get_obis_info, is_billing_relevant
 
-# Utils
+# Utilities
 from pyocmf.utils.xml import OcmfContainer, OcmfRecord
 
 __all__ = [
     # Version
     "__version__",
-    # Core
+    # Core models
     "OCMF",
     "Payload",
     "Reading",
     "Signature",
-    # Models
+    # Data models
     "PublicKey",
     "CableLossCompensation",
     "OBIS",
     "OCMFTimestamp",
-    # Common Enums
+    # Common enums
     "MeterStatus",
     "TimeStatus",
     "MeterReadingReason",
@@ -72,7 +79,8 @@ __all__ = [
     "IssueSeverity",
     "check_eichrecht_reading",
     "check_eichrecht_transaction",
-    # Utils
+    "validate_transaction_pair",
+    # Utilities
     "OcmfContainer",
     "OcmfRecord",
     # Registries

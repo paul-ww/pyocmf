@@ -41,14 +41,14 @@ def _try_parse_raw_p256_coordinates(key_bytes: bytes) -> tuple[str, str, int, in
 
         # Store as DER-encoded for consistency
         der_bytes = public_key.public_bytes(
-            encoding=serialization.Encoding.DER,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            encoding=serialization.Encoding.DER,  # type: ignore[arg-type]
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,  # type: ignore[arg-type]
         )
         der_hex = der_bytes.hex()
-
-        return (der_hex, curve_name, key_size, block_length)
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         return None
+    else:
+        return (der_hex, curve_name, key_size, block_length)
 
 
 class PublicKey(pydantic.BaseModel):
@@ -114,7 +114,7 @@ class PublicKey(pydantic.BaseModel):
                 key_hex, curve_name, key_size, block_length = result
                 return cls(
                     key=key_hex,
-                    curve=curve_name,
+                    curve=curve_name,  # type: ignore[arg-type]
                     size=key_size,
                     block_length=block_length,
                 )

@@ -22,35 +22,6 @@ if TYPE_CHECKING:
     from pyocmf.enums.crypto import SignatureMethod
 
 
-def _try_parse_raw_p256_coordinates(key_bytes: bytes) -> tuple[str, str, int, int] | None:
-    if ec is None or serialization is None:
-        return None
-
-    if len(key_bytes) != 64:
-        return None
-
-    try:
-        # Raw coordinates: X (32 bytes) || Y (32 bytes)
-        # Construct uncompressed point format: 04 || X || Y
-        point_bytes = b"\x04" + key_bytes
-        public_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), point_bytes)
-
-        curve_name = public_key.curve.name
-        key_size = public_key.curve.key_size
-        block_length = key_size // 8
-
-        # Store as DER-encoded for consistency
-        der_bytes = public_key.public_bytes(
-            encoding=serialization.Encoding.DER,  # type: ignore[arg-type]
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,  # type: ignore[arg-type]
-        )
-        der_hex = der_bytes.hex()
-    except (ValueError, TypeError, AttributeError):
-        return None
-    else:
-        return (der_hex, curve_name, key_size, block_length)
-
-
 class PublicKey(pydantic.BaseModel):
     key: HexStr = pydantic.Field(description="Hex-encoded DER public key")
     curve: CurveType = pydantic.Field(description="Elliptic curve type")
@@ -109,16 +80,6 @@ class PublicKey(pydantic.BaseModel):
                 block_length=block_length,
             )
         except (ValueError, TypeError) as e:
-            result = _try_parse_raw_p256_coordinates(key_bytes)
-            if result is not None:
-                key_hex, curve_name, key_size, block_length = result
-                return cls(
-                    key=key_hex,
-                    curve=curve_name,  # type: ignore[arg-type]
-                    size=key_size,
-                    block_length=block_length,
-                )
-
             msg = f"Failed to parse public key: {e}"
             raise PublicKeyError(msg) from e
         except Exception as e:

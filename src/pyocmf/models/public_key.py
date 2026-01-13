@@ -1,25 +1,16 @@
 from __future__ import annotations
 
 import base64
-from typing import TYPE_CHECKING, Self
+from typing import Self
 
 import pydantic
+from cryptography.exceptions import UnsupportedAlgorithm
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 
-from pyocmf.enums.crypto import CurveType, KeyType
+from pyocmf.enums.crypto import CurveType, KeyType, SignatureMethod
 from pyocmf.exceptions import Base64DecodingError, PublicKeyError
 from pyocmf.types.encoding import HexStr
-
-try:
-    from cryptography.exceptions import UnsupportedAlgorithm
-    from cryptography.hazmat.primitives import serialization
-    from cryptography.hazmat.primitives.asymmetric import ec
-except ImportError:
-    serialization = None  # type: ignore[assignment]
-    ec = None  # type: ignore[assignment]
-    UnsupportedAlgorithm = None  # type: ignore[assignment]
-
-if TYPE_CHECKING:
-    from pyocmf.enums.crypto import SignatureMethod
 
 
 class PublicKey(pydantic.BaseModel):
@@ -79,14 +70,12 @@ class PublicKey(pydantic.BaseModel):
                 size=key_size,
                 block_length=block_length,
             )
+        except UnsupportedAlgorithm as e:
+            msg = f"Unsupported elliptic curve in public key: {e}"
+            raise PublicKeyError(msg) from e
         except (ValueError, TypeError) as e:
             msg = f"Failed to parse public key: {e}"
             raise PublicKeyError(msg) from e
-        except Exception as e:
-            if UnsupportedAlgorithm is not None and type(e).__name__ == "UnsupportedAlgorithm":
-                msg = f"Unsupported elliptic curve in public key: {e}"
-                raise PublicKeyError(msg) from e
-            raise
 
     @property
     def key_type_identifier(self) -> KeyType:

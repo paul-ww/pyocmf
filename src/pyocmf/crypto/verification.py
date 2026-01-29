@@ -5,6 +5,7 @@ import base64
 from pyocmf.crypto.availability import (
     InvalidSignature,
     check_cryptography_available,
+    ec,
     hashes,
     serialization,
 )
@@ -66,7 +67,6 @@ def verify_signature(
     """
     check_cryptography_available()
 
-    # Import here to avoid circular dependency
     from pyocmf.models.public_key import PublicKey
 
     try:
@@ -88,8 +88,6 @@ def verify_signature(
 
     key_bytes = bytes.fromhex(public_key_hex)
     crypto_public_key = serialization.load_der_public_key(key_bytes)
-
-    from pyocmf.crypto.availability import ec
 
     try:
         crypto_public_key.verify(

@@ -6,44 +6,31 @@ import pydantic
 import pytest
 
 from pyocmf.core import Payload
-from pyocmf.core.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
+from pyocmf.core.reading import MeterReadingReason, MeterStatus, Reading
 from pyocmf.enums.identifiers import IdentificationType
 from pyocmf.enums.units import EnergyUnit
-from pyocmf.models import OBIS
 
-
-def tm(timestamp_str: str) -> OCMFTimestamp:
-    return OCMFTimestamp.from_string(timestamp_str)
-
-
-def obis(code_str: str) -> OBIS:
-    return OBIS.from_string(code_str)
+from ..helpers import create_test_reading, decimal_value, obis, tm
 
 
 class TestCLValidators:
     def test_cl_valid_with_accumulation_register_b0(self) -> None:
-        reading = Reading(
-            TM=tm("2023-01-01T12:00:00,000+0000 S"),
-            TX=MeterReadingReason.END,
-            RV=decimal.Decimal("100.5"),
-            RI=obis("01-00:B0.08.00*FF"),  # B0 = Total Import Mains Energy
-            RU=EnergyUnit.KWH,
-            ST=MeterStatus.OK,
-            CL=decimal.Decimal("0.5"),  # Valid with accumulation register
+        reading = create_test_reading(
+            tx=MeterReadingReason.END,
+            rv="100.5",
+            ri="01-00:B0.08.00*FF",
+            cl=decimal_value("0.5"),
         )
-        assert reading.CL == decimal.Decimal("0.5")
+        assert reading.CL == decimal_value("0.5")
 
     def test_cl_valid_with_accumulation_register_c3(self) -> None:
-        reading = Reading(
-            TM=tm("2023-01-01T12:00:00,000+0000 S"),
-            TX=MeterReadingReason.END,
-            RV=decimal.Decimal("50.0"),
-            RI=obis("01-00:C3.08.00*FF"),  # C3 = Transaction Export Device Energy
-            RU=EnergyUnit.KWH,
-            ST=MeterStatus.OK,
-            CL=decimal.Decimal("0.2"),
+        reading = create_test_reading(
+            tx=MeterReadingReason.END,
+            rv="50.0",
+            ri="01-00:C3.08.00*FF",
+            cl=decimal_value("0.2"),
         )
-        assert reading.CL == decimal.Decimal("0.2")
+        assert reading.CL == decimal_value("0.2")
 
     def test_cl_rejected_with_non_accumulation_register(self) -> None:
         with pytest.raises(

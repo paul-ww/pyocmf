@@ -19,7 +19,7 @@ except ImportError:
     TYPER_AVAILABLE = False
 
 try:
-    from pyocmf.crypto.verification import CRYPTOGRAPHY_AVAILABLE
+    from pyocmf.crypto.availability import CRYPTOGRAPHY_AVAILABLE
 except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
 

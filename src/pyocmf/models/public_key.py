@@ -4,10 +4,13 @@ import base64
 from typing import Self
 
 import pydantic
-from cryptography.exceptions import UnsupportedAlgorithm
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec
 
+from pyocmf.crypto.availability import (
+    UnsupportedAlgorithm,
+    check_cryptography_available,
+    ec,
+    serialization,
+)
 from pyocmf.enums.crypto import CurveType, KeyType, SignatureMethod
 from pyocmf.exceptions import Base64DecodingError, PublicKeyError
 from pyocmf.types.encoding import HexStr
@@ -28,12 +31,7 @@ class PublicKey(pydantic.BaseModel):
     @classmethod
     def from_string(cls, key_string: str) -> Self:
         """Parse DER public key string (hex or base64) and extract metadata."""
-        if serialization is None or ec is None:
-            msg = (
-                "Public key parsing requires the 'cryptography' package. "
-                "Install it with: pip install pyocmf[crypto]"
-            )
-            raise ImportError(msg)
+        check_cryptography_available()
 
         key_string = key_string.strip()
 

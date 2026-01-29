@@ -3,9 +3,10 @@ from __future__ import annotations
 import pathlib
 
 import pytest
-from helpers import get_transaction_pair
 
 from pyocmf.compliance import IssueSeverity, check_eichrecht_transaction
+
+from ..helpers import get_transaction_pair
 
 
 @pytest.mark.parametrize(

@@ -2,7 +2,16 @@ from __future__ import annotations
 
 
 class PyOCMFError(Exception):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        field: str | None = None,
+        details: list[dict] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.field = field
+        self.details = details
 
 
 class XmlParsingError(PyOCMFError):
@@ -18,34 +27,23 @@ class OcmfFormatError(PyOCMFError):
 
 
 class OcmfPayloadError(PyOCMFError):
-    def __init__(
-        self,
-        message: str,
-        *,
-        field: str | None = None,
-        details: list[dict] | None = None,
-    ) -> None:
-        super().__init__(message)
-        self.field = field
-        self.details = details
+    pass
 
 
 class OcmfSignatureError(PyOCMFError):
+    pass
+
+
+class EncodingError(PyOCMFError, ValueError):
     def __init__(
         self,
         message: str,
         *,
+        value: str | None = None,
         field: str | None = None,
         details: list[dict] | None = None,
     ) -> None:
-        super().__init__(message)
-        self.field = field
-        self.details = details
-
-
-class EncodingError(PyOCMFError, ValueError):
-    def __init__(self, message: str, *, value: str | None = None) -> None:
-        super().__init__(message)
+        super().__init__(message, field=field, details=details)
         self.value = value
 
 
@@ -64,16 +62,16 @@ class EncodingTypeError(PyOCMFError, TypeError):
         *,
         value: object = None,
         expected_type: str | None = None,
+        field: str | None = None,
+        details: list[dict] | None = None,
     ) -> None:
-        super().__init__(message)
+        super().__init__(message, field=field, details=details)
         self.value = value
         self.expected_type = expected_type
 
 
 class ValidationError(PyOCMFError, ValueError):
-    def __init__(self, message: str, *, field: str | None = None) -> None:
-        super().__init__(message)
-        self.field = field
+    pass
 
 
 class CryptoError(PyOCMFError):
@@ -81,12 +79,26 @@ class CryptoError(PyOCMFError):
 
 
 class PublicKeyError(CryptoError):
-    def __init__(self, message: str, *, key_data: str | None = None) -> None:
-        super().__init__(message)
+    def __init__(
+        self,
+        message: str,
+        *,
+        key_data: str | None = None,
+        field: str | None = None,
+        details: list[dict] | None = None,
+    ) -> None:
+        super().__init__(message, field=field, details=details)
         self.key_data = key_data
 
 
 class SignatureVerificationError(CryptoError):
-    def __init__(self, message: str, *, reason: str | None = None) -> None:
-        super().__init__(message)
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason: str | None = None,
+        field: str | None = None,
+        details: list[dict] | None = None,
+    ) -> None:
+        super().__init__(message, field=field, details=details)
         self.reason = reason

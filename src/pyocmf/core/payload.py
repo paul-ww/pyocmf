@@ -129,6 +129,38 @@ class Payload(pydantic.BaseModel):
             return str(v)
         return v
 
+    # Validator mapping at class level to avoid recreation
+    _ID_FORMAT_VALIDATORS = {
+        IdentificationType.ISO14443.value: ISO14443,
+        IdentificationType.ISO15693.value: ISO15693,
+        IdentificationType.EMAID.value: EMAID,
+        IdentificationType.EVCCID.value: EVCCID,
+        IdentificationType.EVCOID.value: EVCOID,
+        IdentificationType.ISO7812.value: ISO7812,
+        IdentificationType.PHONE_NUMBER.value: PHONE_NUMBER,
+    }
+
+    # Types that accept any string value without validation
+    _UNRESTRICTED_TYPES = {
+        IdentificationType.LOCAL.value,
+        IdentificationType.LOCAL_1.value,
+        IdentificationType.LOCAL_2.value,
+        IdentificationType.CENTRAL.value,
+        IdentificationType.CENTRAL_1.value,
+        IdentificationType.CENTRAL_2.value,
+        IdentificationType.CARD_TXN_NR.value,
+        IdentificationType.KEY_CODE.value,
+        IdentificationType.UNDEFINED.value,
+        IdentificationType.NONE.value,
+        IdentificationType.DENIED.value,
+    }
+
+    # Types that validate with warnings instead of errors (permissive mode)
+    _PERMISSIVE_TYPES = {
+        IdentificationType.ISO14443.value,
+        IdentificationType.ISO15693.value,
+    }
+
     def _validate_id_format(self, it_value: str, id_value: str, *, strict: bool = True) -> None:
         """Validate ID format, either strictly (raise) or permissively (warn).
 
@@ -138,21 +170,11 @@ class Payload(pydantic.BaseModel):
             strict: If True, raise ValidationError on mismatch. If False, emit warning.
 
         """
-        format_validators = {
-            IdentificationType.ISO14443.value: ISO14443,
-            IdentificationType.ISO15693.value: ISO15693,
-            IdentificationType.EMAID.value: EMAID,
-            IdentificationType.EVCCID.value: EVCCID,
-            IdentificationType.EVCOID.value: EVCOID,
-            IdentificationType.ISO7812.value: ISO7812,
-            IdentificationType.PHONE_NUMBER.value: PHONE_NUMBER,
-        }
-
-        if it_value not in format_validators:
+        if it_value not in self._ID_FORMAT_VALIDATORS:
             return
 
         try:
-            pydantic.TypeAdapter(format_validators[it_value]).validate_python(id_value)
+            pydantic.TypeAdapter(self._ID_FORMAT_VALIDATORS[it_value]).validate_python(id_value)
         except pydantic.ValidationError as e:
             msg = (
                 f"ID value '{id_value}' does not match expected format for identification "
@@ -184,31 +206,10 @@ class Payload(pydantic.BaseModel):
         it_value = self.IT.value if isinstance(self.IT, IdentificationType) else str(self.IT)
         id_value = self.ID
 
-        # Types that accept any string value without validation
-        unrestricted_types = {
-            IdentificationType.LOCAL.value,
-            IdentificationType.LOCAL_1.value,
-            IdentificationType.LOCAL_2.value,
-            IdentificationType.CENTRAL.value,
-            IdentificationType.CENTRAL_1.value,
-            IdentificationType.CENTRAL_2.value,
-            IdentificationType.CARD_TXN_NR.value,
-            IdentificationType.KEY_CODE.value,
-            IdentificationType.UNDEFINED.value,
-            IdentificationType.NONE.value,
-            IdentificationType.DENIED.value,
-        }
-
-        # Types that validate with warnings instead of errors (permissive mode)
-        permissive_types = {
-            IdentificationType.ISO14443.value,
-            IdentificationType.ISO15693.value,
-        }
-
-        if it_value in unrestricted_types:
+        if it_value in self._UNRESTRICTED_TYPES:
             return self
 
         # Use permissive validation (warn) for ISO types, strict for others
-        strict = it_value not in permissive_types
+        strict = it_value not in self._PERMISSIVE_TYPES
         self._validate_id_format(it_value, id_value, strict=strict)
         return self

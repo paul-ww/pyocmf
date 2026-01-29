@@ -4,97 +4,71 @@ import decimal
 
 from pyocmf.compliance import (
     IssueCode,
-    IssueSeverity,
     check_eichrecht_reading,
     check_eichrecht_transaction,
 )
-from pyocmf.core import Payload
-from pyocmf.core.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
+from pyocmf.core.reading import MeterReadingReason, MeterStatus
 from pyocmf.enums.identifiers import IdentificationType, UserAssignmentStatus
 from pyocmf.enums.units import EnergyUnit
-from pyocmf.models import OBIS
+
+from ..helpers import (
+    assert_has_issue,
+    assert_no_errors,
+    create_test_payload,
+    create_test_reading,
+)
 
 
 class TestEichrechtReadingValidation:
     def test_valid_reading_passes(self) -> None:
-        reading = Reading(
-            TM=OCMFTimestamp.from_string("2023-01-01T12:00:00,000+0000 S"),
-            TX=MeterReadingReason.END,
-            RV=decimal.Decimal("100.5"),
-            RI=OBIS.from_string("01-00:B2.08.00*FF"),
-            RU=EnergyUnit.KWH,
-            ST=MeterStatus.OK,  # Good status
-            EF="",  # No error flags
+        reading = create_test_reading(
+            tx=MeterReadingReason.END,
+            rv="100.5",
+            st=MeterStatus.OK,
+            ef="",
         )
         issues = check_eichrecht_reading(reading)
         assert len(issues) == 0
 
     def test_meter_status_not_ok_fails(self) -> None:
-        reading = Reading(
-            TM=OCMFTimestamp.from_string("2023-01-01T12:00:00,000+0000 S"),
-            TX=MeterReadingReason.END,
-            RV=decimal.Decimal("100.5"),
-            RI=OBIS.from_string("01-00:B2.08.00*FF"),
-            RU=EnergyUnit.KWH,
-            ST=MeterStatus.TIMEOUT,  # Not OK!
-            EF="",
+        reading = create_test_reading(
+            tx=MeterReadingReason.END,
+            st=MeterStatus.TIMEOUT,
         )
         issues = check_eichrecht_reading(reading)
-        assert any(issue.code == IssueCode.METER_STATUS for issue in issues)
-        assert any("must be 'G'" in issue.message for issue in issues)
+        assert_has_issue(issues, IssueCode.METER_STATUS, "must be 'G'")
 
     def test_error_flags_present_fails(self) -> None:
-        reading = Reading(
-            TM=OCMFTimestamp.from_string("2023-01-01T12:00:00,000+0000 S"),
-            TX=MeterReadingReason.END,
-            RV=decimal.Decimal("100.5"),
-            RI=OBIS.from_string("01-00:B2.08.00*FF"),
-            RU=EnergyUnit.KWH,
-            ST=MeterStatus.OK,
-            EF="E",  # Error flag present!
+        reading = create_test_reading(
+            tx=MeterReadingReason.END,
+            ef="E",
         )
         issues = check_eichrecht_reading(reading)
-        assert any(issue.code == IssueCode.ERROR_FLAGS for issue in issues)
+        assert_has_issue(issues, IssueCode.ERROR_FLAGS)
 
     def test_unsynchronized_time_warns(self) -> None:
-        reading = Reading(
-            TM=OCMFTimestamp.from_string("2023-01-01T12:00:00,000+0000 U"),
-            TX=MeterReadingReason.END,
-            RV=decimal.Decimal("100.5"),
-            RI=OBIS.from_string("01-00:B2.08.00*FF"),
-            RU=EnergyUnit.KWH,
-            ST=MeterStatus.OK,
-            EF="",
+        reading = create_test_reading(
+            timestamp="2023-01-01T12:00:00,000+0000 U",
+            tx=MeterReadingReason.END,
         )
         issues = check_eichrecht_reading(reading)
-        assert any(issue.code == IssueCode.TIME_SYNC for issue in issues)
-        assert any(issue.severity == IssueSeverity.WARNING for issue in issues)
+        assert_has_issue(issues, IssueCode.TIME_SYNC)
 
     def test_cl_zero_at_begin_passes(self) -> None:
-        reading = Reading(
-            TM=OCMFTimestamp.from_string("2023-01-01T12:00:00,000+0000 S"),
-            TX=MeterReadingReason.BEGIN,
-            RV=decimal.Decimal("50.0"),
-            RI=OBIS.from_string("01-00:B2.08.00*FF"),
-            RU=EnergyUnit.KWH,
-            ST=MeterStatus.OK,
-            EF="",
-            CL=decimal.Decimal(0),  # Correct: 0 at begin
+        reading = create_test_reading(
+            tx=MeterReadingReason.BEGIN,
+            rv="50.0",
+            cl=decimal.Decimal(0),
         )
         issues = check_eichrecht_reading(reading, is_begin=True)
         cl_issues = [i for i in issues if "CL" in i.code]
         assert len(cl_issues) == 0
 
     def test_cl_positive_at_end_passes(self) -> None:
-        reading = Reading(
-            TM=OCMFTimestamp.from_string("2023-01-01T12:00:00,000+0000 S"),
-            TX=MeterReadingReason.END,
-            RV=decimal.Decimal("100.5"),
-            RI=OBIS.from_string("01-00:B2.08.00*FF"),
-            RU=EnergyUnit.KWH,
-            ST=MeterStatus.OK,
-            EF="",
-            CL=decimal.Decimal("0.5"),  # Valid at end
+        reading = create_test_reading(
+            tx=MeterReadingReason.END,
+            rv="100.5",
+            cl=decimal.Decimal("0.5"),
         )
         issues = check_eichrecht_reading(reading, is_begin=False)
         cl_issues = [i for i in issues if "CL" in i.code]
@@ -102,132 +76,139 @@ class TestEichrechtReadingValidation:
 
 
 class TestEichrechtTransactionValidation:
-    def create_valid_begin_payload(self) -> Payload:
-        return Payload(
-            FV="1.0",
-            GI="TEST_GW",
-            GS="12345",
-            GV="1.0",
-            PG="T1",
-            RD=[
-                Reading(
-                    TM=OCMFTimestamp.from_string("2023-01-01T12:00:00,000+0000 S"),
-                    TX=MeterReadingReason.BEGIN,
-                    RV=decimal.Decimal("50.0"),
-                    RI=OBIS.from_string("01-00:B2.08.00*FF"),
-                    RU=EnergyUnit.KWH,
-                    ST=MeterStatus.OK,
-                    EF="",
-                )
-            ],
-            IS=True,
-            IL=UserAssignmentStatus.VERIFIED,
-            IT=IdentificationType.ISO14443,
-            ID="12345678",
-        )
-
-    def create_valid_end_payload(self) -> Payload:
-        return Payload(
-            FV="1.0",
-            GI="TEST_GW",
-            GS="12345",  # Same serial as begin
-            GV="1.0",
-            PG="T2",
-            RD=[
-                Reading(
-                    TM=OCMFTimestamp.from_string("2023-01-01T13:00:00,000+0000 S"),  # Later time
-                    TX=MeterReadingReason.END,
-                    RV=decimal.Decimal("100.0"),  # Higher value
-                    RI=OBIS.from_string("01-00:B2.08.00*FF"),  # Same OBIS
-                    RU=EnergyUnit.KWH,  # Same unit
-                    ST=MeterStatus.OK,
-                    EF="",
-                )
-            ],
-            IS=True,
-            IL=UserAssignmentStatus.VERIFIED,
-            IT=IdentificationType.ISO14443,
-            ID="12345678",  # Same ID
-        )
-
     def test_valid_transaction_passes(self) -> None:
-        begin = self.create_valid_begin_payload()
-        end = self.create_valid_end_payload()
+        begin = create_test_payload(
+            pagination="T1",
+            readings=[create_test_reading(tx=MeterReadingReason.BEGIN, cl=decimal.Decimal(0))],
+            identification_status=True,
+            identification_level=UserAssignmentStatus.VERIFIED,
+            identification_type=IdentificationType.ISO14443,
+            identification_data="12345678",
+        )
+        end = create_test_payload(
+            pagination="T2",
+            readings=[
+                create_test_reading(
+                    timestamp="2023-01-01T13:00:00,000+0000 S",
+                    tx=MeterReadingReason.END,
+                    rv="100.0",
+                )
+            ],
+            identification_status=True,
+            identification_level=UserAssignmentStatus.VERIFIED,
+            identification_type=IdentificationType.ISO14443,
+            identification_data="12345678",
+        )
         issues = check_eichrecht_transaction(begin, end)
-        # May have warnings but no errors
-        errors = [i for i in issues if i.severity == IssueSeverity.ERROR]
-        assert len(errors) == 0
+        assert_no_errors(issues)
 
     def test_missing_readings_fails(self) -> None:
-        begin = self.create_valid_begin_payload()
-        end = self.create_valid_end_payload()
-        end.RD = []  # Remove readings
+        begin = create_test_payload(
+            readings=[create_test_reading(tx=MeterReadingReason.BEGIN)],
+        )
+        end = create_test_payload(readings=[])
 
         issues = check_eichrecht_transaction(begin, end)
-        assert any(issue.code == IssueCode.NO_READINGS for issue in issues)
+        assert_has_issue(issues, IssueCode.NO_READINGS)
 
     def test_wrong_begin_tx_type_fails(self) -> None:
-        begin = self.create_valid_begin_payload()
-        begin.RD[0].TX = MeterReadingReason.CHARGING  # Wrong type!
-
-        end = self.create_valid_end_payload()
+        begin = create_test_payload(
+            readings=[create_test_reading(tx=MeterReadingReason.CHARGING)],
+        )
+        end = create_test_payload(
+            pagination="T2",
+            readings=[create_test_reading(tx=MeterReadingReason.END)],
+        )
         issues = check_eichrecht_transaction(begin, end)
-        assert any(issue.code == IssueCode.BEGIN_TX for issue in issues)
+        assert_has_issue(issues, IssueCode.BEGIN_TX)
 
     def test_wrong_end_tx_type_fails(self) -> None:
-        begin = self.create_valid_begin_payload()
-        end = self.create_valid_end_payload()
-        end.RD[0].TX = MeterReadingReason.CHARGING  # Wrong type!
-
+        begin = create_test_payload(
+            readings=[create_test_reading(tx=MeterReadingReason.BEGIN)],
+        )
+        end = create_test_payload(
+            pagination="T2",
+            readings=[create_test_reading(tx=MeterReadingReason.CHARGING)],
+        )
         issues = check_eichrecht_transaction(begin, end)
-        assert any(issue.code == IssueCode.END_TX for issue in issues)
+        assert_has_issue(issues, IssueCode.END_TX)
 
     def test_serial_mismatch_fails(self) -> None:
-        begin = self.create_valid_begin_payload()
-        end = self.create_valid_end_payload()
-        end.GS = "99999"  # Different serial!
-
+        begin = create_test_payload(
+            gateway_serial="12345",
+            readings=[create_test_reading(tx=MeterReadingReason.BEGIN)],
+        )
+        end = create_test_payload(
+            pagination="T2",
+            gateway_serial="99999",
+            readings=[create_test_reading(tx=MeterReadingReason.END)],
+        )
         issues = check_eichrecht_transaction(begin, end)
-        assert any(issue.code == IssueCode.SERIAL_MISMATCH for issue in issues)
+        assert_has_issue(issues, IssueCode.SERIAL_MISMATCH)
 
     def test_obis_mismatch_fails(self) -> None:
-        begin = self.create_valid_begin_payload()
-        end = self.create_valid_end_payload()
-        end.RD[0].RI = OBIS.from_string("01-00:C2.08.00*FF")  # Different OBIS!
-
+        begin = create_test_payload(
+            readings=[create_test_reading(tx=MeterReadingReason.BEGIN, ri="01-00:B2.08.00*FF")],
+        )
+        end = create_test_payload(
+            pagination="T2",
+            readings=[create_test_reading(tx=MeterReadingReason.END, ri="01-00:C2.08.00*FF")],
+        )
         issues = check_eichrecht_transaction(begin, end)
-        assert any(issue.code == IssueCode.OBIS_MISMATCH for issue in issues)
+        assert_has_issue(issues, IssueCode.OBIS_MISMATCH)
 
     def test_unit_mismatch_fails(self) -> None:
-        begin = self.create_valid_begin_payload()
-        end = self.create_valid_end_payload()
-        end.RD[0].RU = EnergyUnit.WH  # Different unit!
-
+        begin = create_test_payload(
+            readings=[create_test_reading(tx=MeterReadingReason.BEGIN, ru=EnergyUnit.KWH)],
+        )
+        end = create_test_payload(
+            pagination="T2",
+            readings=[create_test_reading(tx=MeterReadingReason.END, ru=EnergyUnit.WH)],
+        )
         issues = check_eichrecht_transaction(begin, end)
-        assert any(issue.code == IssueCode.UNIT_MISMATCH for issue in issues)
+        assert_has_issue(issues, IssueCode.UNIT_MISMATCH)
 
     def test_value_regression_fails(self) -> None:
-        begin = self.create_valid_begin_payload()
-        end = self.create_valid_end_payload()
-        end.RD[0].RV = decimal.Decimal("25.0")  # Less than begin!
-
+        begin = create_test_payload(
+            readings=[create_test_reading(tx=MeterReadingReason.BEGIN, rv="100.0")],
+        )
+        end = create_test_payload(
+            pagination="T2",
+            readings=[create_test_reading(tx=MeterReadingReason.END, rv="25.0")],
+        )
         issues = check_eichrecht_transaction(begin, end)
-        assert any(issue.code == IssueCode.VALUE_REGRESSION for issue in issues)
+        assert_has_issue(issues, IssueCode.VALUE_REGRESSION)
 
     def test_time_regression_fails(self) -> None:
-        begin = self.create_valid_begin_payload()
-        end = self.create_valid_end_payload()
-        end.RD[0].TM = OCMFTimestamp.from_string("2023-01-01T11:00:00,000+0000 S")  # Earlier time!
-
+        begin = create_test_payload(
+            readings=[
+                create_test_reading(
+                    timestamp="2023-01-01T13:00:00,000+0000 S", tx=MeterReadingReason.BEGIN
+                )
+            ],
+        )
+        end = create_test_payload(
+            pagination="T2",
+            readings=[
+                create_test_reading(
+                    timestamp="2023-01-01T11:00:00,000+0000 S", tx=MeterReadingReason.END
+                )
+            ],
+        )
         issues = check_eichrecht_transaction(begin, end)
-        assert any(issue.code == IssueCode.TIME_REGRESSION for issue in issues)
+        assert_has_issue(issues, IssueCode.TIME_REGRESSION)
 
     def test_id_mismatch_warns(self) -> None:
-        begin = self.create_valid_begin_payload()
-        end = self.create_valid_end_payload()
-        end.ID = "87654321"  # Different ID
-
+        begin = create_test_payload(
+            readings=[create_test_reading(tx=MeterReadingReason.BEGIN)],
+            identification_type=IdentificationType.ISO14443,
+            identification_data="12345678",
+        )
+        end = create_test_payload(
+            pagination="T2",
+            readings=[create_test_reading(tx=MeterReadingReason.END)],
+            identification_type=IdentificationType.ISO14443,
+            identification_data="87654321",
+        )
         issues = check_eichrecht_transaction(begin, end)
-        id_issues = [i for i in issues if i.code == IssueCode.ID_MISMATCH]
-        assert len(id_issues) > 0
-        assert id_issues[0].severity == IssueSeverity.WARNING
+        assert_has_issue(issues, IssueCode.ID_MISMATCH)

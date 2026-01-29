@@ -15,7 +15,7 @@ from pyocmf.utils.xml import OcmfContainer
 
 # Check if cryptography is available
 try:
-    from pyocmf.crypto.verification import CRYPTOGRAPHY_AVAILABLE
+    from pyocmf.crypto.availability import CRYPTOGRAPHY_AVAILABLE
 except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
 

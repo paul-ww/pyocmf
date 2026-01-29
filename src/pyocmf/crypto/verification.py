@@ -6,29 +6,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pyocmf.enums.crypto import SignatureEncodingType
 
+from pyocmf.crypto.availability import (
+    InvalidSignature,
+    check_cryptography_available,
+    hashes,
+    serialization,
+)
 from pyocmf.enums.crypto import HashAlgorithm, SignatureMethod
-from pyocmf.models.public_key import PublicKey
-
-try:
-    from cryptography.exceptions import InvalidSignature
-    from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.primitives.asymmetric import ec
-
-    CRYPTOGRAPHY_AVAILABLE = True
-except ImportError:
-    CRYPTOGRAPHY_AVAILABLE = False
-
-
 from pyocmf.exceptions import EncodingError, PublicKeyError, SignatureVerificationError
-
-
-def check_cryptography_available() -> None:
-    if not CRYPTOGRAPHY_AVAILABLE:
-        msg = (
-            "Signature verification requires the 'cryptography' package. "
-            "Install it with: pip install pyocmf[crypto]"
-        )
-        raise ImportError(msg)
 
 
 def get_hash_algorithm(signature_method: SignatureMethod | None) -> type[hashes.HashAlgorithm]:
@@ -87,6 +72,9 @@ def verify_signature(
     """
     check_cryptography_available()
 
+    # Import here to avoid circular dependency
+    from pyocmf.models.public_key import PublicKey
+
     try:
         public_key_info = PublicKey.from_string(public_key_hex)
     except (PublicKeyError, EncodingError, ImportError) as e:
@@ -104,10 +92,10 @@ def verify_signature(
     hash_algorithm = get_hash_algorithm(signature_method)
     payload_bytes = payload_json.encode("utf-8")
 
-    from cryptography.hazmat.primitives import serialization
-
     key_bytes = bytes.fromhex(public_key_hex)
     crypto_public_key = serialization.load_der_public_key(key_bytes)
+
+    from pyocmf.crypto.availability import ec
 
     try:
         crypto_public_key.verify(

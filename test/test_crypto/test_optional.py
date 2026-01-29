@@ -1,6 +1,6 @@
 import pytest
 
-from pyocmf.crypto.verification import CRYPTOGRAPHY_AVAILABLE
+from pyocmf.crypto.availability import CRYPTOGRAPHY_AVAILABLE
 
 
 @pytest.mark.skipif(

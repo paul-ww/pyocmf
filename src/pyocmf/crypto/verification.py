@@ -1,10 +1,6 @@
 from __future__ import annotations
 
 import base64
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pyocmf.enums.crypto import SignatureEncodingType
 
 from pyocmf.crypto.availability import (
     InvalidSignature,
@@ -12,7 +8,7 @@ from pyocmf.crypto.availability import (
     hashes,
     serialization,
 )
-from pyocmf.enums.crypto import HashAlgorithm, SignatureMethod
+from pyocmf.enums.crypto import HashAlgorithm, SignatureEncodingType, SignatureMethod
 from pyocmf.exceptions import EncodingError, PublicKeyError, SignatureVerificationError
 
 
@@ -37,8 +33,6 @@ def get_hash_algorithm(signature_method: SignatureMethod | None) -> type[hashes.
 
 
 def decode_signature_data(signature_data: str, encoding: SignatureEncodingType | None) -> bytes:
-    from pyocmf.enums.crypto import SignatureEncodingType
-
     if encoding == SignatureEncodingType.HEX or encoding is None:
         try:
             return bytes.fromhex(signature_data)

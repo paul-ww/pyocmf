@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from pyocmf.compliance.models import EichrechtIssue, IssueCode, IssueSeverity
+from pyocmf.core.reading import Reading
 from pyocmf.enums.reading import MeterStatus, TimeStatus
-
-if TYPE_CHECKING:
-    from pyocmf.core.reading import Reading
 
 
 def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[EichrechtIssue]:

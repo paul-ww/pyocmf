@@ -3,11 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pyocmf.compliance.models import EichrechtIssue, IssueCode, IssueSeverity
-from pyocmf.compliance.reading import (
-    _get_billing_relevant_begin_reading,
-    _get_billing_relevant_end_reading,
-    check_eichrecht_reading,
-)
+from pyocmf.compliance.reading import check_eichrecht_reading
 from pyocmf.enums.identifiers import UserAssignmentStatus
 from pyocmf.enums.reading import MeterReadingReason
 
@@ -198,8 +194,8 @@ def check_eichrecht_transaction(
         )
         return issues
 
-    begin_reading = _get_billing_relevant_begin_reading(begin)
-    end_reading = _get_billing_relevant_end_reading(end)
+    begin_reading = begin.RD[0]
+    end_reading = end.RD[-1]
 
     issues.extend(_validate_transaction_types(begin_reading, end_reading, len(end.RD)))
 

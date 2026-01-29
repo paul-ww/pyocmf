@@ -73,41 +73,37 @@ class Reading(pydantic.BaseModel):
 
     @pydantic.field_validator("CL")
     @classmethod
-    def validate_cl_with_accumulation_register(
+    def validate_cl(
         cls, v: decimal.Decimal | None, info: pydantic.ValidationInfo
     ) -> decimal.Decimal | None:
-        if v is not None:
-            ri = info.data.get("RI")
-            cl_error = (
-                "CL (Cumulated Loss) can only appear when RI indicates an "
-                "accumulation register (B0-B3, C0-C3)"
-            )
-            if not ri:
-                raise ValueError(cl_error)
-            if isinstance(ri, OBIS) and not ri.is_accumulation_register:
-                raise ValueError(cl_error)
-            if isinstance(ri, str) and not is_accumulation_register(ri):
-                raise ValueError(cl_error)
-        return v
+        if v is None:
+            return v
 
-    @pydantic.field_validator("CL")
-    @classmethod
-    def validate_cl_reset_at_begin(
-        cls, v: decimal.Decimal | None, info: pydantic.ValidationInfo
-    ) -> decimal.Decimal | None:
-        if v is not None and v != 0:
+        # CL can only appear with accumulation registers (B0-B3, C0-C3)
+        ri = info.data.get("RI")
+        cl_register_error = (
+            "CL (Cumulated Loss) can only appear when RI indicates an "
+            "accumulation register (B0-B3, C0-C3)"
+        )
+        if not ri:
+            raise ValueError(cl_register_error)
+        if isinstance(ri, OBIS) and not ri.is_accumulation_register:
+            raise ValueError(cl_register_error)
+        if isinstance(ri, str) and not is_accumulation_register(ri):
+            raise ValueError(cl_register_error)
+
+        # CL must be 0 at transaction begin
+        if v != 0:
             tx = info.data.get("TX")
             if tx == MeterReadingReason.BEGIN:
                 msg = "CL (Cumulated Loss) must be 0 when TX=B (transaction begin)"
                 raise ValueError(msg)
-        return v
 
-    @pydantic.field_validator("CL")
-    @classmethod
-    def validate_cl_non_negative(cls, v: decimal.Decimal | None) -> decimal.Decimal | None:
-        if v is not None and v < 0:
+        # CL must be non-negative
+        if v < 0:
             msg = "CL (Cumulated Loss) must be non-negative"
             raise ValueError(msg)
+
         return v
 
     @pydantic.model_validator(mode="after")

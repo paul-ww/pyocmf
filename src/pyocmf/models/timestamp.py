@@ -20,44 +20,36 @@ class OCMFTimestamp:
     status: TimeStatus
 
     def __str__(self) -> str:
-        return serialize_ocmf_timestamp(self.timestamp, self.status)
+        return self.serialize()
 
     @classmethod
     def from_string(cls, timestamp_str: str) -> OCMFTimestamp:
-        dt, status = parse_ocmf_timestamp(timestamp_str)
+        """Parse OCMF timestamp string to OCMFTimestamp.
+
+        OCMF format: "2023-06-15T14:30:45,123+0200 S" (note: comma for milliseconds).
+        """
+        if " " in timestamp_str:
+            ts_part, status_part = timestamp_str.rsplit(" ", 1)
+            status = TimeStatus(status_part)
+        else:
+            ts_part = timestamp_str
+            status = TimeStatus.UNKNOWN_OR_UNSYNCHRONIZED
+
+        ts_normalized = ts_part.replace(",", ".")
+        dt = datetime.fromisoformat(ts_normalized)
+
         return cls(timestamp=dt, status=status)
 
+    def serialize(self) -> str:
+        """Serialize to OCMF timestamp format.
 
-def parse_ocmf_timestamp(timestamp_str: str) -> tuple[datetime, TimeStatus]:
-    """Parse OCMF timestamp string to datetime and status.
+        Uses comma for milliseconds as required by OCMF spec.
+        """
+        if self.timestamp.tzinfo is None:
+            error_message = "Datetime must be timezone-aware for OCMF format"
+            raise ValueError(error_message)
 
-    OCMF format: "2023-06-15T14:30:45,123+0200 S" (note: comma for milliseconds, not period).
-    """
-    if " " in timestamp_str:
-        ts_part, status_part = timestamp_str.rsplit(" ", 1)
-        status = TimeStatus(status_part)
-    else:
-        ts_part = timestamp_str
-        status = TimeStatus.UNKNOWN_OR_UNSYNCHRONIZED
+        iso_str = self.timestamp.isoformat(timespec="milliseconds")
+        ocmf_str = iso_str.replace(".", ",")
 
-    ts_normalized = ts_part.replace(",", ".")
-
-    dt = datetime.fromisoformat(ts_normalized)
-
-    return dt, status
-
-
-def serialize_ocmf_timestamp(dt: datetime, status: TimeStatus = TimeStatus.SYNCHRONIZED) -> str:
-    """Serialize datetime to OCMF timestamp format.
-
-    Requires timezone-aware datetime. Uses comma for milliseconds (OCMF requirement).
-    """
-    if dt.tzinfo is None:
-        error_message = "Datetime must be timezone-aware for OCMF format"
-        raise ValueError(error_message)
-
-    iso_str = dt.isoformat(timespec="milliseconds")
-
-    ocmf_str = iso_str.replace(".", ",")
-
-    return f"{ocmf_str} {status.value}"
+        return f"{ocmf_str} {self.status.value}"

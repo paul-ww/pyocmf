@@ -12,6 +12,16 @@ class OBISCategory(enum.StrEnum):
     OTHER = "other"
 
 
+# Regex patterns for OBIS code classification
+_ACCUMULATION_REGISTER_PATTERN = re.compile(r"01-00:[BC][0-3]\.08\.00$")
+_TRANSACTION_REGISTER_PATTERN = re.compile(r"01-00:[BC][23]\.08\.00$")
+_ACTIVE_ENERGY_PATTERN = re.compile(r"01-00:0[12]\.08\.00$")
+
+
+def _normalize(obis_code: str) -> str:
+    return obis_code.split("*")[0]
+
+
 @dataclass
 class OBISInfo:
     code: str
@@ -21,18 +31,18 @@ class OBISInfo:
 
     @staticmethod
     def normalize(obis_code: str) -> str:
-        return obis_code.split("*")[0]
+        return _normalize(obis_code)
 
     @staticmethod
     def from_code(obis_code: str) -> OBISInfo | None:
-        normalized = OBISInfo.normalize(obis_code)
+        normalized = _normalize(obis_code)
         return ALL_KNOWN_OBIS.get(normalized)
 
     def is_accumulation_register(self) -> bool:
-        return bool(re.match(r"01-00:[BC][0-3]\.08\.00$", self.code))
+        return bool(_ACCUMULATION_REGISTER_PATTERN.match(self.code))
 
     def is_transaction_register(self) -> bool:
-        return bool(re.match(r"01-00:[BC][23]\.08\.00$", self.code))
+        return bool(_TRANSACTION_REGISTER_PATTERN.match(self.code))
 
 
 BILLING_RELEVANT_OBIS = {
@@ -132,7 +142,7 @@ ALL_KNOWN_OBIS = {**BILLING_RELEVANT_OBIS, **COMMON_OBIS, **LEGACY_OBIS}
 
 
 def normalize_obis_code(obis_code: str) -> str:
-    return OBISInfo.normalize(obis_code)
+    return _normalize(obis_code)
 
 
 def get_obis_info(obis_code: str) -> OBISInfo | None:
@@ -140,43 +150,35 @@ def get_obis_info(obis_code: str) -> OBISInfo | None:
 
 
 def is_billing_relevant(obis_code: str) -> bool:
-    normalized = normalize_obis_code(obis_code)
+    normalized = _normalize(obis_code)
 
     if normalized in ALL_KNOWN_OBIS:
         return ALL_KNOWN_OBIS[normalized].billing_relevant
 
-    if re.match(r"01-00:[BC][0-3]\.08\.00$", normalized):
+    if _ACCUMULATION_REGISTER_PATTERN.match(normalized):
         return True
 
-    if re.match(r"01-00:0[12]\.08\.00$", normalized):
+    if _ACTIVE_ENERGY_PATTERN.match(normalized):
         return True
 
     return False
 
 
 def is_accumulation_register(obis_code: str) -> bool:
-    info = get_obis_info(obis_code)
-    if info:
-        return info.is_accumulation_register()
-
-    normalized = normalize_obis_code(obis_code)
-    return bool(re.match(r"01-00:[BC][0-3]\.08\.00$", normalized))
+    normalized = _normalize(obis_code)
+    return bool(_ACCUMULATION_REGISTER_PATTERN.match(normalized))
 
 
 def is_transaction_register(obis_code: str) -> bool:
-    info = get_obis_info(obis_code)
-    if info:
-        return info.is_transaction_register()
-
-    normalized = normalize_obis_code(obis_code)
-    return bool(re.match(r"01-00:[BC][23]\.08\.00$", normalized))
+    normalized = _normalize(obis_code)
+    return bool(_TRANSACTION_REGISTER_PATTERN.match(normalized))
 
 
 def validate_obis_for_billing(obis_code: str | None) -> tuple[bool, str | None]:
     if obis_code is None:
         return False, "OBIS code (RI) is required for billing-relevant readings"
 
-    normalized = normalize_obis_code(obis_code)
+    normalized = _normalize(obis_code)
 
     if not is_billing_relevant(obis_code):
         return False, f"OBIS code '{normalized}' is not billing-relevant"

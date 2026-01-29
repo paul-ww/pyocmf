@@ -22,8 +22,8 @@ from pyocmf.types.identifiers import (
     ISO15693,
     PHONE_NUMBER,
     IdentificationData,
+    PaginationString,
 )
-from pyocmf.types.pagination import PaginationString
 
 
 class Payload(pydantic.BaseModel):

@@ -1,9 +1,13 @@
 from typing import Annotated
 
 import pydantic
+from pydantic.types import StringConstraints
 from pydantic_extra_types import phone_numbers
 
-from pyocmf.types.pagination import PaginationString
+# Pagination types (OCMF spec section 5.4)
+TransactionContext = Annotated[str, StringConstraints(pattern=r"^T([0-9]+)$")]
+FiscalContext = Annotated[str, StringConstraints(pattern=r"^F([0-9]+)$")]
+PaginationString = TransactionContext | FiscalContext
 
 # ISO14443 RFID card UID: 4 or 7 bytes in hex (e.g., "1A2B3C4D" or "1A2B3C4D5E6F70")
 ISO14443 = Annotated[str, pydantic.Field(pattern=r"^[0-9a-fA-F]{8}$|^[0-9a-fA-F]{14}$")]
@@ -21,7 +25,6 @@ ISO7812 = Annotated[str, pydantic.Field(pattern=r"^[0-9]{8,19}$")]
 PHONE_NUMBER = phone_numbers.PhoneNumber
 
 # Unrestricted ID types: LOCAL, CENTRAL, CARD_TXN_NR, KEY_CODE per spec have no exact format defined
-# These can be any string value (e.g., UUID, arbitrary text, etc.)
 UnrestrictedID = str
 
 IdentificationData = (
@@ -29,6 +32,8 @@ IdentificationData = (
 )
 
 __all__ = [
+    "TransactionContext",
+    "FiscalContext",
     "PaginationString",
     "ISO14443",
     "ISO15693",

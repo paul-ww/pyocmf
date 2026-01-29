@@ -6,16 +6,7 @@ from pyocmf.compliance.models import EichrechtIssue, IssueCode, IssueSeverity
 from pyocmf.enums.reading import MeterStatus, TimeStatus
 
 if TYPE_CHECKING:
-    from pyocmf.core.payload import Payload
     from pyocmf.core.reading import Reading
-
-
-def _get_billing_relevant_begin_reading(payload: Payload) -> Reading:
-    return payload.RD[0]
-
-
-def _get_billing_relevant_end_reading(payload: Payload) -> Reading:
-    return payload.RD[-1]
 
 
 def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[EichrechtIssue]:

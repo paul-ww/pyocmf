@@ -6,6 +6,7 @@ from pyocmf.compliance import (
     IssueCode,
     check_eichrecht_reading,
     check_eichrecht_transaction,
+    validate_transaction_pair,
 )
 from pyocmf.core.reading import MeterReadingReason, MeterStatus
 from pyocmf.enums.identifiers import IdentificationType, UserAssignmentStatus
@@ -16,6 +17,7 @@ from ..helpers import (
     assert_no_errors,
     create_test_payload,
     create_test_reading,
+    create_transaction_pair,
 )
 
 
@@ -212,3 +214,31 @@ class TestEichrechtTransactionValidation:
         )
         issues = check_eichrecht_transaction(begin, end)
         assert_has_issue(issues, IssueCode.ID_MISMATCH)
+
+
+class TestValidateTransactionPair:
+    """Tests for the validate_transaction_pair convenience function."""
+
+    def test_valid_pair_passes(self) -> None:
+        begin, end = create_transaction_pair()
+        assert validate_transaction_pair(begin, end) is True
+
+    def test_pagination_not_consecutive_fails(self) -> None:
+        begin, end = create_transaction_pair(begin_pagination="T1", end_pagination="T5")
+        assert validate_transaction_pair(begin, end) is False
+
+    def test_pagination_consecutive_passes(self) -> None:
+        begin, end = create_transaction_pair(begin_pagination="T3", end_pagination="T4")
+        assert validate_transaction_pair(begin, end) is True
+
+    def test_termination_tx_types_accepted(self) -> None:
+        for tx_type in [
+            MeterReadingReason.END,
+            MeterReadingReason.TERMINATION_LOCAL,
+            MeterReadingReason.TERMINATION_REMOTE,
+            MeterReadingReason.TERMINATION_ABORT,
+            MeterReadingReason.TERMINATION_POWER_FAILURE,
+        ]:
+            begin, end = create_transaction_pair()
+            end.payload.RD[0].TX = tx_type
+            assert validate_transaction_pair(begin, end) is True

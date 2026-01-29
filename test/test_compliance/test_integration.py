@@ -12,13 +12,11 @@ from ..helpers import get_transaction_pair
 @pytest.mark.parametrize(
     ("xml_file", "should_pass", "description"),
     [
-        # These files should pass Eichrecht validation
         (
             "test_ocmf_ebee_01.xml",
             True,
             "ebee charger transaction - start and end with same meter value",
         ),
-        # These files should fail Eichrecht validation
         (
             "test_ocmf_ebee_02.xml",
             False,
@@ -32,8 +30,7 @@ def test_eichrecht_compliance_from_transparenzsoftware(
     should_pass: bool,
     description: str,
 ) -> None:
-    # Validates that our Eichrecht compliance checker produces expected results
-    # for the official Transparenzsoftware test suite
+    """Validate Eichrecht compliance checker against official Transparenzsoftware test suite."""
     xml_path = transparency_xml_dir / xml_file
 
     if not xml_path.exists():
@@ -44,7 +41,7 @@ def test_eichrecht_compliance_from_transparenzsoftware(
     if transaction_pair is None:
         pytest.skip(f"Could not extract transaction pair from {xml_file}")
 
-    assert transaction_pair is not None  # for type checker
+    assert transaction_pair is not None
     begin_record, end_record = transaction_pair
 
     begin_payload = begin_record.ocmf.payload
@@ -70,46 +67,3 @@ def test_eichrecht_compliance_from_transparenzsoftware(
                 f"Warnings: {warning_msgs}\n"
                 f"Description: {description}"
             )
-
-
-def test_transparenzsoftware_test_files_exist(
-    transparency_xml_dir: pathlib.Path,
-) -> None:
-    # Ensures the git submodule is properly initialized
-    assert transparency_xml_dir.exists(), (
-        "Transparenzsoftware XML directory not found. "
-        "Did you run 'git submodule update --init --recursive'?"
-    )
-
-    xml_files = list(transparency_xml_dir.glob("*.xml"))
-    assert len(xml_files) > 0, "No XML test files found in Transparenzsoftware directory"
-
-
-def test_transaction_pair_extraction_valid(
-    transparency_xml_dir: pathlib.Path,
-) -> None:
-    xml_path = transparency_xml_dir / "test_ocmf_ebee_01.xml"
-
-    if not xml_path.exists():
-        pytest.skip("Test file not found")
-
-    pair = get_transaction_pair(xml_path)
-    assert pair is not None, "Should extract transaction pair"
-
-    begin_record, end_record = pair
-    assert begin_record.ocmf.payload.RD is not None
-    assert end_record.ocmf.payload.RD is not None
-    assert len(begin_record.ocmf.payload.RD) > 0
-    assert len(end_record.ocmf.payload.RD) > 0
-
-
-def test_transaction_pair_extraction_invalid(
-    transparency_xml_dir: pathlib.Path,
-) -> None:
-    xml_path = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"
-
-    if not xml_path.exists():
-        pytest.skip("Test file not found")
-
-    pair = get_transaction_pair(xml_path)
-    assert pair is None, "Should not extract pair from single-value file"

@@ -32,41 +32,15 @@ def cli_runner() -> CliRunner:
     return CliRunner()
 
 
-@pytest.fixture
-def sample_ocmf_string() -> str:
-    return (
-        'OCMF|{"FV":"1.0","GI":"KEBA_KCP30","GS":"17619300","GV":"2.8.5",'
-        '"PG":"T32","IS":false,"IL":"NONE","IF":["RFID_NONE","OCPP_NONE",'
-        '"ISO15118_NONE","PLMN_NONE"],"IT":"NONE","ID":"",'
-        '"RD":[{"TM":"2019-08-13T10:03:15,000+0000 I","TX":"B","EF":"",'
-        '"ST":"G","RV":0.2596,"RI":"1-b:1.8.0","RU":"kWh"},'
-        '{"TM":"2019-08-13T10:03:36,000+0000 R","TX":"E","EF":"",'
-        '"ST":"G","RV":0.2597,"RI":"1-b:1.8.0","RU":"kWh"}]}|'
-        '{"SD":"304502200E2F107C987A300AC1695CA89EA149A8CDFA16188AF0A33EE64B67964AA943F9'
-        '022100889A72B6D65364BEA8562E7F6A0253157ACFF84FE4929A93B5964D23C4265699"}'
-    )
-
-
-@pytest.fixture
-def sample_public_key() -> str:
-    return (
-        "3059301306072A8648CE3D020106082A8648CE3D030107034200043AEEB45C392357820A58FDFB"
-        "0857BD77ADA31585C61C430531DFA53B440AFBFDD95AC887C658EA55260F808F55CA948DF235C2"
-        "108A0D6DC7D4AB1A5E1A7955BE"
-    )
-
-
 class TestAllCommand:
     @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
     def test_all_with_public_key(
         self,
         cli_runner: CliRunner,
-        sample_ocmf_string: str,
-        sample_public_key: str,
+        keba_ocmf_string: str,
+        keba_public_key: str,
     ) -> None:
-        result = cli_runner.invoke(
-            app, ["all", sample_ocmf_string, "--public-key", sample_public_key]
-        )
+        result = cli_runner.invoke(app, ["all", keba_ocmf_string, "--public-key", keba_public_key])
 
         assert result.exit_code == 0
         assert "Signature verification: VALID" in result.stdout
@@ -75,9 +49,9 @@ class TestAllCommand:
     def test_all_without_public_key(
         self,
         cli_runner: CliRunner,
-        sample_ocmf_string: str,
+        keba_ocmf_string: str,
     ) -> None:
-        result = cli_runner.invoke(app, ["all", sample_ocmf_string])
+        result = cli_runner.invoke(app, ["all", keba_ocmf_string])
 
         assert result.exit_code == 0
         assert "No public key available" in result.stdout
@@ -87,12 +61,12 @@ class TestAllCommand:
     def test_all_with_verbose(
         self,
         cli_runner: CliRunner,
-        sample_ocmf_string: str,
-        sample_public_key: str,
+        keba_ocmf_string: str,
+        keba_public_key: str,
     ) -> None:
         result = cli_runner.invoke(
             app,
-            ["all", sample_ocmf_string, "--public-key", sample_public_key, "--verbose"],
+            ["all", keba_ocmf_string, "--public-key", keba_public_key, "--verbose"],
         )
 
         assert result.exit_code == 0
@@ -106,11 +80,11 @@ class TestVerifyCommand:
     def test_verify_valid_signature(
         self,
         cli_runner: CliRunner,
-        sample_ocmf_string: str,
-        sample_public_key: str,
+        keba_ocmf_string: str,
+        keba_public_key: str,
     ) -> None:
         result = cli_runner.invoke(
-            app, ["verify", sample_ocmf_string, "--public-key", sample_public_key]
+            app, ["verify", keba_ocmf_string, "--public-key", keba_public_key]
         )
 
         assert result.exit_code == 0
@@ -118,21 +92,14 @@ class TestVerifyCommand:
         assert "ECDSA-secp256r1-SHA256" in result.stdout
 
     @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
-    def test_verify_invalid_signature(self, cli_runner: CliRunner, sample_public_key: str) -> None:
-        tampered_ocmf = (
-            'OCMF|{"FV":"1.0","GI":"KEBA_KCP30","GS":"17619300","GV":"2.8.5",'
-            '"PG":"T32","IS":false,"IL":"NONE","IF":["RFID_NONE","OCPP_NONE",'
-            '"ISO15118_NONE","PLMN_NONE"],"IT":"NONE","ID":"",'
-            '"RD":[{"TM":"2019-08-13T10:03:15,000+0000 I","TX":"B","EF":"",'
-            '"ST":"G","RV":999.9999,"RI":"1-b:1.8.0","RU":"kWh"},'
-            '{"TM":"2019-08-13T10:03:36,000+0000 R","TX":"E","EF":"",'
-            '"ST":"G","RV":0.2597,"RI":"1-b:1.8.0","RU":"kWh"}]}|'
-            '{"SD":"304502200E2F107C987A300AC1695CA89EA149A8CDFA16188AF0A33EE64B67964AA943F9'
-            '022100889A72B6D65364BEA8562E7F6A0253157ACFF84FE4929A93B5964D23C4265699"}'
-        )
-
+    def test_verify_invalid_signature(
+        self,
+        cli_runner: CliRunner,
+        keba_ocmf_string_tampered: str,
+        keba_public_key: str,
+    ) -> None:
         result = cli_runner.invoke(
-            app, ["verify", tampered_ocmf, "--public-key", sample_public_key]
+            app, ["verify", keba_ocmf_string_tampered, "--public-key", keba_public_key]
         )
 
         assert result.exit_code == 1
@@ -141,19 +108,17 @@ class TestVerifyCommand:
 
     @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
     def test_verify_malformed_public_key(
-        self, cli_runner: CliRunner, sample_ocmf_string: str
+        self, cli_runner: CliRunner, keba_ocmf_string: str
     ) -> None:
         result = cli_runner.invoke(
-            app, ["verify", sample_ocmf_string, "--public-key", "not_a_valid_key"]
+            app, ["verify", keba_ocmf_string, "--public-key", "not_a_valid_key"]
         )
 
         assert result.exit_code == 1
         assert "Signature verification failed" in result.stdout
 
-    def test_verify_without_public_key(
-        self, cli_runner: CliRunner, sample_ocmf_string: str
-    ) -> None:
-        result = cli_runner.invoke(app, ["verify", sample_ocmf_string])
+    def test_verify_without_public_key(self, cli_runner: CliRunner, keba_ocmf_string: str) -> None:
+        result = cli_runner.invoke(app, ["verify", keba_ocmf_string])
 
         assert result.exit_code == 0
         assert "No public key provided" in result.stdout
@@ -163,12 +128,12 @@ class TestVerifyCommand:
     def test_verify_with_verbose(
         self,
         cli_runner: CliRunner,
-        sample_ocmf_string: str,
-        sample_public_key: str,
+        keba_ocmf_string: str,
+        keba_public_key: str,
     ) -> None:
         result = cli_runner.invoke(
             app,
-            ["verify", sample_ocmf_string, "--public-key", sample_public_key, "--verbose"],
+            ["verify", keba_ocmf_string, "--public-key", keba_public_key, "--verbose"],
         )
 
         assert result.exit_code == 0
@@ -178,12 +143,11 @@ class TestVerifyCommand:
 
     @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
     def test_verify_hex_encoded(
-        self, cli_runner: CliRunner, sample_ocmf_string: str, sample_public_key: str
+        self, cli_runner: CliRunner, keba_ocmf_string: str, keba_public_key: str
     ) -> None:
-        # Convert to hex using bytes, not OCMF.to_string() which loses _original_payload_json
-        hex_string = sample_ocmf_string.encode("utf-8").hex()
+        hex_string = keba_ocmf_string.encode("utf-8").hex()
 
-        result = cli_runner.invoke(app, ["verify", hex_string, "--public-key", sample_public_key])
+        result = cli_runner.invoke(app, ["verify", hex_string, "--public-key", keba_public_key])
 
         assert result.exit_code == 0
         assert "Signature verification: VALID" in result.stdout
@@ -203,14 +167,13 @@ class TestVerifyCommand:
 
 
 class TestCheckCommand:
-    def test_check_compliant_single(self, cli_runner: CliRunner, sample_ocmf_string: str) -> None:
-        result = cli_runner.invoke(app, ["check", sample_ocmf_string])
+    def test_check_compliant_single(self, cli_runner: CliRunner, keba_ocmf_string: str) -> None:
+        result = cli_runner.invoke(app, ["check", keba_ocmf_string])
 
         assert result.exit_code == 0
         assert "COMPLIANT" in result.stdout
 
     def test_check_non_compliant_single(self, cli_runner: CliRunner) -> None:
-        # OCMF with meter status not 'G'
         non_compliant_ocmf = (
             'OCMF|{"FV":"1.0","GI":"KEBA_KCP30","GS":"17619300","GV":"2.8.5",'
             '"PG":"T32","IS":false,"IL":"NONE","IF":["RFID_NONE","OCPP_NONE",'
@@ -262,8 +225,8 @@ class TestCheckCommand:
 
 
 class TestInspectCommand:
-    def test_inspect_ocmf_string(self, cli_runner: CliRunner, sample_ocmf_string: str) -> None:
-        result = cli_runner.invoke(app, ["inspect", sample_ocmf_string])
+    def test_inspect_ocmf_string(self, cli_runner: CliRunner, keba_ocmf_string: str) -> None:
+        result = cli_runner.invoke(app, ["inspect", keba_ocmf_string])
 
         assert result.exit_code == 0
         assert "OCMF Structure:" in result.stdout
@@ -272,8 +235,8 @@ class TestInspectCommand:
         assert "Signature:" in result.stdout
         assert "KEBA_KCP30" in result.stdout
 
-    def test_inspect_hex_encoded(self, cli_runner: CliRunner, sample_ocmf_string: str) -> None:
-        ocmf = OCMF.from_string(sample_ocmf_string)
+    def test_inspect_hex_encoded(self, cli_runner: CliRunner, keba_ocmf_string: str) -> None:
+        ocmf = OCMF.from_string(keba_ocmf_string)
         hex_string = ocmf.to_string(hex=True)
 
         result = cli_runner.invoke(app, ["inspect", hex_string])

@@ -17,8 +17,8 @@ class OCMFBridge {
     try {
       // Verify pyocmf is available
       await this.pyodide.runPythonAsync(`
-        import pyocmf
-        print(f"PyOCMF v{pyocmf.__version__} loaded successfully")
+import pyocmf
+print(f"PyOCMF v{pyocmf.__version__} loaded successfully")
       `);
 
       console.log("PyOCMF bridge initialized");
@@ -44,26 +44,27 @@ class OCMFBridge {
     this.checkInitialized();
 
     try {
+      const escapedText = ocmfText.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
       const result = await this.pyodide.runPythonAsync(`
-        from pyocmf import OCMF
-        import json
+from pyocmf import OCMF
+import json
 
-        try:
-            ocmf = OCMF.from_string('''${ocmfText.replace(/'/g, "\\'")}''')
-            result = {
-                'success': True,
-                'data': ocmf.model_dump(),
-                'ocmf_string': ocmf.to_string(),
-                'ocmf_hex': ocmf.to_string(hex=True)
-            }
-        except Exception as e:
-            result = {
-                'success': False,
-                'error': str(e),
-                'error_type': type(e).__name__
-            }
+try:
+    ocmf = OCMF.from_string('''${escapedText}''')
+    result = {
+        'success': True,
+        'data': ocmf.model_dump(),
+        'ocmf_string': ocmf.to_string(),
+        'ocmf_hex': ocmf.to_string(hex=True)
+    }
+except Exception as e:
+    result = {
+        'success': False,
+        'error': str(e),
+        'error_type': type(e).__name__
+    }
 
-        json.dumps(result)
+json.dumps(result)
       `);
 
       return JSON.parse(result);
@@ -85,26 +86,27 @@ class OCMFBridge {
     this.checkInitialized();
 
     try {
+      const escapedHex = hexText.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
       const result = await this.pyodide.runPythonAsync(`
-        from pyocmf import OCMF
-        import json
+from pyocmf import OCMF
+import json
 
-        try:
-            ocmf = OCMF.from_string('''${hexText.replace(/'/g, "\\'")}''')
-            result = {
-                'success': True,
-                'data': ocmf.model_dump(),
-                'ocmf_string': ocmf.to_string(),
-                'ocmf_hex': ocmf.to_string(hex=True)
-            }
-        except Exception as e:
-            result = {
-                'success': False,
-                'error': str(e),
-                'error_type': type(e).__name__
-            }
+try:
+    ocmf = OCMF.from_string('''${escapedHex}''')
+    result = {
+        'success': True,
+        'data': ocmf.model_dump(),
+        'ocmf_string': ocmf.to_string(),
+        'ocmf_hex': ocmf.to_string(hex=True)
+    }
+except Exception as e:
+    result = {
+        'success': False,
+        'error': str(e),
+        'error_type': type(e).__name__
+    }
 
-        json.dumps(result)
+json.dumps(result)
       `);
 
       return JSON.parse(result);
@@ -118,7 +120,7 @@ class OCMFBridge {
   }
 
   /**
-   * Parse XML content and extract OCMF data
+   * Parse XML content and extract OCMF data using the public OcmfContainer API
    * @param {string} xmlContent - XML file content as string
    * @returns {Object} Result with entries array or error
    */
@@ -132,41 +134,38 @@ class OCMFBridge {
         .replace(/'''/g, "\\'\\'\\'");
 
       const result = await this.pyodide.runPythonAsync(`
-        from pyocmf import OCMF
-        from pyocmf.utils.xml import _extract_from_signed_data, _extract_from_encoded_data, _extract_from_any_signed_data, _extract_public_key
-        import xml.etree.ElementTree as ET
-        import json
+from pyocmf import OcmfContainer
+from pathlib import Path
+import tempfile
+import json
+import os
 
-        try:
-            root = ET.fromstring('''${escapedXml}''')
-            results = []
-            seen_strings = set()
+try:
+    # Write XML to temporary file (OcmfContainer.from_xml expects a file path)
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.xml', delete=False) as tmp:
+        tmp.write('''${escapedXml}''')
+        tmp_path = tmp.name
 
-            for value_elem in root.findall('value'):
-                ocmf_str = (
-                    _extract_from_signed_data(value_elem)
-                    or _extract_from_encoded_data(value_elem)
-                    or _extract_from_any_signed_data(value_elem)
-                )
+    # Parse using the public API
+    container = OcmfContainer.from_xml(Path(tmp_path))
 
-                if ocmf_str and ocmf_str not in seen_strings:
-                    seen_strings.add(ocmf_str)
-                    public_key = _extract_public_key(value_elem)
-                    ocmf = OCMF.from_string(ocmf_str)
+    # Clean up temp file
+    os.unlink(tmp_path)
 
-                    results.append({
-                        'ocmf': ocmf.model_dump(),
-                        'ocmf_string': ocmf_str,
-                        'public_key_hex': public_key.key_hex if public_key else None,
-                        'transaction_id': value_elem.get('transactionId'),
-                        'context': value_elem.get('context')
-                    })
+    results = []
+    for record in container:
+        results.append({
+            'ocmf': record.ocmf.model_dump(),
+            'ocmf_string': record.ocmf.to_string(),
+            'public_key_hex': record.public_key.key if record.public_key else None,
+            'has_public_key': record.public_key is not None
+        })
 
-            result = {'success': True, 'entries': results, 'count': len(results)}
-        except Exception as e:
-            result = {'success': False, 'error': str(e), 'error_type': type(e).__name__}
+    result = {'success': True, 'entries': results, 'count': len(results)}
+except Exception as e:
+    result = {'success': False, 'error': str(e), 'error_type': type(e).__name__}
 
-        json.dumps(result)
+json.dumps(result)
       `);
 
       return JSON.parse(result);
@@ -189,25 +188,31 @@ class OCMFBridge {
     this.checkInitialized();
 
     try {
+      const escapedOcmf = ocmfString
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'");
+      const escapedKey = publicKeyHex
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'");
       const result = await this.pyodide.runPythonAsync(`
-        from pyocmf import OCMF
-        import json
+from pyocmf import OCMF
+import json
 
-        try:
-            ocmf = OCMF.from_string('''${ocmfString.replace(/'/g, "\\'")}''')
-            is_valid = ocmf.verify_signature('''${publicKeyHex.replace(/'/g, "\\'")}''')
-            result = {
-                'success': True,
-                'valid': is_valid,
-                'algorithm': ocmf.signature.SA,
-                'encoding': ocmf.signature.SE
-            }
-        except ImportError:
-            result = {'success': False, 'error': 'Cryptography library not available', 'error_type': 'CryptoNotAvailable'}
-        except Exception as e:
-            result = {'success': False, 'error': str(e), 'error_type': type(e).__name__}
+try:
+    ocmf = OCMF.from_string('''${escapedOcmf}''')
+    is_valid = ocmf.verify_signature('''${escapedKey}''')
+    result = {
+        'success': True,
+        'valid': is_valid,
+        'algorithm': ocmf.signature.SA,
+        'encoding': ocmf.signature.SE
+    }
+except ImportError:
+    result = {'success': False, 'error': 'Cryptography library not available', 'error_type': 'CryptoNotAvailable'}
+except Exception as e:
+    result = {'success': False, 'error': str(e), 'error_type': type(e).__name__}
 
-        json.dumps(result)
+json.dumps(result)
       `);
 
       return JSON.parse(result);

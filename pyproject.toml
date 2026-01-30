@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "pyocmf"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python library for parsing and verifying OCMF (Open Charge Metering Format) signatures from electric vehicle charging stations"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -91,3 +91,4 @@ format = "ruff format src test"
 format-check = "ruff format --check src test"
 typecheck = "ty check src test"
 docs = "mkdocs build --strict"
+demo = {shell="cd docs/demo && python -m http.server 8081"}

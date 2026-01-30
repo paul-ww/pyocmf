@@ -317,6 +317,7 @@ uv run poe typecheck                 # Type check
 # Build
 uv build                             # Build package distributions
 uv run poe docs                      # Build documentation
+uv run poe demo                      # Run Pyodide demo locally
 
 # Dependencies
 uv add <package>                     # Add runtime dependency
@@ -405,6 +406,7 @@ uv run poe format         # Format code with ruff
 uv run poe format-check   # Check code formatting without changes
 uv run poe typecheck      # Run ty type checker
 uv run poe docs           # Build documentation with mkdocs
+uv run poe demo           # Run Pyodide demo locally
 ```
 
 **Why use poe tasks?**

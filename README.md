@@ -4,10 +4,11 @@ Python library for parsing, validating, and verifying OCMF (Open Charge Metering
 
 ## Features
 
-- 🔍 **Parse OCMF strings** - Convert OCMF strings into validated Python objects
-- ✅ **Verify cryptographic signatures** - Ensure data integrity and authenticity  
-- 🔐 **Support multiple algorithms** - ECDSA with various curves (secp192r1, secp256r1, secp384r1, secp521r1, brainpool variants)
-- 📝 **Type-safe** - Full Pydantic validation with comprehensive type hints
+- Parse OCMF strings into validated Python objects
+- Verify cryptographic signatures for data integrity
+- Support for ECDSA with multiple curves (secp192r1, secp256r1, secp384r1, secp521r1, brainpool variants)
+- Type-safe validation using Pydantic
+- Eichrecht compliance validation for German calibration law requirements
 
 ## Installation
 
@@ -66,9 +67,9 @@ print(ocmf.to_string(hex=True))   # Hex-encoded
 
 ### Command Line Interface
 
-PyOCMF includes a powerful CLI for quick validation and signature verification.
+PyOCMF includes a CLI for validation and signature verification.
 
-**Note:** The CLI requires the `cli` extras. Install with `pip install pyocmf[cli]` or `pip install pyocmf[all]`.
+Note: The CLI requires the `cli` extras. Install with `pip install pyocmf[cli]` or `pip install pyocmf[all]`.
 
 ```bash
 # Validate an OCMF string
@@ -93,7 +94,7 @@ ocmf charging_session.xml --all
 ocmf --help
 ```
 
-**Example output:**
+Example output:
 ```
 ✓ Successfully parsed OCMF string
 ✓ OCMF validation passed
@@ -104,9 +105,9 @@ ocmf --help
 
 ### Verifying Signatures
 
-**Note:** Signature verification requires the `crypto` extras. Install with `pip install pyocmf[crypto]` or `pip install pyocmf[all]`.
+Note: Signature verification requires the `crypto` extras. Install with `pip install pyocmf[crypto]` or `pip install pyocmf[all]`.
 
-**Important:** Per the OCMF specification, public keys must be transmitted out-of-band (separately from the OCMF data itself), typically via a central register. The public key is never embedded in the OCMF string.
+Important: Per the OCMF specification, public keys must be transmitted out-of-band (separately from the OCMF data itself), typically via a central register. The public key is never embedded in the OCMF string.
 
 ```python
 from pyocmf import OCMF
@@ -120,9 +121,9 @@ public_key_hex = "3059301306072A8648CE3D020106082A8648CE3D03010703420004..."
 try:
     is_valid = ocmf.verify_signature(public_key_hex)
     if is_valid:
-        print("✓ Signature is valid - data is authentic and untampered")
+        print("✓ Signature is valid")
     else:
-        print("✗ Signature is invalid - data may have been modified")
+        print("✗ Signature is invalid")
 except ImportError:
     print("Install cryptography package: pip install pyocmf[crypto]")
 ```
@@ -132,7 +133,7 @@ except ImportError:
 The library can extract structured metadata from public keys per OCMF spec Table 23:
 
 ```python
-from pyocmf.types.public_key import PublicKey
+from pyocmf import PublicKey
 
 # Parse public key (accepts hex or base64 encoding, auto-detected)
 public_key = PublicKey.from_string(public_key_hex)
@@ -152,12 +153,34 @@ matches = public_key.matches_signature_algorithm(ocmf.signature.SA)
 print(f"Key matches algorithm: {matches}")
 ```
 
+### Regulatory Compliance Checking
+
+PyOCMF includes validation for German Eichrecht (calibration law) requirements:
+
+```python
+from pyocmf import OCMF, check_eichrecht_transaction
+
+# Check a complete transaction (begin + end)
+ocmf_begin = OCMF.from_string(begin_string)
+ocmf_end = OCMF.from_string(end_string)
+
+issues = check_eichrecht_transaction(ocmf_begin, ocmf_end)
+
+if not issues:
+    print("✓ Transaction is Eichrecht compliant")
+else:
+    for issue in issues:
+        print(f"✗ {issue}")
+```
+
+Checks include meter status, error flags, time sync, cable loss compensation, transaction consistency, value progression, and user identification.
+
 ### Working with XML Files
 
 OCMF data is often distributed in XML format (e.g. when downloading transaction data from a CPO backend). PyOCMF provides utilities to extract and verify OCMF data from these files.
 
 ```python
-from pyocmf.utils.xml import OcmfContainer
+from pyocmf import OcmfContainer
 
 # Parse all OCMF entries from XML file
 container = OcmfContainer.from_xml("charging_session.xml")
@@ -217,8 +240,8 @@ uv run ruff check src/
 
 ## Documentation
 
-- **[Full Documentation](https://paul-ww.github.io/pyocmf/)** - Complete guide and API reference
-- **[Browser Demo](https://paul-ww.github.io/pyocmf/demo/)** - Try PyOCMF in your browser
+- [Full Documentation](https://paul-ww.github.io/pyocmf/) - Guide and API reference
+- [Browser Demo](https://paul-ww.github.io/pyocmf/demo/) - Try PyOCMF in your browser
 
 ## License
 

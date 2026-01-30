@@ -58,6 +58,6 @@ class TestSignatureMethod:
         with pytest.raises(ValueError, match="invalid"):
             # This would create "ECDSA-invalid-SHA256" which isn't a valid member
             SignatureMethod.from_parts(
-                CurveType("invalid"),  # type: ignore[arg-type]
+                CurveType("invalid"),
                 HashAlgorithm.SHA256,
             )

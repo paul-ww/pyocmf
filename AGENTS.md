@@ -377,7 +377,6 @@ git submodule update --remote
 **Key dependencies:**
 - `pydantic>=2.10.4`: Data validation and settings management
 - `pydantic-extra-types>=2.10.1`: Additional Pydantic types
-- `ciso8601>=2.3.2`: Fast ISO 8601 date/time parsing
 - `phonenumbers>=9.0.10`: Phone number parsing and validation
 
 **OCMF format:**

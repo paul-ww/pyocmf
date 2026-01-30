@@ -257,4 +257,4 @@ For more information about OCMF, visit [safe-ev.de](https://www.safe-ev.de/).
 
 ---
 
-<p align="center"><i>Vibe-engineered with <a href="https://claude.ai/code">Claude Code</a></i> 🦞</p>
+<p align="center"><i>Vibe-engineered with <a href="https://claude.ai/code">Claude Code</a></i> 🤖</p>

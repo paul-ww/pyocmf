@@ -2,7 +2,7 @@
 
 Try PyOCMF in your browser. The demo lets you parse, validate, verify, and check regulatory compliance for OCMF data without installing anything.
 
-[Launch Demo →](demo/)
+[Launch Demo →](../demo-app/)
 
 ## Features
 
@@ -38,7 +38,7 @@ Try PyOCMF in your browser. The demo lets you parse, validate, verify, and check
 
 ## Quick Start
 
-1. Visit the [demo page](demo/)
+1. Visit the [demo page](../demo-app/)
 2. Paste an OCMF string or upload an XML file
 3. Optionally provide a public key for signature verification
 4. Click "Parse & Validate"
@@ -53,7 +53,7 @@ You can run the Pyodide demo on your local machine using any HTTP server:
 
 ```bash
 # Navigate to the demo directory
-cd docs/demo
+cd docs/demo-app
 
 # Python 3
 python -m http.server 8000
@@ -68,7 +68,7 @@ python -m http.server 8000
 npm install -g http-server
 
 # Navigate to the demo directory
-cd docs/demo
+cd docs/demo-app
 
 # Start server
 http-server -p 8000
@@ -88,7 +88,7 @@ uv run poe demo
 Or without poe:
 
 ```bash
-cd docs/demo
+cd docs/demo-app
 uv run python -m http.server 8000
 
 # Then open: http://localhost:8000

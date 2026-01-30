@@ -91,4 +91,4 @@ format = "ruff format src test"
 format-check = "ruff format --check src test"
 typecheck = "ty check src test"
 docs = "mkdocs build --strict"
-demo = {shell="cd docs/demo && python -m http.server 8081"}
+demo = {shell="cd docs/demo-app && python -m http.server 8081"}

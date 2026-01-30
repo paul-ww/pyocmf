@@ -486,7 +486,7 @@ response = await fetch(github_api_url)
 timestamp = datetime.now(timezone.utc).isoformat()
 
 # Good: Explains validation rule
-# Signature algorithm must be one of the values defined in OCMF spec section 6.3
+# Signature algorithm must be one of the values defined in OCMF spec Table 22
 if signature.algorithm not in ["ECDSA-secp192k1-SHA256", "ECDSA-secp256k1-SHA256"]:
     raise ValidationError(...)
 ```
@@ -551,7 +551,7 @@ def _calculate_cable_loss_compensation(
     cable_resistance: float,
     current: float,
 ) -> float:
-    """Calculate energy loss in charging cable per OCMF spec section 7.3.
+    """Calculate energy loss in charging cable per OCMF spec Table 24.
     
     The compensation accounts for I²R losses in the charging cable between
     the meter and the vehicle. This is required for billing accuracy under

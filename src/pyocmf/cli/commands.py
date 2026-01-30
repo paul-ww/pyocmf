@@ -43,7 +43,6 @@ def all_checks(
             ocmf = OCMF.from_string(ocmf_input)
             key_to_use = public_key
 
-        # First: verify signature
         if key_to_use:
             verify_signature(ocmf, key_to_use)
         else:
@@ -51,12 +50,10 @@ def all_checks(
                 "[yellow]⚠[/yellow] No public key available - skipping signature verification"
             )
 
-        # Second: check compliance
-        console.print()  # Add spacing
+        console.print()
         issues = ocmf.check_eichrecht(errors_only=not verbose)
         display_compliance_result(issues, ocmf.is_eichrecht_compliant)
 
-        # Optional: display structure
         if verbose:
             display_ocmf_structure(ocmf)
 

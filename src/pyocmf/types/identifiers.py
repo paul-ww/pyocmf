@@ -4,7 +4,7 @@ import pydantic
 from pydantic.types import StringConstraints
 from pydantic_extra_types import phone_numbers
 
-# Pagination types (OCMF spec section 5.4)
+# Pagination types (OCMF spec Table 2)
 TransactionContext = Annotated[str, StringConstraints(pattern=r"^T([0-9]+)$")]
 FiscalContext = Annotated[str, StringConstraints(pattern=r"^F([0-9]+)$")]
 PaginationString = TransactionContext | FiscalContext

@@ -107,7 +107,6 @@ class Payload(pydantic.BaseModel):
         Per OCMF spec: GS is optional (0..1) but MS is mandatory (1..1).
         However, at least one must be non-None (though can be empty string).
         """
-        # Check if both are None/missing (not just falsy/empty string)
         if self.GS is None and self.MS is None:
             msg = "Either Gateway Serial (GS) or Meter Serial (MS) must be provided"
             raise ValidationError(msg)

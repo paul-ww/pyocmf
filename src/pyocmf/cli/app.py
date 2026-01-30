@@ -17,7 +17,6 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
-# Register commands
 app.command(name="all")(commands.all_checks)
 app.command()(commands.verify)
 app.command()(commands.check)
@@ -26,7 +25,6 @@ app.command()(commands.inspect)
 
 def main() -> None:
     """Run the CLI with default command handling."""
-    # If no subcommand provided, default to 'all' command
     if len(sys.argv) == 1:
         app(["--help"])
     elif (
@@ -34,7 +32,6 @@ def main() -> None:
         and not sys.argv[1].startswith("-")
         and sys.argv[1] not in ["verify", "check", "inspect", "all"]
     ):
-        # User provided input without subcommand, use 'all'
         sys.argv.insert(1, "all")
 
     app()

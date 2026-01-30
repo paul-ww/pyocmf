@@ -6,8 +6,6 @@ electric vehicle charging stations.
 
 __version__ = "0.2.0"
 
-# Core models
-# Compliance checking
 from pyocmf.compliance import (
     EichrechtIssue,
     IssueCode,
@@ -17,14 +15,10 @@ from pyocmf.compliance import (
     validate_transaction_pair,
 )
 from pyocmf.core import OCMF, Payload, Reading, Signature
-
-# Common enums
 from pyocmf.enums.crypto import SignatureMethod
 from pyocmf.enums.identifiers import IdentificationType, UserAssignmentStatus
 from pyocmf.enums.reading import MeterReadingReason, MeterStatus, ReadingType, TimeStatus
 from pyocmf.enums.units import EnergyUnit
-
-# Exceptions
 from pyocmf.exceptions import (
     Base64DecodingError,
     CryptoError,
@@ -41,14 +35,8 @@ from pyocmf.exceptions import (
     ValidationError,
     XmlParsingError,
 )
-
-# Data models
 from pyocmf.models import OBIS, CableLossCompensation, OCMFTimestamp, PublicKey
-
-# Registries
 from pyocmf.registries.obis import get_obis_info, is_billing_relevant
-
-# Utilities
 from pyocmf.utils.xml import OcmfContainer, OcmfRecord
 
 __all__ = [

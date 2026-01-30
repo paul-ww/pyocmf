@@ -56,9 +56,7 @@ class Reading(pydantic.BaseModel):
     @classmethod
     def validate_reading_unit(cls, v: OCMFUnit | str) -> OCMFUnit | str:
         """Validate RU is spec-compliant, warn if not."""
-        # Derive spec units from the enums
         spec_units = {unit.value for unit in EnergyUnit} | {unit.value for unit in ResistanceUnit}
-        # Convert to string for comparison (works for both enum and string)
         value_str = str(v)
         if value_str not in spec_units:
             warnings.warn(
@@ -79,7 +77,6 @@ class Reading(pydantic.BaseModel):
         if v is None:
             return v
 
-        # CL can only appear with accumulation registers (B0-B3, C0-C3)
         ri = info.data.get("RI")
         cl_register_error = (
             "CL (Cumulated Loss) can only appear when RI indicates an "
@@ -92,14 +89,12 @@ class Reading(pydantic.BaseModel):
         if isinstance(ri, str) and not is_accumulation_register(ri):
             raise ValueError(cl_register_error)
 
-        # CL must be 0 at transaction begin
         if v != 0:
             tx = info.data.get("TX")
             if tx == MeterReadingReason.BEGIN:
                 msg = "CL (Cumulated Loss) must be 0 when TX=B (transaction begin)"
                 raise ValueError(msg)
 
-        # CL must be non-negative
         if v < 0:
             msg = "CL (Cumulated Loss) must be non-negative"
             raise ValueError(msg)

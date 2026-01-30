@@ -222,7 +222,7 @@ except SignatureVerificationError as e:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pyocmf.git
+git clone https://github.com/paul-ww/pyocmf.git
 cd pyocmf
 
 # Install dependencies with uv
@@ -232,10 +232,10 @@ uv sync
 uv run pytest
 
 # Run type checking
-uv run mypy src/
+uv run ty check src test
 
 # Run linting
-uv run ruff check src/
+uv run ruff check .
 ```
 
 ## Documentation

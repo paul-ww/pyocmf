@@ -1,0 +1,39 @@
+name: Lint and Format
+
+on:
+  push:
+    branches: [initial-version, main]
+  pull_request:
+    branches: [initial-version, main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --group lint
+
+      - name: Run ruff linter
+        run: uv run poe lint
+
+      - name: Run ruff formatter check
+        run: uv run poe format-check
+
+      - name: Run ty type checker
+        run: uv run poe typecheck
+
+      - name: Minimize uv cache
+        run: uv cache prune --ci

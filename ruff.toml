@@ -1,0 +1,43 @@
+line-length = 100
+preview = true
+
+[lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "C901",
+    "TRY",
+    "N",
+    "EXE",
+    "C4",
+    "B",
+    "ERA",
+    "DTZ",
+    "EM",
+    "FA",
+    "PT",
+    "PTH",
+    "PIE",
+    "UP",
+    "FURB",
+    "PGH",
+    "BLE",
+    "I",
+    "D",  # pydocstyle - docstring formatting and quality
+]
+
+ignore = [
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D107",
+    "D203",
+    "D213",
+]
+
+[lint.mccabe]
+max-complexity = 12  # Slightly higher limit for CLI commands

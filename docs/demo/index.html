@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>PyOCMF Browser Demo - OCMF Parser & Validator</title>
+        <link rel="stylesheet" href="css/styles.css" />
+    </head>
+    <body>
+        <header>
+            <div class="container">
+                <h1>🔌 PyOCMF Browser Demo</h1>
+                <p>
+                    Parse, validate, and verify OCMF charging session data in
+                    your browser
+                </p>
+                <p class="subtitle">
+                    Powered by Pyodide (Python in WebAssembly)
+                </p>
+            </div>
+        </header>
+
+        <main class="container">
+            <!-- Loading Section -->
+            <div id="loadingSection" class="content-section">
+                <div class="loading-container">
+                    <h2>Initializing Python Runtime</h2>
+                    <div class="progress-bar-container">
+                        <div
+                            id="loadingProgress"
+                            class="progress-bar"
+                            role="progressbar"
+                            aria-valuenow="0"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                        ></div>
+                    </div>
+                    <p id="loadingText">Loading Pyodide...</p>
+                    <p class="info-text">
+                        First load may take 5-10 seconds. Subsequent loads will
+                        be instant.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Input Section -->
+            <div id="inputSection" class="content-section hidden">
+                <div class="input-container">
+                    <h2>Input OCMF Data</h2>
+
+                    <!-- Method tabs -->
+                    <div class="input-methods">
+                        <button class="method-tab active" data-method="text">
+                            Text Input
+                        </button>
+                        <button class="method-tab" data-method="file">
+                            XML File Upload
+                        </button>
+                    </div>
+
+                    <!-- Text Input -->
+                    <div id="textInputMethod" class="input-method">
+                        <div class="form-group">
+                            <label for="inputFormat">Format:</label>
+                            <select id="inputFormat">
+                                <option value="plain">
+                                    Plain Text (OCMF|...)
+                                </option>
+                                <option value="hex">Hex Encoded</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="ocmfInput">OCMF Data:</label>
+                            <textarea
+                                id="ocmfInput"
+                                rows="8"
+                                placeholder="Paste OCMF string here (OCMF|{...}|{...})..."
+                            ></textarea>
+                        </div>
+
+                        <div class="button-group">
+                            <button id="parseBtn" class="btn btn-primary">
+                                Parse & Validate
+                            </button>
+                            <button
+                                id="loadExampleBtn"
+                                class="btn btn-secondary"
+                            >
+                                Load Example
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- File Upload -->
+                    <div id="fileInputMethod" class="input-method hidden">
+                        <div class="form-group">
+                            <label for="xmlFileInput">Upload XML File:</label>
+                            <input
+                                type="file"
+                                id="xmlFileInput"
+                                accept=".xml"
+                                class="file-input"
+                            />
+                            <p class="help-text">
+                                Upload Transparenzsoftware-compatible XML files
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Signature Verification Section -->
+                    <div class="verification-input">
+                        <h3>Signature Verification (Optional)</h3>
+                        <div class="form-group">
+                            <label for="publicKeyInput"
+                                >Public Key (Hex):</label
+                            >
+                            <input
+                                type="text"
+                                id="publicKeyInput"
+                                placeholder="3059301306072A8648CE3D020106082A8648CE3D03010703420004..."
+                                class="public-key-input"
+                            />
+                        </div>
+                        <button id="verifyBtn" class="btn btn-secondary">
+                            Verify Signature
+                        </button>
+                        <p class="help-text">
+                            Public keys are extracted automatically from XML
+                            files
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result Section -->
+            <div id="resultSection" class="content-section hidden">
+                <div class="result-container">
+                    <div class="result-header">
+                        <h2>Results</h2>
+                        <button
+                            class="btn btn-secondary"
+                            onclick="location.reload()"
+                        >
+                            Parse Another
+                        </button>
+                    </div>
+
+                    <div id="resultContainer"></div>
+
+                    <div id="verificationResult"></div>
+                </div>
+            </div>
+
+            <!-- Error Section -->
+            <div id="errorSection" class="content-section hidden">
+                <div class="error-container">
+                    <h2>❌ Error</h2>
+                    <p id="errorMessage" class="error-message"></p>
+                    <button class="btn btn-primary" onclick="location.reload()">
+                        Try Again
+                    </button>
+                </div>
+            </div>
+
+            <!-- Info Section -->
+            <div class="info-section">
+                <h3>About OCMF</h3>
+                <p>
+                    <strong>OCMF (Open Charge Metering Format)</strong> is a
+                    standardized format for metering data from electric vehicle
+                    charging stations. It ensures transparency and tamper-proof
+                    documentation of charging sessions, complying with legal
+                    requirements such as the EU Measuring Instruments Directive
+                    (MID) and German Eichrecht.
+                </p>
+
+                <h3>Features</h3>
+                <ul>
+                    <li>✅ Parse OCMF strings (plain text and hex-encoded)</li>
+                    <li>✅ Extract OCMF data from XML files</li>
+                    <li>✅ Validate data structure and format</li>
+                    <li>✅ Verify cryptographic signatures (ECDSA)</li>
+                    <li>✅ 100% client-side - no server required</li>
+                    <li>✅ Works offline after initial load</li>
+                </ul>
+
+                <h3>Links</h3>
+                <ul>
+                    <li>
+                        <a
+                            href="https://github.com/paul-ww/pyocmf"
+                            target="_blank"
+                            >PyOCMF on GitHub</a
+                        >
+                    </li>
+                    <li>
+                        <a
+                            href="https://pypi.org/project/pyocmf/"
+                            target="_blank"
+                            >PyOCMF on PyPI</a
+                        >
+                    </li>
+                    <li>
+                        <a href="https://www.safe-ev.de/" target="_blank"
+                            >OCMF Specification</a
+                        >
+                    </li>
+                    <li>
+                        <a href="https://pyodide.org/" target="_blank"
+                            >Pyodide Documentation</a
+                        >
+                    </li>
+                </ul>
+
+                <h3>Browser Compatibility</h3>
+                <p>
+                    This demo requires a modern browser with WebAssembly
+                    support: Chrome 57+, Firefox 52+, Safari 11+, Edge 16+
+                </p>
+            </div>
+        </main>
+
+        <footer>
+            <div class="container">
+                <p>
+                    Built with
+                    <a href="https://pyodide.org" target="_blank">Pyodide</a> |
+                    <a href="https://github.com/paul-ww/pyocmf" target="_blank"
+                        >PyOCMF</a
+                    >
+                    v0.2.0
+                </p>
+            </div>
+        </footer>
+
+        <!-- Load Pyodide from CDN -->
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
+
+        <!-- Load our JavaScript modules -->
+        <script src="js/pyodide-loader.js"></script>
+        <script src="js/ocmf-bridge.js"></script>
+        <script src="js/ui-controller.js"></script>
+        <script src="js/main.js"></script>
+    </body>
+</html>

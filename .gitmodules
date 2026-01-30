@@ -1,0 +1,6 @@
+[submodule "spec/OCMF-Open-Charge-Metering-Format"]
+	path = spec/OCMF-Open-Charge-Metering-Format
+	url = https://github.com/SAFE-eV/OCMF-Open-Charge-Metering-Format.git
+[submodule "test/resources/transparenzsoftware"]
+	path = test/resources/transparenzsoftware
+	url = https://github.com/SAFE-eV/transparenzsoftware.git

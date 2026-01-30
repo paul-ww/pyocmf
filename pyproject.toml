@@ -1,0 +1,94 @@
+[build-system]
+requires = ["uv_build>=0.8.3"]
+build-backend = "uv_build"
+
+[project]
+name = "pyocmf"
+version = "0.2.0"
+description = "Python library for parsing and verifying OCMF (Open Charge Metering Format) signatures from electric vehicle charging stations"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Paul Wullenweber", email = "44506902+paul-ww@users.noreply.github.com" }
+]
+keywords = ["ocmf", "ev", "charging", "metering", "electric-vehicle", "signature-verification", "eichrecht"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "ciso8601~=2.3",
+    "phonenumbers~=9.0",
+    "pydantic-extra-types~=2.10",
+    "pydantic~=2.10",
+]
+
+[project.urls]
+Homepage = "https://github.com/paul-ww/pyocmf"
+Documentation = "https://paul-ww.github.io/pyocmf/"
+Repository = "https://github.com/paul-ww/pyocmf"
+Issues = "https://github.com/paul-ww/pyocmf/issues"
+
+[project.scripts]
+ocmf = "pyocmf.cli:main"
+
+[project.optional-dependencies]
+cli = [
+    "rich~=14.2.0",
+    "typer~=0.20.0",
+]
+crypto = [
+    "cryptography~=44.0",
+]
+all = [
+    "pyocmf[cli,crypto]",
+]
+
+[dependency-groups]
+cli = [
+    "rich~=14.2.0",
+    "typer~=0.20.0",
+]
+crypto = [
+    "cryptography~=44.0",
+]
+test = [
+    "pytest~=9.0",
+]
+lint = [
+    "ruff~=0.8",
+    "ty~=0.0",
+    "types-cryptography~=3.3",
+]
+docs = [
+    "mkdocs-material~=9.5",
+    "mkdocstrings[python]~=0.27",
+    "mkdocs-autorefs~=1.2",
+]
+dev = [
+    {include-group = "test"},
+    {include-group = "lint"},
+    {include-group = "docs"},
+    "poethepoet~=0.32",
+]
+
+[tool.uv]
+default-groups = "all"
+
+[tool.poe.tasks]
+test = "pytest test -x"
+lint = "ruff check src test"
+lint-fix = "ruff check --fix src test"
+format = "ruff format src test"
+format-check = "ruff format --check src test"
+typecheck = "ty check src test"
+docs = "mkdocs build --strict"
+demo = {shell="cd docs/demo && python -m http.server 8081"}

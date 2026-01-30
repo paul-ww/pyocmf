@@ -25,7 +25,6 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "ciso8601~=2.3",
     "phonenumbers~=9.0",
     "pydantic-extra-types~=2.10",
     "pydantic~=2.10",

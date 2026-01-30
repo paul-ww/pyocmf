@@ -2,6 +2,8 @@
 
 Python library for parsing, validating, and verifying OCMF (Open Charge Metering Format) signatures from electric vehicle charging stations.
 
+> **Note**: This is an unofficial, community-developed library that implements parts of the [OCMF specification](https://github.com/SAFE-eV/OCMF-Open-Charge-Metering-Format). It is not affiliated with or endorsed by [S.A.F.E. e.V.](https://www.safe-ev.de/). For official verification of charging session data, please use the [Transparenzsoftware](https://www.safe-ev.de/de/transparenzsoftware.php) provided by S.A.F.E. e.V. This library may be incomplete or contain discrepancies from the official specification.
+
 ## Features
 
 - Parse OCMF strings into validated Python objects

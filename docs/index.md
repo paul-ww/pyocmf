@@ -107,7 +107,7 @@ See the [CLI Reference](cli.md) for details.
 
 ### Browser Demo
 
-Try PyOCMF in your browser with the [interactive demo](demo.md).
+Try PyOCMF in your browser with the [interactive demo](demo/index.html).
 
 ## Regulatory Compliance Checking
 

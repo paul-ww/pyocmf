@@ -107,7 +107,7 @@ See the [CLI Reference](cli.md) for details.
 
 ### Browser Demo
 
-Try PyOCMF in your browser with the [interactive demo](demo.md).
+Try PyOCMF in your browser with the [interactive demo](demo/index.html).
 
 ## Regulatory Compliance Checking
 
@@ -254,4 +254,4 @@ For more information about OCMF, visit [safe-ev.de](https://www.safe-ev.de/).
 
 - [API Reference](api.md) - Complete API documentation
 - [CLI Reference](cli.md) - Command-line interface guide
-- [Browser Demo](demo.md) - Try PyOCMF in your browser
+- [Browser Demo](demo/index.html) - Try PyOCMF in your browser

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>PyOCMF Demo</title>
+        <link rel="stylesheet" href="css/styles.css" />
+    </head>
+    <body>
+        <header>
+            <div class="container">
+                <h1>PyOCMF Demo</h1>
+                <p class="subtitle">
+                    Parse and validate OCMF charging data in your browser
+                </p>
+            </div>
+        </header>
+
+        <main class="container">
+            <!-- Loading Section -->
+            <div id="loadingSection" class="content-section">
+                <div class="loading-container">
+                    <h2>Initializing Python Runtime</h2>
+                    <div class="progress-bar-container">
+                        <div id="loadingProgress" class="progress-bar"></div>
+                    </div>
+                    <p id="loadingText">Loading Pyodide...</p>
+                </div>
+            </div>
+
+            <!-- Input Section -->
+            <div id="inputSection" class="content-section hidden">
+                <div class="input-container">
+                    <div class="input-methods">
+                        <button class="method-tab active" data-method="text">
+                            Text Input
+                        </button>
+                        <button class="method-tab" data-method="file">
+                            XML File
+                        </button>
+                    </div>
+
+                    <!-- Text Input -->
+                    <div id="textInputMethod" class="input-method">
+                        <div class="form-group">
+                            <label for="ocmfInput">OCMF Data:</label>
+                            <textarea
+                                id="ocmfInput"
+                                rows="6"
+                                placeholder="Paste OCMF string here (OCMF|{...}|{...})..."
+                            ></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="publicKeyInput"
+                                >Public Key (hex, optional):</label
+                            >
+                            <input
+                                type="text"
+                                id="publicKeyInput"
+                                placeholder="3059301306072A8648CE3D020106082A8648CE3D03010703420004..."
+                            />
+                        </div>
+
+                        <div class="button-group">
+                            <button id="parseBtn" class="btn btn-primary">
+                                Parse & Validate
+                            </button>
+                            <button
+                                id="loadExampleBtn"
+                                class="btn btn-secondary"
+                            >
+                                Load Example
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- File Upload -->
+                    <div id="fileInputMethod" class="input-method hidden">
+                        <div class="form-group">
+                            <label for="xmlFileInput">Upload XML File:</label>
+                            <input
+                                type="file"
+                                id="xmlFileInput"
+                                accept=".xml"
+                                class="file-input"
+                            />
+                            <p class="help-text">
+                                Transparenzsoftware-compatible XML files
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result Section -->
+            <div id="resultSection" class="content-section hidden">
+                <div class="result-container">
+                    <div class="result-header">
+                        <h2>Results</h2>
+                        <button
+                            class="btn btn-secondary"
+                            onclick="location.reload()"
+                        >
+                            Parse Another
+                        </button>
+                    </div>
+                    <div id="resultContainer"></div>
+                </div>
+            </div>
+
+            <!-- Error Section -->
+            <div id="errorSection" class="content-section hidden">
+                <div class="error-container">
+                    <h2>Error</h2>
+                    <p id="errorMessage" class="error-message"></p>
+                    <button class="btn btn-primary" onclick="location.reload()">
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="container">
+                <p>
+                    <a href="https://github.com/paul-ww/pyocmf" target="_blank"
+                        >PyOCMF</a
+                    >
+                    | Powered by
+                    <a href="https://pyodide.org" target="_blank">Pyodide</a>
+                </p>
+            </div>
+        </footer>
+
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
+        <script src="js/pyodide-loader.js"></script>
+        <script src="js/ocmf-bridge.js"></script>
+        <script src="js/ui-controller.js"></script>
+        <script src="js/main.js"></script>
+    </body>
+</html>

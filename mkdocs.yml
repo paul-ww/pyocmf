@@ -21,6 +21,8 @@ theme:
     - navigation.instant
     - navigation.top
     - navigation.tabs
+    - navigation.sections
+    - navigation.expand
     - search.suggest
     - search.highlight
     - content.code.copy
@@ -61,8 +63,9 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - CLI Reference: cli.md
-  - API Reference: api.md
+  - Reference:
+      - CLI: cli.md
+      - API: api.md
   - Browser Demo: demo/index.html
 
 extra:

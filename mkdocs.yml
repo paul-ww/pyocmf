@@ -63,7 +63,7 @@ nav:
   - Home: index.md
   - CLI Reference: cli.md
   - API Reference: api.md
-  - Browser Demo: demo.md
+  - Browser Demo: demo/index.html
 
 extra:
   social:

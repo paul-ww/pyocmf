@@ -45,7 +45,7 @@ cli = [
     "typer~=0.20.0",
 ]
 crypto = [
-    "cryptography~=44.0",
+    "cryptography>=44,<47",
 ]
 all = [
     "pyocmf[cli,crypto]",
@@ -57,7 +57,7 @@ cli = [
     "typer~=0.20.0",
 ]
 crypto = [
-    "cryptography~=44.0",
+    "cryptography>=44,<47",
 ]
 test = [
     "pytest~=9.0",

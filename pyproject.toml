@@ -25,9 +25,9 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "phonenumbers~=9.0",
-    "pydantic-extra-types~=2.10",
-    "pydantic~=2.10",
+    "phonenumbers>=9.0",
+    "pydantic-extra-types>=2.10",
+    "pydantic>=2.10",
 ]
 
 [project.urls]
@@ -41,11 +41,11 @@ ocmf = "pyocmf.cli:main"
 
 [project.optional-dependencies]
 cli = [
-    "rich~=14.2.0",
-    "typer~=0.20.0",
+    "rich>=14.0",
+    "typer>=0.20",
 ]
 crypto = [
-    "cryptography>=44,<47",
+    "cryptography>=44",
 ]
 all = [
     "pyocmf[cli,crypto]",
@@ -53,30 +53,30 @@ all = [
 
 [dependency-groups]
 cli = [
-    "rich~=14.2.0",
-    "typer~=0.20.0",
+    "rich>=14.0",
+    "typer>=0.20",
 ]
 crypto = [
-    "cryptography>=44,<47",
+    "cryptography>=44",
 ]
 test = [
-    "pytest~=9.0",
+    "pytest>=9.0",
 ]
 lint = [
-    "ruff~=0.8",
-    "ty~=0.0",
-    "types-cryptography~=3.3",
+    "ruff>=0.8",
+    "ty>=0.0",
+    "types-cryptography>=3.3",
 ]
 docs = [
-    "mkdocs-material~=9.5",
-    "mkdocstrings[python]~=0.27",
-    "mkdocs-autorefs~=1.2",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.27",
+    "mkdocs-autorefs>=1.2",
 ]
 dev = [
     {include-group = "test"},
     {include-group = "lint"},
     {include-group = "docs"},
-    "poethepoet~=0.32",
+    "poethepoet>=0.32",
 ]
 
 [tool.uv]

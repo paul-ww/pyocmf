@@ -126,7 +126,7 @@ class TestRIRUFieldGroup:
                 TX=MeterReadingReason.END,
                 RV=decimal.Decimal("100.0"),
                 RI=obis("01-00:01.08.00*FF"),  # RI present
-                RU=None,  # type: ignore[arg-type]  # RU absent - should fail
+                RU=None,  # type: ignore[ty:invalid-argument-type]  # RU absent - should fail
                 ST=MeterStatus.OK,
             )
 

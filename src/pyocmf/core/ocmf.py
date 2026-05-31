@@ -135,7 +135,8 @@ class OCMF(pydantic.BaseModel):
             issues = []
             for i, reading in enumerate(self.payload.RD):
                 reading_issues = compliance.check_eichrecht_reading(
-                    reading, is_begin=(i == 0 and reading.TX.value == "B")
+                    reading,
+                    is_begin=(i == 0 and reading.TX is not None and reading.TX.value == "B"),
                 )
                 issues.extend(reading_issues)
         else:

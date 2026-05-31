@@ -62,7 +62,7 @@ class TestSignatureVerification:
         ocmf = OCMF.from_string(ocmf_string_without_public_key)
 
         with pytest.raises(TypeError, match="missing 1 required positional argument"):
-            ocmf.verify_signature()  # type: ignore[call-arg]
+            ocmf.verify_signature()  # type: ignore[ty:missing-argument]
 
     def test_verify_malformed_public_key(self, ocmf_string_without_public_key: str) -> None:
         ocmf = OCMF.from_string(ocmf_string_without_public_key)

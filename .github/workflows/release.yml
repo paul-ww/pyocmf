@@ -1,0 +1,49 @@
+name: Auto Release
+
+on:
+  push:
+    branches: [initial-version]
+
+jobs:
+  release:
+    # Matches dependabot squash-merge commits: "Bump X from Y to Z (#N)"
+    # Does NOT match our own version bump commits: "Bump version to X.Y.Z"
+    if: >
+      startsWith(github.event.head_commit.message, 'Bump ') &&
+      contains(github.event.head_commit.message, ' from ')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          current=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          IFS='.' read -r major minor patch <<< "$current"
+          new_version="$major.$minor.$((patch + 1))"
+          sed -i "s/^version = \"$current\"/version = \"$new_version\"/" pyproject.toml
+          echo "version=$new_version" >> "$GITHUB_OUTPUT"
+          echo "Bumped $current → $new_version"
+
+      - name: Commit, tag, and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "Bump version to ${{ steps.bump.outputs.version }}"
+          git tag "v${{ steps.bump.outputs.version }}"
+          git push
+          git push --tags
+
+      - name: Create GitHub release
+        run: |
+          gh release create "v${{ steps.bump.outputs.version }}" \
+            --title "v${{ steps.bump.outputs.version }}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

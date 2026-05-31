@@ -158,10 +158,7 @@ def is_billing_relevant(obis_code: str) -> bool:
     if _ACCUMULATION_REGISTER_PATTERN.match(normalized):
         return True
 
-    if _ACTIVE_ENERGY_PATTERN.match(normalized):
-        return True
-
-    return False
+    return bool(_ACTIVE_ENERGY_PATTERN.match(normalized))
 
 
 def is_accumulation_register(obis_code: str) -> bool:

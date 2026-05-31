@@ -41,7 +41,7 @@ from pyocmf.models import OBIS, CableLossCompensation, OCMFTimestamp, PublicKey
 from pyocmf.registries.obis import get_obis_info, is_billing_relevant
 from pyocmf.utils.xml import OcmfContainer, OcmfRecord
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     # Version
     "__version__",
     # Core models

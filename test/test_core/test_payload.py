@@ -291,7 +291,7 @@ class TestPaginationPattern:
                 GS="12345",
                 RD=[],
             )
-            assert payload.PG == pg
+            assert pg == payload.PG
 
     def test_valid_fiscal_pagination(self) -> None:
         for pg in ["F1", "F42", "F999", "F7654321"]:
@@ -302,7 +302,7 @@ class TestPaginationPattern:
                 GS="12345",
                 RD=[],
             )
-            assert payload.PG == pg
+            assert pg == payload.PG
 
 
 class TestIDValidation:

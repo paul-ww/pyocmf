@@ -94,6 +94,6 @@ class TestSignatureVerification:
 
         with pytest.raises(
             SignatureVerificationError,
-            match="Public key curve mismatch.*secp256r1.*secp192r1",
+            match=r"Public key curve mismatch.*secp256r1.*secp192r1",
         ):
             ocmf.verify_signature(secp192r1_public_key)

@@ -29,10 +29,10 @@ def check_cryptography_available() -> None:
 
 __all__ = [
     "CRYPTOGRAPHY_AVAILABLE",
-    "check_cryptography_available",
     "InvalidSignature",
     "UnsupportedAlgorithm",
+    "check_cryptography_available",
+    "ec",
     "hashes",
     "serialization",
-    "ec",
 ]

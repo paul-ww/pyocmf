@@ -25,6 +25,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
+    "defusedxml>=0.7.1",
     "phonenumbers>=9.0",
     "pydantic-extra-types>=2.10",
     "pydantic>=2.10",
@@ -77,6 +78,7 @@ dev = [
     {include-group = "lint"},
     {include-group = "docs"},
     "poethepoet>=0.32",
+    "prek>=0.4",
 ]
 
 [tool.uv]
@@ -91,3 +93,4 @@ format-check = "ruff format --check src test"
 typecheck = "ty check src test"
 docs = "mkdocs build --strict"
 demo = {shell="echo 'PyOCMF Demo: http://localhost:9000' && cd docs/demo && python -m http.server 9000"}
+pre-commit = "prek run --all-files"

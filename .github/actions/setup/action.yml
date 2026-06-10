@@ -1,0 +1,24 @@
+name: Set up uv
+description: Install uv (with cache) and optionally a specific Python version and dependency group.
+
+inputs:
+  python-version:
+    description: Python version for uv to install (e.g. "3.14"). Omit to use pyproject.toml minimum.
+    required: false
+    default: ""
+  dependency-group:
+    description: uv dependency group to install (e.g. "test", "lint"). Omit to skip.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+      with:
+        enable-cache: true
+        python-version: ${{ inputs.python-version }}
+
+    - if: inputs.dependency-group != ''
+      shell: bash
+      run: uv sync --group ${{ inputs.dependency-group }}

@@ -2,7 +2,7 @@ name: Auto Release
 
 on:
   push:
-    branches: [initial-version]
+    branches: [main]
 
 jobs:
   release:
@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0

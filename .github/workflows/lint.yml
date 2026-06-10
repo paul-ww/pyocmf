@@ -2,29 +2,20 @@ name: Lint and Format
 
 on:
   push:
-    branches: [initial-version, main]
+    branches: [main]
   pull_request:
-    branches: [initial-version, main]
+    branches: [main]
 
 jobs:
   lint:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup
         with:
-          python-version-file: "pyproject.toml"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --group lint
+          dependency-group: lint
 
       - name: Run ruff linter
         run: uv run poe lint

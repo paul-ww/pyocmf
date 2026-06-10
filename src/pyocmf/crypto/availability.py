@@ -10,11 +10,11 @@ try:
     CRYPTOGRAPHY_AVAILABLE = True
 except ImportError:
     CRYPTOGRAPHY_AVAILABLE = False
-    InvalidSignature = None  # type: ignore[assignment,misc]
-    UnsupportedAlgorithm = None  # type: ignore[assignment,misc]
-    hashes = None  # type: ignore[assignment]
-    serialization = None  # type: ignore[assignment]
-    ec = None  # type: ignore[assignment]
+    InvalidSignature = None  # type: ignore[ty:invalid-assignment]
+    UnsupportedAlgorithm = None  # type: ignore[ty:invalid-assignment]
+    hashes = None  # type: ignore[ty:invalid-assignment]
+    serialization = None  # type: ignore[ty:invalid-assignment]
+    ec = None  # type: ignore[ty:invalid-assignment]
 
 
 def check_cryptography_available() -> None:
@@ -29,10 +29,10 @@ def check_cryptography_available() -> None:
 
 __all__ = [
     "CRYPTOGRAPHY_AVAILABLE",
-    "check_cryptography_available",
     "InvalidSignature",
     "UnsupportedAlgorithm",
+    "check_cryptography_available",
+    "ec",
     "hashes",
     "serialization",
-    "ec",
 ]

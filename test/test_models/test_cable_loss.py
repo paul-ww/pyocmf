@@ -19,7 +19,7 @@ class TestCableLossCompensation:
 
         assert cable_loss.LN == "Cable Type A"
         assert cable_loss.LI == 123
-        assert cable_loss.LR == decimal.Decimal("1.5")
+        assert decimal.Decimal("1.5") == cable_loss.LR
         assert cable_loss.LU == ResistanceUnit.MOHM
 
     def test_valid_cable_loss_minimal_fields(self) -> None:
@@ -31,7 +31,7 @@ class TestCableLossCompensation:
 
         assert cable_loss.LN is None
         assert cable_loss.LI is None
-        assert cable_loss.LR == decimal.Decimal("2.5")
+        assert decimal.Decimal("2.5") == cable_loss.LR
         assert cable_loss.LU == ResistanceUnit.UOHM
 
     @pytest.mark.parametrize(

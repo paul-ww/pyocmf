@@ -4,10 +4,10 @@ from pyocmf.models.public_key import PublicKey
 from pyocmf.models.timestamp import OCMFTimeFormat, OCMFTimestamp
 
 __all__ = [
-    "CableLossCompensation",
     "OBIS",
+    "CableLossCompensation",
     "OBISCode",
-    "PublicKey",
-    "OCMFTimestamp",
     "OCMFTimeFormat",
+    "OCMFTimestamp",
+    "PublicKey",
 ]

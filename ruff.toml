@@ -25,6 +25,12 @@ select = [
     "BLE",
     "I",
     "D",  # pydocstyle - docstring formatting and quality
+    "RUF",
+    "S",
+    "SIM",
+    "ISC",
+    "RSE",
+    "T10",
 ]
 
 ignore = [
@@ -38,6 +44,9 @@ ignore = [
     "D203",
     "D213",
 ]
+
+[lint.per-file-ignores]
+"test/**" = ["S101"]
 
 [lint.mccabe]
 max-complexity = 12  # Slightly higher limit for CLI commands

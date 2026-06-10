@@ -55,10 +55,7 @@ def should_expect_parsing_error(xml_file: pathlib.Path) -> bool:
     if parent_dir in error_dirs:
         return True
 
-    if any(pattern in file_name_lower for pattern in error_patterns):
-        return True
-
-    return False
+    return any(pattern in file_name_lower for pattern in error_patterns)
 
 
 def parse_xml_with_expected_behavior(xml_file: pathlib.Path) -> OcmfContainer | None:

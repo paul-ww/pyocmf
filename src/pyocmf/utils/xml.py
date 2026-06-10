@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import pathlib
-import xml.etree.ElementTree as ET
 from collections.abc import Iterator
 from dataclasses import dataclass
+from xml.etree.ElementTree import Element  # noqa: S405
+
+import defusedxml.ElementTree as ET  # noqa: N817
 
 from pyocmf.constants import OCMF_HEADER, OCMF_PREFIX
 from pyocmf.core.ocmf import OCMF
@@ -89,7 +91,7 @@ class OcmfContainer:
         return self._entries[index]
 
 
-def _extract_ocmf_string(element: ET.Element) -> str | None:
+def _extract_ocmf_string(element: Element) -> str | None:
     sd = element.find("signedData")
     if sd is not None and sd.text:
         text = sd.text.strip()
@@ -103,7 +105,7 @@ def _extract_ocmf_string(element: ET.Element) -> str | None:
     return None
 
 
-def _extract_public_key(element: ET.Element) -> PublicKey | None:
+def _extract_public_key(element: Element) -> PublicKey | None:
     pk = element.find("publicKey")
     if pk is not None and pk.text:
         try:

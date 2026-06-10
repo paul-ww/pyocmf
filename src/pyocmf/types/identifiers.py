@@ -32,16 +32,16 @@ IdentificationData = (
 )
 
 __all__ = [
-    "TransactionContext",
-    "FiscalContext",
-    "PaginationString",
-    "ISO14443",
-    "ISO15693",
     "EMAID",
     "EVCCID",
     "EVCOID",
     "ISO7812",
+    "ISO14443",
+    "ISO15693",
     "PHONE_NUMBER",
-    "UnrestrictedID",
+    "FiscalContext",
     "IdentificationData",
+    "PaginationString",
+    "TransactionContext",
+    "UnrestrictedID",
 ]

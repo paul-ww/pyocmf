@@ -135,17 +135,20 @@ def _validate_value_progression(
     end_reading: Reading,
 ) -> list[EichrechtIssue]:
     issues = []
-    if begin_reading.RV is not None and end_reading.RV is not None:
-        if end_reading.RV < begin_reading.RV:
-            issues.append(
-                EichrechtIssue(
-                    code=IssueCode.VALUE_REGRESSION,
-                    message=(
-                        f"End value ({end_reading.RV}) must be >= begin value ({begin_reading.RV})"
-                    ),
-                    field="RV",
-                )
+    if (
+        begin_reading.RV is not None
+        and end_reading.RV is not None
+        and end_reading.RV < begin_reading.RV
+    ):
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.VALUE_REGRESSION,
+                message=(
+                    f"End value ({end_reading.RV}) must be >= begin value ({begin_reading.RV})"
+                ),
+                field="RV",
             )
+        )
     if timestamp_issue := _check_timestamp_ordering(begin_reading, end_reading):
         issues.append(timestamp_issue)
     return issues

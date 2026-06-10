@@ -21,7 +21,7 @@ class TestCLValidators:
             ri="01-00:B0.08.00*FF",
             cl=decimal_value("0.5"),
         )
-        assert reading.CL == decimal_value("0.5")
+        assert decimal_value("0.5") == reading.CL
 
     def test_cl_valid_with_accumulation_register_c3(self) -> None:
         reading = create_test_reading(
@@ -30,7 +30,7 @@ class TestCLValidators:
             ri="01-00:C3.08.00*FF",
             cl=decimal_value("0.2"),
         )
-        assert reading.CL == decimal_value("0.2")
+        assert decimal_value("0.2") == reading.CL
 
     def test_cl_rejected_with_non_accumulation_register(self) -> None:
         with pytest.raises(
@@ -57,7 +57,7 @@ class TestCLValidators:
             ST=MeterStatus.OK,
             CL=decimal.Decimal(0),  # Must be 0
         )
-        assert reading.CL == decimal.Decimal(0)
+        assert decimal.Decimal(0) == reading.CL
 
     def test_cl_rejected_when_nonzero_at_begin(self) -> None:
         with pytest.raises(ValueError, match="must be 0 when TX=B"):
@@ -126,12 +126,14 @@ class TestRIRUFieldGroup:
                 TX=MeterReadingReason.END,
                 RV=decimal.Decimal("100.0"),
                 RI=obis("01-00:01.08.00*FF"),  # RI present
-                RU=None,  # type: ignore[arg-type]  # RU absent - should fail
+                RU=None,  # type: ignore[ty:invalid-argument-type]  # RU absent - should fail
                 ST=MeterStatus.OK,
             )
 
     def test_ru_without_ri_fails(self) -> None:
-        with pytest.raises(ValueError, match="RI .* and RU .* must both be present or both absent"):
+        with pytest.raises(
+            ValueError, match=r"RI .* and RU .* must both be present or both absent"
+        ):
             Reading(
                 TM=tm("2023-01-01T12:00:00,000+0000 S"),
                 TX=MeterReadingReason.END,

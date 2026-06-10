@@ -5,27 +5,38 @@ import warnings
 
 import pydantic
 
-from pyocmf.enums.reading import ErrorFlags, MeterReadingReason, MeterStatus, TimeStatus
+from pyocmf.enums.reading import (
+    ErrorFlags,
+    MeterReadingReason,
+    MeterStatus,
+    ReadingType,
+    TimeStatus,
+)
 from pyocmf.enums.units import EnergyUnit, OCMFUnit, ResistanceUnit
 from pyocmf.models.obis import OBIS, OBISCode
 from pyocmf.models.timestamp import OCMFTimestamp
 from pyocmf.registries.obis import is_accumulation_register
+from pyocmf.types.numbers import OCMFNumber
 
 
 class Reading(pydantic.BaseModel):
     TM: OCMFTimestamp = pydantic.Field(description="Time (ISO 8601 + time status) - REQUIRED")
     TX: MeterReadingReason | None = pydantic.Field(default=None, description="Transaction")
-    RV: decimal.Decimal | None = pydantic.Field(
+    RV: OCMFNumber | None = pydantic.Field(
         default=None,
-        description="Reading Value - Conditional (required when RI present)",
+        description="Reading Value - omitted only for pure error-event readings",
     )
     RI: OBISCode | None = pydantic.Field(
         default=None, description="Reading Identification (OBIS code) - Conditional"
     )
-    RU: OCMFUnit | str = pydantic.Field(
-        description="Reading Unit (e.g. kWh, Wh, mOhm per OCMF spec Table 20"
+    RU: OCMFUnit | str | None = pydantic.Field(
+        default=None,
+        description="Reading Unit (e.g. kWh, Wh, mOhm per OCMF spec Table 20)",
     )
-    CL: decimal.Decimal | None = pydantic.Field(default=None, description="Cumulated Losses")
+    RT: ReadingType | None = pydantic.Field(
+        default=None, description="Reading Current Type (AC/DC per OCMF spec Table 21)"
+    )
+    CL: OCMFNumber | None = pydantic.Field(default=None, description="Cumulated Losses")
     EF: ErrorFlags | None = pydantic.Field(
         default=None, description="Error Flags (can contain 'E', 't', or both)"
     )
@@ -54,8 +65,10 @@ class Reading(pydantic.BaseModel):
 
     @pydantic.field_validator("RU")
     @classmethod
-    def validate_reading_unit(cls, v: OCMFUnit | str) -> OCMFUnit | str:
+    def validate_reading_unit(cls, v: OCMFUnit | str | None) -> OCMFUnit | str | None:
         """Validate RU is spec-compliant, warn if not."""
+        if v is None:
+            return v
         spec_units = {unit.value for unit in EnergyUnit} | {unit.value for unit in ResistanceUnit}
         value_str = str(v)
         if value_str not in spec_units:
@@ -103,6 +116,11 @@ class Reading(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="after")
     def validate_ri_ru_group(self) -> Reading:
+        """RI and RU form a group per OCMF spec Table 7.
+
+        RV/RI/RU/RT may all be omitted only when the reading merely signals an
+        error event of the meter.
+        """
         ri_present = self.RI is not None
         ru_present = self.RU is not None
 
@@ -111,6 +129,10 @@ class Reading(pydantic.BaseModel):
                 "RI (Reading Identification) and RU (Reading Unit) must both be "
                 "present or both absent"
             )
+            raise ValueError(msg)
+
+        if self.RV is not None and not ru_present:
+            msg = "RU (Reading Unit) is required when RV (Reading Value) is present"
             raise ValueError(msg)
 
         return self

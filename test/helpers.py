@@ -64,6 +64,9 @@ def parse_xml_with_expected_behavior(xml_file: pathlib.Path) -> OcmfContainer | 
             OcmfContainer.from_xml(xml_file)
         except PyOCMFError:
             return None
+        msg = f"Expected parsing error for {xml_file.name}, but parsing succeeded"
+        raise AssertionError(msg)
+    return OcmfContainer.from_xml(xml_file)
 
 
 def tm(timestamp_str: str) -> OCMFTimestamp:

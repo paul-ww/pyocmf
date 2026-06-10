@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import decimal
 import warnings
+from typing import ClassVar
 
 import pydantic
 
@@ -45,7 +47,9 @@ class Payload(pydantic.BaseModel):
     IL: UserAssignmentStatus | None = pydantic.Field(
         default=None, description="Identification Level"
     )
-    IF: list[IdentificationFlag] = pydantic.Field(default=[], description="Identification Flags")
+    IF: list[IdentificationFlag] = pydantic.Field(
+        default=[], max_length=4, description="Identification Flags (0..4 per OCMF spec Table 4)"
+    )
     IT: IdentificationType | None = pydantic.Field(
         default=IdentificationType.NONE, description="Identification Type"
     )
@@ -114,8 +118,8 @@ class Payload(pydantic.BaseModel):
 
     @pydantic.field_validator("FV", mode="before")
     @classmethod
-    def convert_fv_to_string(cls, v: int | float | str | None) -> str | None:
-        if isinstance(v, (int, float)):
+    def convert_fv_to_string(cls, v: int | float | decimal.Decimal | str | None) -> str | None:
+        if isinstance(v, (int, float, decimal.Decimal)):
             return str(v)
         return v
 
@@ -128,8 +132,9 @@ class Payload(pydantic.BaseModel):
             return str(v)
         return v
 
-    # Validator mapping at class level to avoid recreation
-    _ID_FORMAT_VALIDATORS = {
+    # ClassVar keeps these lookup tables out of pydantic's private attributes,
+    # which would otherwise be deep-copied per instance and break model equality
+    _ID_FORMAT_VALIDATORS: ClassVar[dict[str, object]] = {
         IdentificationType.ISO14443.value: ISO14443,
         IdentificationType.ISO15693.value: ISO15693,
         IdentificationType.EMAID.value: EMAID,
@@ -140,7 +145,7 @@ class Payload(pydantic.BaseModel):
     }
 
     # Types that accept any string value without validation
-    _UNRESTRICTED_TYPES = {
+    _UNRESTRICTED_TYPES: ClassVar[set[str]] = {
         IdentificationType.LOCAL.value,
         IdentificationType.LOCAL_1.value,
         IdentificationType.LOCAL_2.value,
@@ -155,7 +160,7 @@ class Payload(pydantic.BaseModel):
     }
 
     # Types that validate with warnings instead of errors (permissive mode)
-    _PERMISSIVE_TYPES = {
+    _PERMISSIVE_TYPES: ClassVar[set[str]] = {
         IdentificationType.ISO14443.value,
         IdentificationType.ISO15693.value,
     }

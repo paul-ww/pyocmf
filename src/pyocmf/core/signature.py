@@ -11,6 +11,10 @@ SignatureDataType = HexStr | Base64Str
 
 
 class Signature(pydantic.BaseModel):
+    # OCMF spec reserves extension points (keys starting with U-Z and A-F) in the
+    # signature section; allow them so they survive parse/serialize roundtrips.
+    model_config = pydantic.ConfigDict(extra="allow")
+
     SA: SignatureMethod | None = pydantic.Field(
         default=SignatureMethod.SECP256R1_SHA256, description="Signature Algorithm"
     )

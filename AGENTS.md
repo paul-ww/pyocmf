@@ -116,7 +116,7 @@ uv run pytest -k "test_pattern"
 **Important testing notes:**
 - Tests must pass before merging
 - The project has submodules - clone with `git clone --recursive` or run `git submodule update --init --recursive`
-- CI tests run against Python 3.11, 3.12, and 3.13
+- CI tests run against Python 3.11, 3.12, 3.13, and 3.14
 
 ## Code Style Guidelines
 
@@ -186,6 +186,12 @@ uv run ty check src test
   - FURB: refurb (modern Python idioms)
   - PGH: pygrep hooks
   - BLE: blind exception catching
+  - RUF: Ruff-specific rules
+  - S: bandit security checks
+  - SIM: flake8-simplify (code simplification)
+  - ISC: implicit string concatenation
+  - RSE: raise statement linting
+  - T10: debugger statement detection
   - D (selective): Docstring formatting and quality checks
     - Enforces proper formatting for existing docstrings (indentation, quotes, punctuation)
     - Validates section structure (Args, Returns, Raises)
@@ -226,18 +232,29 @@ Uses `uv_build>=0.8.3` as the build backend (configured in `pyproject.toml`).
 
 ## CI/CD Pipeline
 
-The project uses GitHub Actions with two workflows:
+The project uses GitHub Actions with six workflows:
 
 **Lint workflow (`.github/workflows/lint.yml`):**
-- Triggers on push/PR to `initial-version` and `main` branches
+- Triggers on push/PR to `main`
 - Runs ruff linting and formatting checks
 - Runs ty type checking
-- Uses Python version from `pyproject.toml`
 
 **Test workflow (`.github/workflows/test.yml`):**
-- Triggers on push/PR to `initial-version` and `main` branches
-- Runs pytest across Python 3.11, 3.12, and 3.13
+- Triggers on push/PR to `main`
+- Runs pytest across Python 3.11, 3.12, 3.13, and 3.14
 - Clones submodules recursively (required for test resources)
+
+**Docs workflow (`.github/workflows/docs.yml`):**
+- Builds and deploys documentation
+
+**Publish workflow (`.github/workflows/publish.yml`):**
+- Publishes the package to PyPI on release
+
+**Release workflow (`.github/workflows/release.yml`):**
+- Creates GitHub releases
+
+**Auto-merge workflow (`.github/workflows/auto-merge.yml`):**
+- Automatically merges Dependabot PRs that pass CI
 
 **Before committing:**
 1. Run `uv run ruff check .` and fix any issues
@@ -256,8 +273,8 @@ uv run poe test        # Run tests
 ## Pull Request Guidelines
 
 **Branch strategy:**
-- Main development branch: `initial-version`
-- Create feature branches from `initial-version`
+- Main development branch: `main`
+- Create feature branches from `main`
 
 **Before submitting a PR:**
 1. Ensure all code quality checks pass:
@@ -344,6 +361,26 @@ git submodule update --init --recursive
 git submodule update --remote
 ```
 
+## Pre-commit Hooks
+
+The project uses pre-commit hooks (via `.pre-commit-config.yaml`) to enforce code quality before each commit.
+
+**Hooks configured:**
+- `uv-lock`: Keeps `uv.lock` in sync with `pyproject.toml`
+- `ruff-check` (with `--fix`): Lints and auto-fixes Python code
+- `ruff-format`: Formats Python code
+- `ty`: Runs the type checker
+
+**Run all hooks manually:**
+```bash
+uv run poe pre-commit
+```
+
+**Install hooks into git (run once after cloning):**
+```bash
+uv run prek install
+```
+
 ## Troubleshooting
 
 **Common issues:**
@@ -372,12 +409,18 @@ git submodule update --remote
 
 **Python version compatibility:**
 - Requires Python 3.11 or higher
-- Tested on 3.11, 3.12, and 3.13
+- Tested on 3.11, 3.12, 3.13, and 3.14
 
 **Key dependencies:**
-- `pydantic>=2.10.4`: Data validation and settings management
-- `pydantic-extra-types>=2.10.1`: Additional Pydantic types
-- `phonenumbers>=9.0.10`: Phone number parsing and validation
+- `pydantic>=2.10`: Data validation and settings management
+- `pydantic-extra-types>=2.10`: Additional Pydantic types
+- `phonenumbers>=9.0`: Phone number parsing and validation
+- `defusedxml>=0.7.1`: Safe XML parsing (prevents XXE attacks)
+
+**Optional extras:**
+- `pyocmf[cli]`: Installs `rich` and `typer` for the `ocmf` CLI command
+- `pyocmf[crypto]`: Installs `cryptography` for signature verification
+- `pyocmf[all]`: Installs all optional dependencies
 
 **OCMF format:**
 - OCMF strings follow the format: `OCMF|{payload_json}|{signature_json}`
@@ -406,6 +449,7 @@ uv run poe format-check   # Check code formatting without changes
 uv run poe typecheck      # Run ty type checker
 uv run poe docs           # Build documentation with mkdocs
 uv run poe demo           # Run Pyodide demo locally
+uv run poe pre-commit     # Run all pre-commit hooks across all files
 ```
 
 **Why use poe tasks?**

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Annotated
@@ -43,13 +44,14 @@ class OCMFTimestamp:
     def serialize(self) -> str:
         """Serialize to OCMF timestamp format.
 
-        Uses comma for milliseconds as required by OCMF spec.
+        Uses comma for milliseconds and a colon-free timezone offset (e.g. +0200)
+        as required by the OCMF spec.
         """
         if self.timestamp.tzinfo is None:
             error_message = "Datetime must be timezone-aware for OCMF format"
             raise ValueError(error_message)
 
         iso_str = self.timestamp.isoformat(timespec="milliseconds")
-        ocmf_str = iso_str.replace(".", ",")
+        ocmf_str = re.sub(r"([+-]\d{2}):(\d{2})$", r"\1\2", iso_str.replace(".", ","))
 
         return f"{ocmf_str} {self.status.value}"

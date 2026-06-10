@@ -110,23 +110,34 @@ class TestRIRUFieldGroup:
         assert reading.RU is not None
 
     def test_both_ri_and_ru_absent_is_valid(self) -> None:
-        # When both are absent, the reading can indicate an event without meter values
-        # However, RU is marked as required in the Reading model, so this test
-        # is not valid. Skipping this case as the spec allows readings without RI/RU
-        # but the current model requires RU.
-        pytest.skip("RU is required in current model, cannot test both absent")
+        # Per spec, RV/RI/RU/RT may all be omitted for pure error-event readings
+        reading = Reading(
+            TM=tm("2023-01-01T12:00:00,000+0000 S"),
+            TX=MeterReadingReason.EXCEPTION,
+            EF="E",
+            ST=MeterStatus.OTHER_ERROR,
+        )
+        assert reading.RV is None
+        assert reading.RI is None
+        assert reading.RU is None
+
+    def test_rv_without_ru_fails(self) -> None:
+        with pytest.raises(ValueError, match=r"RU .* is required when RV .* is present"):
+            Reading(
+                TM=tm("2023-01-01T12:00:00,000+0000 S"),
+                TX=MeterReadingReason.END,
+                RV=decimal.Decimal("100.0"),
+                ST=MeterStatus.OK,
+            )
 
     def test_ri_without_ru_fails(self) -> None:
-        # RU is required so Pydantic will fail before our validator runs
-        # This tests that the field is required
-
         with pytest.raises(pydantic.ValidationError):
             Reading(
                 TM=tm("2023-01-01T12:00:00,000+0000 S"),
                 TX=MeterReadingReason.END,
                 RV=decimal.Decimal("100.0"),
                 RI=obis("01-00:01.08.00*FF"),  # RI present
-                RU=None,  # type: ignore[ty:invalid-argument-type]  # RU absent - should fail
+                RU=None,  # RU absent - should fail
                 ST=MeterStatus.OK,
             )
 

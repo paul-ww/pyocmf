@@ -30,6 +30,11 @@ class OBIS(pydantic.BaseModel):
             suffix=parts[1] if len(parts) > 1 else None,
         )
 
+    @pydantic.model_serializer
+    def serialize_to_string(self) -> str:
+        # OCMF spec Table 7: RI is a JSON String, not an object
+        return str(self)
+
     @property
     def info(self):
         return get_obis_info(self.code)

@@ -231,6 +231,11 @@ class TestValidateTransactionPair:
         begin, end = create_transaction_pair(begin_pagination="T3", end_pagination="T4")
         assert validate_transaction_pair(begin, end) is True
 
+    def test_pagination_context_mismatch_fails(self) -> None:
+        # Transaction (T) and fiscal (F) contexts have independent counters
+        begin, end = create_transaction_pair(begin_pagination="T3", end_pagination="F4")
+        assert validate_transaction_pair(begin, end) is False
+
     def test_termination_tx_types_accepted(self) -> None:
         for tx_type in [
             MeterReadingReason.END,

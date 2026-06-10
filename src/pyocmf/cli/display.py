@@ -108,7 +108,9 @@ def display_ocmf_structure(ocmf: OCMF) -> None:
             reading_table = Table(show_header=False, box=None, padding=(0, 2))
             reading_table.add_row("Time:", str(reading.TM))
             reading_table.add_row("Type:", reading.TX)
-            reading_table.add_row("Value:", f"{reading.RV} {reading.RU}")
+            reading_table.add_row(
+                "Value:", f"{reading.RV} {reading.RU}" if reading.RV is not None else "N/A"
+            )
             reading_table.add_row("Identifier:", str(reading.RI) if reading.RI else "N/A")
             reading_table.add_row("Status:", reading.ST)
             console.print(Panel(reading_table, title=f"Reading {i}", border_style="cyan"))

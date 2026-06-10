@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import decimal
+import json
 from typing import Literal
 
 import pydantic
@@ -10,6 +12,7 @@ from pyocmf.constants import OCMF_HEADER, OCMF_PREFIX, OCMF_SEPARATOR
 from pyocmf.core.payload import Payload
 from pyocmf.core.signature import Signature
 from pyocmf.crypto import verification
+from pyocmf.enums.reading import MeterReadingReason
 from pyocmf.exceptions import (
     HexDecodingError,
     OcmfFormatError,
@@ -18,6 +21,7 @@ from pyocmf.exceptions import (
     SignatureVerificationError,
 )
 from pyocmf.models.public_key import PublicKey
+from pyocmf.utils.serialization import model_to_ocmf_json
 
 
 class OCMF(pydantic.BaseModel):
@@ -59,9 +63,11 @@ class OCMF(pydantic.BaseModel):
         payload_json = parts[1]
         signature_json = parts[2]
 
+        # parse_float=Decimal builds Decimals from the raw JSON literals, preserving
+        # decimal places (e.g. 2935.600) that pydantic's own JSON parser would drop
         try:
-            payload = Payload.model_validate_json(payload_json)
-        except pydantic.ValidationError as e:
+            payload = Payload.model_validate(json.loads(payload_json, parse_float=decimal.Decimal))
+        except (json.JSONDecodeError, pydantic.ValidationError) as e:
             msg = f"Invalid payload JSON: {e}"
             raise OcmfPayloadError(msg) from e
 
@@ -80,8 +86,8 @@ class OCMF(pydantic.BaseModel):
 
         Set hex=True to return hex-encoded string instead of plain text.
         """
-        payload_json = self.payload.model_dump_json(exclude_none=True)
-        signature_json = self.signature.model_dump_json(exclude_none=True)
+        payload_json = model_to_ocmf_json(self.payload)
+        signature_json = model_to_ocmf_json(self.signature)
         ocmf_string = OCMF_SEPARATOR.join([OCMF_HEADER, payload_json, signature_json])
 
         if hex:
@@ -136,7 +142,7 @@ class OCMF(pydantic.BaseModel):
             for i, reading in enumerate(self.payload.RD):
                 reading_issues = compliance.check_eichrecht_reading(
                     reading,
-                    is_begin=(i == 0 and reading.TX is not None and reading.TX.value == "B"),
+                    is_begin=(i == 0 and reading.TX == MeterReadingReason.BEGIN),
                 )
                 issues.extend(reading_issues)
         else:

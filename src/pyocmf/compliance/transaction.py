@@ -161,6 +161,16 @@ def _validate_pagination_consistency(
     if not (begin.PG and end.PG):
         return None
 
+    if begin.PG[0] != end.PG[0]:
+        return EichrechtIssue(
+            code=IssueCode.PAGINATION_INCONSISTENT,
+            message=(
+                f"Pagination context must match: begin='{begin.PG}', end='{end.PG}' "
+                f"(different counters for transaction and fiscal contexts)"
+            ),
+            field="PG",
+        )
+
     try:
         begin_num = int(begin.PG[1:])
         end_num = int(end.PG[1:])

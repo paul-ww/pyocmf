@@ -56,7 +56,7 @@ class PublicKey(pydantic.BaseModel):
 
             if not isinstance(public_key, ec.EllipticCurvePublicKey):
                 msg = "Public key is not an elliptic curve key"
-                raise TypeError(msg)  # noqa: TRY301
+                raise TypeError(msg)  # ruff: ignore[raise-within-try]
 
             curve_name = public_key.curve.name
             key_size = public_key.curve.key_size

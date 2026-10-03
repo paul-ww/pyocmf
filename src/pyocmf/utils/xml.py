@@ -3,9 +3,9 @@ from __future__ import annotations
 import pathlib
 from collections.abc import Iterator
 from dataclasses import dataclass
-from xml.etree.ElementTree import Element  # noqa: S405
+from xml.etree.ElementTree import Element  # ruff: ignore[suspicious-xml-etree-import]
 
-import defusedxml.ElementTree as ET  # noqa: N817
+import defusedxml.ElementTree as ET  # ruff: ignore[camelcase-imported-as-acronym]
 
 from pyocmf.constants import OCMF_HEADER, OCMF_PREFIX
 from pyocmf.core.ocmf import OCMF

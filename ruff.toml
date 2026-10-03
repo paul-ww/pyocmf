@@ -6,7 +6,7 @@ select = [
     "E",
     "F",
     "W",
-    "C901",
+    "complex-structure",
     "TRY",
     "N",
     "EXE",
@@ -34,19 +34,19 @@ select = [
 ]
 
 ignore = [
-    "D100",
-    "D101",
-    "D102",
-    "D103",
-    "D104",
-    "D105",
-    "D107",
-    "D203",
-    "D213",
+    "undocumented-public-module",
+    "undocumented-public-class",
+    "undocumented-public-method",
+    "undocumented-public-function",
+    "undocumented-public-package",
+    "undocumented-magic-method",
+    "undocumented-public-init",
+    "incorrect-blank-line-before-class",
+    "multi-line-summary-second-line",
 ]
 
 [lint.per-file-ignores]
-"test/**" = ["S101"]
+"test/**" = ["assert"]
 
 [lint.mccabe]
 max-complexity = 12  # Slightly higher limit for CLI commands

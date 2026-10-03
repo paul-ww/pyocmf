@@ -632,8 +632,8 @@ SIGNATURE_ENCODING = "utf-8"  # OCMF spec requires UTF-8 for all text fields
 # def old_parse_function(data: str) -> dict:
 #     ...
 
-def new_parse_function(data: str) -> OCMF:
-    ...
+
+def new_parse_function(data: str) -> OCMF: ...
 ```
 
 **Changelog Comments**

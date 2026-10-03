@@ -129,7 +129,7 @@ def check(
             label = "transaction pair"
         else:
             console.print(
-                "[yellow]ℹ[/yellow] Single OCMF record detected. "  # noqa: RUF001
+                "[yellow]ℹ[/yellow] Single OCMF record detected. "  # ruff: ignore[ambiguous-unicode-character-string]
                 "For complete Eichrecht compliance validation, "
                 "provide both begin and end records:"
             )
@@ -181,7 +181,7 @@ def _verify_single_ocmf(ocmf: OCMF, verbose: bool, public_key: str | None) -> No
     if not public_key:
         console.print("[yellow]⚠[/yellow] No public key provided")
         if ocmf.signature.SA:
-            console.print("[yellow]ℹ[/yellow] Signature present but not verified")  # noqa: RUF001
+            console.print("[yellow]ℹ[/yellow] Signature present but not verified")  # ruff: ignore[ambiguous-unicode-character-string]
         if verbose:
             display_ocmf_structure(ocmf)
         return

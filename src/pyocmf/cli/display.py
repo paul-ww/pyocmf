@@ -40,7 +40,7 @@ def verify_signature(ocmf: OCMF, public_key: str) -> None:
         sys.exit(1)
     except ImportError as e:
         console.print(f"\n[red]✗[/red] {e}")
-        console.print("[yellow]ℹ[/yellow] Install with: pip install pyocmf[crypto]")  # noqa: RUF001
+        console.print("[yellow]ℹ[/yellow] Install with: pip install pyocmf[crypto]")  # ruff: ignore[ambiguous-unicode-character-string]
         sys.exit(1)
 
 

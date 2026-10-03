@@ -2,19 +2,29 @@
 
 from __future__ import annotations
 
-try:
+from typing import TYPE_CHECKING
+
+# Type checkers see the real imports; the None fallback only applies at runtime
+if TYPE_CHECKING:
     from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import ec
 
     CRYPTOGRAPHY_AVAILABLE = True
-except ImportError:
-    CRYPTOGRAPHY_AVAILABLE = False
-    InvalidSignature = None  # type: ignore[ty:invalid-assignment]
-    UnsupportedAlgorithm = None  # type: ignore[ty:invalid-assignment]
-    hashes = None  # type: ignore[ty:invalid-assignment]
-    serialization = None  # type: ignore[ty:invalid-assignment]
-    ec = None  # type: ignore[ty:invalid-assignment]
+else:
+    try:
+        from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+
+        CRYPTOGRAPHY_AVAILABLE = True
+    except ImportError:
+        CRYPTOGRAPHY_AVAILABLE = False
+        InvalidSignature = None
+        UnsupportedAlgorithm = None
+        hashes = None
+        serialization = None
+        ec = None
 
 
 def check_cryptography_available() -> None:

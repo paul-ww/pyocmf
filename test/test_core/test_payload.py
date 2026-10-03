@@ -118,6 +118,36 @@ class TestIdValidationByType:
         )
         assert payload.ID == "DETNME12345678"
 
+    @pytest.mark.parametrize("evccid", ["0A1B2C3D4E5F", "ABC123", "0a1b2c"])
+    def test_evccid_accepts_up_to_12_hex_chars(self, evccid: str) -> None:
+        payload = Payload(
+            PG="T1",
+            GS="000001",
+            IS=True,
+            IT=IdentificationType.EVCCID,
+            ID=evccid,
+            RD=[],
+        )
+        assert evccid == payload.ID
+
+    @pytest.mark.parametrize(
+        "evccid",
+        [
+            "0A1B2C3D4E5F60",  # 14 chars
+            "0A1B2C3D4E5G",  # Non-hex character
+        ],
+    )
+    def test_evccid_rejects_invalid_format(self, evccid: str) -> None:
+        with pytest.raises(pydantic.ValidationError, match="does not match expected format"):
+            Payload(
+                PG="T1",
+                GS="000001",
+                IS=True,
+                IT=IdentificationType.EVCCID,
+                ID=evccid,
+                RD=[],
+            )
+
     def test_iso7812_accepts_digits_only(self) -> None:
         payload = Payload(
             PG="T1",

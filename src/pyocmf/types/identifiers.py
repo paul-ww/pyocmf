@@ -15,8 +15,9 @@ ISO14443 = Annotated[str, pydantic.Field(pattern=r"^[0-9a-fA-F]{8}$|^[0-9a-fA-F]
 ISO15693 = Annotated[str, pydantic.Field(pattern=r"^[0-9a-fA-F]{16}$")]
 # EMAID: Electro-Mobility Account ID, 14-15 alphanumeric chars (e.g., "DETNME12345678X")
 EMAID = Annotated[str, pydantic.Field(pattern=r"^[A-Za-z0-9]{14,15}$")]
-# EVCCID: Electric Vehicle ID, max 6 characters (e.g., "ABC123")
-EVCCID = Annotated[str, pydantic.Field(max_length=6)]
+# EVCCID: ISO 15118-2 defines 6 bytes, hex-encoded to max 12 chars (e.g., "0A1B2C3D4E5F")
+# (spec text says max 6 characters; corrected upstream in SAFE-eV/OCMF PR #46)
+EVCCID = Annotated[str, pydantic.Field(pattern=r"^[0-9a-fA-F]{1,12}$")]
 # EVCOID per DIN 91286: format like "NL-TNM-012204-5" (Country-Provider-Instance-CheckDigit)
 EVCOID = Annotated[str, pydantic.Field(pattern=r"^[A-Z]{2,3}-[A-Z0-9]{2,3}-[0-9]{6}-[0-9]$")]
 # ISO7812: Card numbers 8-19 digits (e.g., "4111111111111111" for credit/bank cards)

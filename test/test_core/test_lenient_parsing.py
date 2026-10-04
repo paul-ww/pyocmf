@@ -88,6 +88,15 @@ class TestPre10Format:
             OCMF.from_string(_abl_with("OCMF|", "OCMA|"))
 
 
+class TestWarningCount:
+    def test_each_deviation_is_reported_once(self) -> None:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            OCMF.from_string(_abl_with('"IT":"ISO14443"', '"IT":"VENDOR_TOKEN"'))
+        messages = [str(w.message) for w in caught if issubclass(w.category, SpecWarning)]
+        assert len(messages) == len(set(messages)) == 2  # IS 'VERIFIED' and IT 'VENDOR_TOKEN'
+
+
 class TestUnknownCodes:
     @pytest.mark.parametrize(
         ("old", "new", "field", "value"),

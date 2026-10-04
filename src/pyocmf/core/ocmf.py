@@ -116,7 +116,9 @@ class OCMF(pydantic.BaseModel):
             )
             raise OcmfSignatureError(msg) from e
 
-        ocmf = cls(header=OCMF_HEADER, payload=payload, signature=signature)
+        # Payload and signature are validated above; constructing the model normally would
+        # re-run the payload's validators (and report every spec deviation twice)
+        ocmf = cls.model_construct(header=OCMF_HEADER, payload=payload, signature=signature)
         ocmf._original_payload_json = payload_json
         return ocmf
 

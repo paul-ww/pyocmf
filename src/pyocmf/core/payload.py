@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import decimal
 import re
+from typing import Any
 
 import pydantic
 
@@ -76,7 +77,7 @@ class Payload(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="before")
     @classmethod
-    def apply_reading_inheritance(cls, data: dict) -> dict:
+    def apply_reading_inheritance(cls, data: dict[str, Any]) -> dict[str, Any]:
         """Apply field inheritance for readings.
 
         Per OCMF spec, some reading fields can be inherited from the previous reading
@@ -174,7 +175,7 @@ class Payload(pydantic.BaseModel):
         return self
 
 
-_ID_FORMAT_ADAPTERS: dict[IdentificationType, pydantic.TypeAdapter] = {
+_ID_FORMAT_ADAPTERS: dict[IdentificationType, pydantic.TypeAdapter[Any]] = {
     IdentificationType.ISO14443: pydantic.TypeAdapter(ISO14443),
     IdentificationType.ISO15693: pydantic.TypeAdapter(ISO15693),
     IdentificationType.EMAID: pydantic.TypeAdapter(EMAID),

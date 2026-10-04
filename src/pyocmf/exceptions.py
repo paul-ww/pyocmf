@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 
 class PyOCMFError(Exception):
     def __init__(
@@ -7,7 +9,7 @@ class PyOCMFError(Exception):
         message: str,
         *,
         field: str | None = None,
-        details: list[dict] | None = None,
+        details: list[dict[str, Any]] | None = None,
     ) -> None:
         super().__init__(message)
         self.field = field
@@ -41,7 +43,7 @@ class EncodingError(PyOCMFError, ValueError):
         *,
         value: str | None = None,
         field: str | None = None,
-        details: list[dict] | None = None,
+        details: list[dict[str, Any]] | None = None,
     ) -> None:
         super().__init__(message, field=field, details=details)
         self.value = value
@@ -63,7 +65,7 @@ class EncodingTypeError(PyOCMFError, TypeError):
         value: object = None,
         expected_type: str | None = None,
         field: str | None = None,
-        details: list[dict] | None = None,
+        details: list[dict[str, Any]] | None = None,
     ) -> None:
         super().__init__(message, field=field, details=details)
         self.value = value
@@ -85,7 +87,7 @@ class PublicKeyError(CryptoError):
         *,
         key_data: str | None = None,
         field: str | None = None,
-        details: list[dict] | None = None,
+        details: list[dict[str, Any]] | None = None,
     ) -> None:
         super().__init__(message, field=field, details=details)
         self.key_data = key_data
@@ -98,7 +100,7 @@ class SignatureVerificationError(CryptoError):
         *,
         reason: str | None = None,
         field: str | None = None,
-        details: list[dict] | None = None,
+        details: list[dict[str, Any]] | None = None,
     ) -> None:
         super().__init__(message, field=field, details=details)
         self.reason = reason

@@ -53,6 +53,6 @@ class TestCableLossCompensation:
         assert cable_loss.LN == "A" * 21
 
     @pytest.mark.parametrize(("data", "missing"), [({"LU": "mOhm"}, "LR"), ({"LR": "1.5"}, "LU")])
-    def test_missing_required_fields_warn(self, data: dict, missing: str) -> None:
+    def test_missing_required_fields_warn(self, data: dict[str, str], missing: str) -> None:
         with pytest.warns(SpecWarning, match=rf"\({missing}\) is mandatory"):
             CableLossCompensation.model_validate(data)

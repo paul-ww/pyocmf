@@ -244,7 +244,8 @@ uv pip install -e .
 Version is defined in `pyproject.toml` under `[project]` section.
 
 **Build system:**
-Uses `uv_build>=0.8.3` as the build backend (configured in `pyproject.toml`).
+Uses `uv_build` (`>=0.8.3,<0.13`) as the build backend, configured in `pyproject.toml`. Raise the upper
+bound when a new uv_build minor release has been checked.
 
 ## CI/CD Pipeline
 

@@ -138,7 +138,7 @@ What is checked:
 - Meter status must be 'G' (OK)
 - No energy error flag ('E'); a time error flag ('t') is only a warning
 - Time synchronization status
-- Cable loss compensation (CL) validation
+- Cable loss compensation (CL) rules, reported as warnings because the Transparenzsoftware ignores CL
 - Exactly one begin and one end reading among the billing-relevant registers
   (loss-compensated registers take precedence), for a pair or for a single record
   holding a complete transaction

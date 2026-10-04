@@ -205,9 +205,8 @@ def check_eichrecht_payload(payload: Payload) -> list[EichrechtIssue]:
         ]
 
     issues: list[EichrechtIssue] = []
-    for i, reading in enumerate(payload.RD):
-        is_begin = i == 0 and reading.TX == MeterReadingReason.BEGIN
-        issues.extend(check_eichrecht_reading(reading, is_begin=is_begin))
+    for reading in payload.RD:
+        issues.extend(check_eichrecht_reading(reading))
 
     if _contains_complete_transaction(payload):
         begin, end, selection_issues = _select_transaction_readings(payload.RD)
@@ -237,9 +236,9 @@ def check_eichrecht_transaction(
     begin_reading, end_reading, issues = _select_transaction_readings([*begin.RD, *end.RD])
 
     if begin_reading is not None:
-        issues.extend(check_eichrecht_reading(begin_reading, is_begin=True))
+        issues.extend(check_eichrecht_reading(begin_reading))
     if end_reading is not None:
-        issues.extend(check_eichrecht_reading(end_reading, is_begin=False))
+        issues.extend(check_eichrecht_reading(end_reading))
     if begin_reading is not None and end_reading is not None:
         issues.extend(_check_transaction_readings(begin_reading, end_reading))
 

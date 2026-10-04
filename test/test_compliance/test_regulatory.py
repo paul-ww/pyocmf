@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import decimal
 
+import pytest
+
 from pyocmf.compliance import (
     IssueCode,
     check_eichrecht_reading,
@@ -62,9 +64,23 @@ class TestEichrechtReadingValidation:
             rv="50.0",
             cl=decimal.Decimal(0),
         )
-        issues = check_eichrecht_reading(reading, is_begin=True)
-        cl_issues = [i for i in issues if "CL" in i.code]
-        assert len(cl_issues) == 0
+        assert_no_errors(check_eichrecht_reading(reading))
+
+    @pytest.mark.parametrize(
+        ("tx", "ri", "cl", "code"),
+        [
+            (MeterReadingReason.END, "01-00:01.08.00*FF", "0.5", IssueCode.CL_REGISTER),
+            (MeterReadingReason.BEGIN, "01-00:B3.08.00*FF", "0.5", IssueCode.CL_BEGIN),
+            (MeterReadingReason.END, "01-00:B0.08.00*FF", "-0.5", IssueCode.CL_NEGATIVE),
+        ],
+    )
+    def test_cl_violations_warn(
+        self, tx: MeterReadingReason, ri: str, cl: str, code: IssueCode
+    ) -> None:
+        reading = create_test_reading(tx=tx, ri=ri, cl=decimal.Decimal(cl))
+        issues = check_eichrecht_reading(reading)
+        assert_no_errors(issues)
+        assert_has_issue(issues, code)
 
     def test_cl_positive_at_end_passes(self) -> None:
         reading = create_test_reading(
@@ -72,9 +88,7 @@ class TestEichrechtReadingValidation:
             rv="100.5",
             cl=decimal.Decimal("0.5"),
         )
-        issues = check_eichrecht_reading(reading, is_begin=False)
-        cl_issues = [i for i in issues if "CL" in i.code]
-        assert len(cl_issues) == 0
+        assert_no_errors(check_eichrecht_reading(reading))
 
 
 class TestEichrechtTransactionValidation:

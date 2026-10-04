@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import decimal
 import warnings
 
 import pydantic
@@ -14,13 +13,16 @@ from pyocmf.enums.reading import (
     TimeStatus,
 )
 from pyocmf.enums.units import EnergyUnit, OCMFUnit, ResistanceUnit
-from pyocmf.models.obis import OBIS, OBISCode
+from pyocmf.models.obis import OBISCode
 from pyocmf.models.timestamp import OCMFTimestamp
-from pyocmf.registries.obis import is_accumulation_register
 from pyocmf.types.numbers import OCMFNumber
 
 
 class Reading(pydantic.BaseModel):
+    # Re-validate on assignment so mutated readings keep parsed types (e.g. TM)
+    # and the RI/RU group rule
+    model_config = pydantic.ConfigDict(validate_assignment=True)
+
     TM: OCMFTimestamp = pydantic.Field(description="Time (ISO 8601 + time status) - REQUIRED")
     TX: MeterReadingReason | None = pydantic.Field(default=None, description="Transaction")
     RV: OCMFNumber | None = pydantic.Field(
@@ -81,38 +83,6 @@ class Reading(pydantic.BaseModel):
                 UserWarning,
                 stacklevel=2,
             )
-        return v
-
-    @pydantic.field_validator("CL")
-    @classmethod
-    def validate_cl(
-        cls, v: decimal.Decimal | None, info: pydantic.ValidationInfo
-    ) -> decimal.Decimal | None:
-        if v is None:
-            return v
-
-        ri = info.data.get("RI")
-        cl_register_error = (
-            "CL (Cumulated Loss) can only appear when RI indicates an "
-            "accumulation register (B0-B3, C0-C3)"
-        )
-        if not ri:
-            raise ValueError(cl_register_error)
-        if isinstance(ri, OBIS) and not ri.is_accumulation_register:
-            raise ValueError(cl_register_error)
-        if isinstance(ri, str) and not is_accumulation_register(ri):
-            raise ValueError(cl_register_error)
-
-        if v != 0:
-            tx = info.data.get("TX")
-            if tx == MeterReadingReason.BEGIN:
-                msg = "CL (Cumulated Loss) must be 0 when TX=B (transaction begin)"
-                raise ValueError(msg)
-
-        if v < 0:
-            msg = "CL (Cumulated Loss) must be non-negative"
-            raise ValueError(msg)
-
         return v
 
     @pydantic.model_validator(mode="after")

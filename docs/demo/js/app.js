@@ -1,9 +1,12 @@
 /**
  * Browser demo UI: three input steps on the left, the report on the right.
  * Record data is untrusted, so the report is built with textContent only.
+ *
+ * The docs' instant navigation swaps the page without reloading, so the page calls
+ * mountOcmfDemo() on every visit to wire up its fresh DOM.
  */
 
-(function () {
+function mountOcmfDemo() {
   "use strict";
 
   const READING_REASONS = {
@@ -316,6 +319,15 @@
     );
   }
 
+  function failure(title, detail) {
+    return h(
+      "div",
+      { className: "admonition failure" },
+      h("p", { className: "admonition-title" }, title),
+      h("p", {}, h("code", {}, detail)),
+    );
+  }
+
   function section(title, lede, ...content) {
     return h("section", { className: "block" }, h("h3", {}, title), h("p", { className: "lede" }, lede), content);
   }
@@ -433,7 +445,7 @@
         return;
       }
       ui.result.append(
-        h("div", { className: "notice" }, h("p", {}, h("strong", {}, "The record could not be read")), h("code", {}, report.error)),
+        failure("The record could not be read", report.error),
       );
       return;
     }
@@ -493,7 +505,7 @@
   ui.exampleSelect.addEventListener("change", () => applyExample(ui.exampleSelect.value));
   ui.checkButton.addEventListener("click", runCheck);
   ui.strictInput.addEventListener("change", () => {
-    if (ui.result.querySelector(".verdicts, .notice")) runCheck();
+    if (ui.result.querySelector(".verdicts, .admonition")) runCheck();
   });
 
   for (const type of ["dragenter", "dragover"]) {
@@ -526,7 +538,7 @@
       ui.status.textContent = "Python failed to start";
       ui.checkButton.textContent = "Unavailable";
       ui.result.replaceChildren(
-        h("div", { className: "notice" }, h("p", {}, h("strong", {}, "Python could not be started")), h("code", {}, String(error))),
+        failure("Python could not be started", String(error)),
       );
     });
-})();
+}

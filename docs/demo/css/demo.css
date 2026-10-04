@@ -1,0 +1,479 @@
+/* Browser demo inside the Material theme: input steps on the left, the report on the right.
+   Colours and type come from Material's variables, so the light/dark toggle applies. */
+.ocmf-demo {
+  --rule: var(--md-typeset-table-color);
+  --soft: var(--md-default-fg-color--light);
+  --ok: #1f7a4d;
+  --warn: #a55d00;
+  --error: #b42318;
+  --info: #2f5bbf;
+}
+
+[data-md-color-scheme="slate"] .ocmf-demo {
+  --ok: #4cc38a;
+  --warn: #f0a54a;
+  --error: #f2776b;
+  --info: #8fb0ee;
+}
+
+.ocmf-demo p,
+.ocmf-demo h3 {
+  margin: 0;
+}
+
+.ocmf-demo :focus-visible {
+  outline: 0.1rem solid var(--md-accent-fg-color);
+  outline-offset: 0.1rem;
+}
+
+.ocmf-demo .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ocmf-demo [hidden] {
+  display: none !important;
+}
+
+.ocmf-demo .runtime {
+  color: var(--soft);
+  font-family: var(--md-code-font-family);
+  font-size: 0.8em;
+}
+
+/* Sheet: input column and report column */
+.ocmf-demo .sheet {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.3fr);
+  margin-top: 1em;
+  border-top: 0.05rem solid var(--rule);
+}
+
+.ocmf-demo .sheet > section {
+  min-width: 0;
+  padding-block: 1.5em 2em;
+}
+
+.ocmf-demo .input {
+  display: grid;
+  gap: 1.75em;
+  align-content: start;
+  padding-right: 1.75em;
+  border-right: 0.05rem solid var(--rule);
+}
+
+.ocmf-demo .result {
+  padding-left: 1.75em;
+}
+
+@media (max-width: 860px) {
+  .ocmf-demo .sheet {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ocmf-demo .input {
+    padding-right: 0;
+    border-right: 0;
+    border-bottom: 0.05rem solid var(--rule);
+  }
+
+  .ocmf-demo .result {
+    padding-left: 0;
+  }
+}
+
+/* Steps */
+.ocmf-demo .step {
+  display: grid;
+  gap: 0.6em;
+}
+
+.ocmf-demo .step h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  font-size: 1.05em;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+.ocmf-demo .step h3 small {
+  color: var(--soft);
+  font-weight: 400;
+  font-size: 0.85em;
+}
+
+.ocmf-demo .step-number {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+  font-size: 0.8em;
+  font-weight: 700;
+  flex: none;
+}
+
+.ocmf-demo .field-label,
+.ocmf-demo .label {
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+.ocmf-demo .hint {
+  color: var(--soft);
+  font-size: 0.85em;
+}
+
+.ocmf-demo .hint:empty {
+  display: none;
+}
+
+.ocmf-demo textarea,
+.ocmf-demo input[type="text"],
+.ocmf-demo select {
+  width: 100%;
+  padding: 0.6em 0.75em;
+  border: 0.05rem solid var(--md-default-fg-color--lighter);
+  border-radius: 0.1rem;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  font-family: var(--md-code-font-family);
+  font-size: 0.8em;
+  line-height: 1.5;
+}
+
+.ocmf-demo input[type="text"]:disabled {
+  opacity: 0.5;
+}
+
+.ocmf-demo select {
+  font-family: inherit;
+  font-size: 0.9em;
+}
+
+.ocmf-demo textarea {
+  resize: vertical;
+  word-break: break-all;
+}
+
+.ocmf-demo #textPanel,
+.ocmf-demo #qrPanel,
+.ocmf-demo .examples {
+  display: grid;
+  gap: 0.4em;
+}
+
+/* Input type switch, styled like Material's content tabs */
+.ocmf-demo .segmented {
+  display: flex;
+  flex-wrap: wrap;
+  box-shadow: 0 -0.05rem var(--md-default-fg-color--lightest) inset;
+}
+
+.ocmf-demo .segmented button {
+  font: inherit;
+  font-size: 0.8em;
+  font-weight: 700;
+  padding: 0.7em 1.1em 0.6em;
+  border: 0;
+  border-bottom: 0.1rem solid transparent;
+  background: transparent;
+  color: var(--soft);
+  cursor: pointer;
+  transition: color 125ms;
+}
+
+.ocmf-demo .segmented button:hover {
+  color: var(--md-accent-fg-color);
+}
+
+.ocmf-demo .segmented button[aria-selected="true"] {
+  color: var(--md-typeset-a-color);
+  border-bottom-color: currentcolor;
+}
+
+.ocmf-demo .dropzone,
+.ocmf-demo .scanner {
+  display: grid;
+  gap: 0.6em;
+  border: 0.1rem dashed var(--md-default-fg-color--lighter);
+  border-radius: 0.1rem;
+}
+
+.ocmf-demo .dropzone {
+  gap: 0.25em;
+  padding: 1.5em 1em;
+  text-align: center;
+  cursor: pointer;
+}
+
+.ocmf-demo .dropzone small {
+  color: var(--soft);
+}
+
+.ocmf-demo .dropzone.dragging,
+.ocmf-demo .dropzone:hover {
+  border-color: var(--md-accent-fg-color);
+}
+
+.ocmf-demo .scanner {
+  padding: 1em;
+}
+
+.ocmf-demo .scanner video {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  background: var(--md-default-fg-color);
+}
+
+.ocmf-demo .scanner p {
+  color: var(--soft);
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.ocmf-demo .scanner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6em;
+}
+
+.ocmf-demo .checkbox {
+  display: flex;
+  gap: 0.6em;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.ocmf-demo .checkbox input {
+  margin-top: 0.3em;
+  accent-color: var(--md-primary-fg-color);
+}
+
+.ocmf-demo .checkbox small {
+  display: block;
+  color: var(--soft);
+  font-size: 0.85em;
+}
+
+.ocmf-demo .md-button {
+  font-family: inherit;
+  font-size: 0.85em;
+  padding: 0.55em 1.5em;
+  width: fit-content;
+}
+
+.ocmf-demo button.md-button:not(.md-button--primary) {
+  background: transparent;
+}
+
+.ocmf-demo .md-button:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Report */
+.ocmf-demo #result {
+  display: grid;
+  gap: 1.5em;
+}
+
+.ocmf-demo #result > .admonition {
+  margin: 0;
+}
+
+.ocmf-demo .admonition code {
+  overflow-wrap: anywhere;
+}
+
+.ocmf-demo .empty {
+  display: grid;
+  gap: 0.6em;
+  max-width: 60ch;
+  color: var(--soft);
+}
+
+.ocmf-demo .empty-title {
+  color: var(--md-default-fg-color);
+  font-size: 1.15em;
+  font-weight: 700;
+}
+
+.ocmf-demo .empty-list {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.4em 1em;
+  margin: 0;
+}
+
+.ocmf-demo .empty-list dt {
+  color: var(--md-default-fg-color);
+  font-weight: 700;
+}
+
+.ocmf-demo .empty-list dd {
+  margin: 0;
+}
+
+.ocmf-demo .verdicts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 0.05rem solid var(--rule);
+  border-radius: 0.1rem;
+}
+
+.ocmf-demo .verdict {
+  display: grid;
+  gap: 0.15em;
+  padding: 0.75em 0.9em;
+  min-width: 0;
+}
+
+.ocmf-demo .verdict + .verdict {
+  border-left: 0.05rem solid var(--rule);
+}
+
+@media (max-width: 520px) {
+  .ocmf-demo .verdicts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ocmf-demo .verdict + .verdict {
+    border-left: 0;
+    border-top: 0.05rem solid var(--rule);
+  }
+}
+
+.ocmf-demo .verdict-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4em;
+  font-size: 1.05em;
+  font-weight: 700;
+}
+
+.ocmf-demo .verdict-detail {
+  color: var(--soft);
+  font-size: 0.85em;
+}
+
+.ocmf-demo .ok {
+  color: var(--ok);
+}
+
+.ocmf-demo .warn {
+  color: var(--warn);
+}
+
+.ocmf-demo .error {
+  color: var(--error);
+}
+
+.ocmf-demo .info {
+  color: var(--info);
+}
+
+.ocmf-demo .muted {
+  color: var(--soft);
+}
+
+.ocmf-demo .block {
+  display: grid;
+  gap: 0.6em;
+}
+
+.ocmf-demo .block h3 {
+  font-size: 1.05em;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-wrap: balance;
+}
+
+.ocmf-demo .lede {
+  color: var(--soft);
+  font-size: 0.9em;
+  max-width: 70ch;
+}
+
+.ocmf-demo .none {
+  color: var(--ok);
+  font-size: 0.95em;
+}
+
+.ocmf-demo .findings {
+  display: grid;
+  gap: 0.5em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ocmf-demo .findings li {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 0.75em;
+  align-items: baseline;
+  margin: 0;
+  font-size: 0.95em;
+}
+
+.ocmf-demo .tag {
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 520px) {
+  .ocmf-demo .findings li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
+/* Readings use Material's table style */
+.ocmf-demo table {
+  font-variant-numeric: tabular-nums;
+}
+
+.ocmf-demo td {
+  font-family: var(--md-code-font-family);
+  white-space: nowrap;
+}
+
+.ocmf-demo td.number,
+.ocmf-demo th.number {
+  text-align: right;
+}
+
+.ocmf-demo details.record {
+  margin: 0;
+}
+
+.ocmf-demo details.record > summary span {
+  color: var(--soft);
+  font-weight: 400;
+}
+
+.ocmf-demo details.record > summary {
+  padding-left: 0.8rem;
+}
+
+.ocmf-demo details.record > summary::before {
+  display: none;
+}
+
+.ocmf-demo details.record > .lede {
+  margin-top: 0.6em;
+}

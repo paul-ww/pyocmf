@@ -4,7 +4,26 @@
  * The docs build ships a wheel of the current repository in wheels/ (see the
  * demo-wheel poe task), so the demo runs unreleased code. Without it, pyocmf
  * comes from PyPI.
+ *
+ * Python starts once per page load; the docs' instant navigation keeps it alive
+ * when the demo page is left and visited again.
  */
+
+const PYODIDE_URL = "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js";
+
+let runtimePromise = null;
+let lastProgress = "Starting Python…";
+let progressListener = () => {};
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error(`${src} could not be loaded`));
+    document.head.append(script);
+  });
+}
 
 async function localWheel() {
   try {
@@ -20,8 +39,9 @@ async function localWheel() {
   }
 }
 
-async function startRuntime(onProgress) {
+async function bootRuntime(onProgress) {
   onProgress("Starting Python…");
+  if (typeof loadPyodide === "undefined") await loadScript(PYODIDE_URL);
   const pyodide = await loadPyodide();
 
   // Pyodide ships compiled builds of these; micropip would fail on them
@@ -45,4 +65,20 @@ async function startRuntime(onProgress) {
     analyzeXml: (content, strict) =>
       JSON.parse(namespace.get("analyze_xml")(content, strict)),
   };
+}
+
+function startRuntime(onProgress) {
+  progressListener = onProgress;
+  onProgress(lastProgress);
+  if (!runtimePromise) {
+    runtimePromise = bootRuntime((message) => {
+      lastProgress = message;
+      progressListener(message);
+    }).catch((error) => {
+      runtimePromise = null;
+      lastProgress = "Starting Python…";
+      throw error;
+    });
+  }
+  return runtimePromise;
 }

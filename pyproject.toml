@@ -70,6 +70,8 @@ lint = [
     "types-cryptography>=3.3",
 ]
 docs = [
+    # MkDocs 2.0 drops plugins and themes; Material 9.7.0-9.7.4 do not cap it
+    "mkdocs>=1.6,<2",
     "mkdocs-material>=9.5",
     "mkdocstrings[python]>=0.27",
     "mkdocs-autorefs>=1.2",
@@ -98,5 +100,5 @@ format-check = "ruff format --check src test"
 typecheck = "ty check src test"
 docs = "mkdocs build --strict"
 demo-wheel = {shell="rm -rf docs/demo/wheels && uv build --wheel --out-dir docs/demo/wheels && printf '{\"wheel\": \"%s\", \"commit\": \"%s\"}\\n' \"$(basename docs/demo/wheels/*.whl)\" \"$(git rev-parse --short HEAD)\" > docs/demo/wheels/latest.json", help="Build the pyocmf wheel the browser demo installs"}
-demo = {shell="poe demo-wheel && echo 'PyOCMF Demo: http://localhost:9000' && cd docs/demo && python -m http.server 9000", help="Serve the browser demo locally with the current code"}
+demo = {shell="poe demo-wheel && mkdocs serve", help="Serve the docs and browser demo locally with the current code"}
 pre-commit = "prek run --all-files"

@@ -311,10 +311,10 @@
             { className: "verdicts" },
             verdictCell("Signature", ["muted", "Not checked", null]),
             verdictCell("Eichrecht", ["muted", "Not checked", null]),
-            verdictCell("OCMF spec", ["error", "Rejected", "Strict mode"]),
+            verdictCell("OCMF Spec", ["error", "Rejected", "Strict mode"]),
           ),
           section(
-            "OCMF spec",
+            "OCMF Spec",
             "Strict mode rejects records that deviate from the specification. Turn it off to check the record anyway.",
             findingList([{ tone: "error", tag: "Rejected", message: deviation[2] }]),
           ),
@@ -337,7 +337,7 @@
         { className: "verdicts" },
         verdictCell("Signature", signatureVerdict(report.records)),
         verdictCell("Eichrecht", eichrechtVerdict(findings)),
-        verdictCell("OCMF spec", specVerdict(deviations)),
+        verdictCell("OCMF Spec", specVerdict(deviations)),
       ),
     );
 
@@ -359,7 +359,7 @@
           : h("p", { className: "none" }, "No violations or notes."),
       ),
       section(
-        "OCMF spec",
+        "OCMF Spec",
         "Format conformance. Deviations are accepted, as by the Transparenzsoftware, unless strict mode is on.",
         deviations.length
           ? findingList(deviations.map((message) => ({ tone: "info", tag: "Deviation", message })))

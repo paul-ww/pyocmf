@@ -88,6 +88,11 @@ async function startQrCameraScan(video, onCode) {
 
   const scan = async () => {
     if (stopped) return;
+    // The docs' instant navigation removes the page without unloading it
+    if (!video.isConnected) {
+      stop();
+      return;
+    }
     if (video.videoWidth) {
       const text = await decodeQr(video, video.videoWidth, video.videoHeight).catch(() => null);
       if (text && !stopped) {

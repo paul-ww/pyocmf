@@ -61,12 +61,18 @@ markdown_extensions:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
+# Attribution for the demo's example data; published, but not a page of its own
+not_in_nav: demo/examples/NOTICE.md
+
 nav:
   - Home: index.md
   - Reference:
       - CLI: cli.md
       - API: api.md
-  - Browser Demo: demo/index.html
+  - Browser Demo: demo/index.md
+
+extra_css:
+  - demo/css/demo.css
 
 extra:
   social:

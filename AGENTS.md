@@ -41,8 +41,8 @@ S.A.F.E. e.V. is the reference implementation and the bar for behaviour; see
   - `helpers.py`, `conftest.py`: Builders for readings, payloads and transaction pairs
   - `resources/`: Test data, including the `transparenzsoftware` submodule
 - `spec/OCMF-Open-Charge-Metering-Format/`: OCMF specification (submodule)
-- `docs/demo/`: Pyodide browser demo (static HTML/CSS/JS). `py/demo.py` holds the Python side,
-  called from `js/runtime.js`; `examples/` holds the example records. It installs the wheel
+- `docs/demo/`: Pyodide browser demo, a docs page (`index.md`) with its own CSS/JS. `py/demo.py`
+  holds the Python side, called from `js/runtime.js`; `examples/` holds the example records. It installs the wheel
   built by `poe demo-wheel` and falls back to PyPI.
 
 ## Setup Commands
@@ -511,7 +511,7 @@ uv run poe format         # Format code with ruff
 uv run poe format-check   # Check code formatting without changes
 uv run poe typecheck      # Run ty type checker
 uv run poe docs           # Build documentation with mkdocs
-uv run poe demo           # Serve the Pyodide browser demo locally with the current code
+uv run poe demo           # Serve the docs and browser demo locally with the current code
 uv run poe demo-wheel     # Build the pyocmf wheel the browser demo installs
 uv run poe pre-commit     # Run all pre-commit hooks across all files
 ```

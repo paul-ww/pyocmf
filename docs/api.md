@@ -126,10 +126,6 @@ All exceptions inherit from `PyOCMFError`.
 
 ::: pyocmf.exceptions.SpecWarning
 
-### Validation Errors
-
-::: pyocmf.exceptions.ValidationError
-
 ### Encoding Errors
 
 ::: pyocmf.exceptions.EncodingError

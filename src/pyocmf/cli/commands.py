@@ -134,8 +134,8 @@ def check(
 ) -> None:
     """Check Eichrecht regulatory compliance.
 
-    Compliance checking requires transaction pairs (begin + end readings).
-    For billing-relevant validation, provide both begin and end OCMF records.
+    Transaction checks need a begin and an end reading, either within one record or
+    as a begin and an end record.
     """
     with _exit_on_error():
         ocmf1 = load_ocmf(input1, strict=strict)
@@ -147,9 +147,8 @@ def check(
             label = "transaction pair"
         else:
             console.print(
-                "[yellow]ℹ[/yellow] Single OCMF record detected. "  # ruff: ignore[ambiguous-unicode-character-string]
-                "For complete Eichrecht compliance validation, "
-                "provide both begin and end records:"
+                "[yellow]ℹ[/yellow] Single OCMF record: transaction checks only run if it "  # ruff: ignore[ambiguous-unicode-character-string]
+                "holds both the begin and the end reading. Otherwise pass both records:"
             )
             console.print("  [dim]ocmf check <begin-ocmf> <end-ocmf>[/dim]\n")
             issues = ocmf1.check_eichrecht(errors_only=not verbose)

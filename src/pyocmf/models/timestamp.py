@@ -3,16 +3,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Annotated
-
-from pydantic.types import StringConstraints
 
 from pyocmf.enums.reading import TimeStatus
-
-OCMFTimeFormat = Annotated[
-    str,
-    StringConstraints(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2},\d{3}[+-]\d{4} [UISR]$"),
-]
 
 
 @dataclass(frozen=True)

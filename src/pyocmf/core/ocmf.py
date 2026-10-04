@@ -18,9 +18,10 @@ from pyocmf.exceptions import (
     OcmfPayloadError,
     OcmfSignatureError,
     SignatureVerificationError,
+    SpecViolationError,
 )
 from pyocmf.models.public_key import PublicKey
-from pyocmf.types.lenient import warn_spec
+from pyocmf.types.lenient import spec_mode, warn_spec
 from pyocmf.utils.serialization import model_to_ocmf_json
 
 
@@ -33,12 +34,32 @@ class OCMF(pydantic.BaseModel):
     _original_payload_json: str | None = pydantic.PrivateAttr(default=None)
 
     @classmethod
-    def from_string(cls, ocmf_string: str) -> OCMF:
+    def from_string(cls, ocmf_string: str, *, strict: bool = False) -> OCMF:
         """Parse an OCMF string into an OCMF model.
 
         Automatically detects whether the input is plain text (starts with "OCMF|")
         or hex-encoded and handles both formats.
+
+        By default, input that deviates from the OCMF spec but is accepted by the
+        Transparenzsoftware is parsed and reported as a SpecWarning.
+
+        Args:
+            ocmf_string: OCMF string, plain or hex-encoded
+            strict: Reject spec deviations instead of warning
+
+        Raises:
+            OcmfFormatError: If the string is not structured as OCMF
+            OcmfPayloadError: If the payload is invalid (or deviates from the spec
+                in strict mode)
+            OcmfSignatureError: If the signature section is invalid (or deviates from
+                the spec in strict mode)
+
         """
+        with spec_mode(strict=strict):
+            return cls._parse(ocmf_string)
+
+    @classmethod
+    def _parse(cls, ocmf_string: str) -> OCMF:
         ocmf_text = ocmf_string.strip()
 
         if not ocmf_text.startswith(OCMF_PREFIX):
@@ -64,7 +85,12 @@ class OCMF(pydantic.BaseModel):
         signature_json = parts[2]
         if len(parts) == 4:
             # The Transparenzsoftware accepts a public key appended as fourth section
-            warn_spec("Public keys must be transmitted separately, not as a fourth OCMF section")
+            try:
+                warn_spec(
+                    "Public keys must be transmitted separately, not as a fourth OCMF section"
+                )
+            except SpecViolationError as e:
+                raise OcmfFormatError(str(e)) from e
 
         # parse_float=Decimal builds Decimals from the raw JSON literals, preserving
         # decimal places (e.g. 2935.600) that pydantic's own JSON parser would drop

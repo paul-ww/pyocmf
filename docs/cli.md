@@ -93,6 +93,15 @@ Process all OCMF entries in an XML file (default: first only):
 ocmf charging_session.xml --all
 ```
 
+### `--strict`
+
+Reject input that deviates from the OCMF specification. By default such input is
+accepted, as by the Transparenzsoftware, and each deviation is printed as a warning.
+
+```bash
+ocmf inspect transaction.xml --strict
+```
+
 ## Commands
 
 ### Default Command (Validation + Compliance)

@@ -70,6 +70,10 @@ class EncodingTypeError(PyOCMFError, TypeError):
         self.expected_type = expected_type
 
 
+class SpecViolationError(PyOCMFError, ValueError):
+    """Input deviates from the OCMF spec while parsing in strict mode."""
+
+
 class CryptoError(PyOCMFError):
     pass
 

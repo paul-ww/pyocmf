@@ -151,7 +151,7 @@ failing to parse:
 ```python
 import warnings
 
-from pyocmf import OCMF, SpecWarning
+from pyocmf import OCMF, OcmfContainer, SpecWarning
 
 with warnings.catch_warnings(record=True) as caught:
     warnings.simplefilter("always", SpecWarning)
@@ -161,7 +161,15 @@ for warning in caught:
     print(warning.message)
 ```
 
-Use `warnings.simplefilter("error", SpecWarning)` to reject non-compliant records instead.
+Pass `strict=True` to reject non-compliant records instead. The deviation is raised as
+the usual `OcmfPayloadError` or `OcmfSignatureError`:
+
+```python
+ocmf = OCMF.from_string(ocmf_string, strict=True)
+container = OcmfContainer.from_xml("transaction.xml", strict=True)
+```
+
+On the command line, use `--strict`.
 
 ## About OCMF
 

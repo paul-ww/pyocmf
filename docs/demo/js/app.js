@@ -24,8 +24,14 @@
     status: $("runtimeStatus"),
     modeText: $("modeText"),
     modeXml: $("modeXml"),
+    modeQr: $("modeQr"),
     textPanel: $("textPanel"),
     xmlPanel: $("xmlPanel"),
+    qrPanel: $("qrPanel"),
+    qrVideo: $("qrVideo"),
+    qrStatus: $("qrStatus"),
+    qrCameraButton: $("qrCameraButton"),
+    qrImageInput: $("qrImageInput"),
     ocmfInput: $("ocmfInput"),
     xmlInput: $("xmlInput"),
     xmlName: $("xmlName"),
@@ -39,7 +45,13 @@
     result: $("result"),
   };
 
-  const state = { mode: "text", xml: null, runtime: null, examples: [], pendingCheck: false };
+  const state = { mode: "text", xml: null, runtime: null, examples: [], pendingCheck: false, stopCamera: null };
+
+  const KEY_HINTS = {
+    text: "Not needed if the record carries its own key, as QR codes often do.",
+    xml: "XML files carry their own public keys.",
+    qr: "Not needed if the QR code carries the key.",
+  };
 
   function h(tag, props = {}, ...children) {
     const node = document.createElement(tag);
@@ -58,19 +70,23 @@
   /* ---------- Input ---------- */
 
   function setMode(mode) {
+    if (mode !== "qr") stopCamera();
     state.mode = mode;
     ui.modeText.setAttribute("aria-selected", String(mode === "text"));
     ui.modeXml.setAttribute("aria-selected", String(mode === "xml"));
+    ui.modeQr.setAttribute("aria-selected", String(mode === "qr"));
     ui.textPanel.hidden = mode !== "text";
     ui.xmlPanel.hidden = mode !== "xml";
+    ui.qrPanel.hidden = mode !== "qr";
     ui.publicKeyInput.disabled = mode === "xml";
-    ui.keyHint.textContent =
-      mode === "xml" ? "XML files carry their own public keys." : "Without a key, the signature is not verified.";
+    ui.keyHint.textContent = KEY_HINTS[mode];
     updateCheckButton();
   }
 
   function hasInput() {
-    return state.mode === "text" ? ui.ocmfInput.value.trim() !== "" : state.xml !== null;
+    if (state.mode === "text") return ui.ocmfInput.value.trim() !== "";
+    if (state.mode === "xml") return state.xml !== null;
+    return false;
   }
 
   function updateCheckButton() {
@@ -78,8 +94,97 @@
       ui.checkButton.disabled = true;
       return;
     }
-    ui.checkButton.textContent = state.mode === "xml" ? "Check file" : "Check record";
+    ui.checkButton.textContent =
+      state.mode === "xml" ? "Check file" : state.mode === "qr" ? "Scan a code to check it" : "Check record";
     ui.checkButton.disabled = !hasInput();
+  }
+
+  /* ---------- QR codes ---------- */
+
+  function stopCamera() {
+    if (state.stopCamera) state.stopCamera();
+    state.stopCamera = null;
+    ui.qrVideo.hidden = true;
+    ui.qrCameraButton.textContent = "Use camera";
+  }
+
+  function setQrStatus(...content) {
+    ui.qrStatus.replaceChildren(...content);
+  }
+
+  function handleQrText(raw) {
+    const qr = classifyQrText(raw);
+    if (qr.kind === "url") {
+      setQrStatus(
+        "This QR code contains a link, not OCMF data. The demo cannot fetch it: ",
+        h("a", { href: qr.value, target: "_blank", rel: "noopener" }, qr.value),
+      );
+      return;
+    }
+    setQrStatus("Point the camera at a QR code with OCMF data, or open a photo of one.");
+
+    if (qr.kind === "key") {
+      // Keys are often printed separately, e.g. on the charger; the record comes from elsewhere
+      ui.publicKeyInput.value = qr.value;
+      setMode("text");
+      if (ui.ocmfInput.value.trim()) {
+        requestCheck();
+      } else {
+        ui.keyHint.textContent = "Public key read from the QR code. Now add the record: paste it or scan its QR code.";
+        ui.ocmfInput.focus();
+      }
+      return;
+    }
+
+    if (qr.kind === "xml") {
+      state.xml = { name: "XML from QR code", content: qr.value };
+      ui.xmlName.textContent = state.xml.name;
+      setMode("xml");
+    } else {
+      ui.ocmfInput.value = qr.value;
+      // Only a record carrying its own key replaces a key entered or scanned before
+      if (qr.hasKey) ui.publicKeyInput.value = "";
+      setMode("text");
+    }
+    requestCheck();
+  }
+
+  function requestCheck() {
+    if (state.runtime) runCheck();
+    else state.pendingCheck = true;
+  }
+
+  async function scanImage(blob) {
+    setQrStatus("Reading the QR code…");
+    try {
+      const text = await decodeQrImage(blob);
+      if (text) handleQrText(text);
+      else setQrStatus("No QR code found in this image. Try a sharper photo, closer to the code.");
+    } catch (error) {
+      setQrStatus(`The image could not be read: ${error.message || error}`);
+    }
+  }
+
+  async function toggleCamera() {
+    if (state.stopCamera) {
+      stopCamera();
+      setQrStatus("Camera stopped.");
+      return;
+    }
+    try {
+      ui.qrVideo.hidden = false;
+      ui.qrCameraButton.textContent = "Stop camera";
+      setQrStatus("Looking for a QR code…");
+      state.stopCamera = await startQrCameraScan(ui.qrVideo, (text) => {
+        state.stopCamera = null;
+        ui.qrVideo.hidden = true;
+        ui.qrCameraButton.textContent = "Use camera";
+        handleQrText(text);
+      });
+    } catch (error) {
+      stopCamera();
+      setQrStatus(`The camera is not available: ${error.message || error}. Open a photo instead.`);
+    }
   }
 
   async function loadXmlFile(file) {
@@ -104,6 +209,11 @@
     const example = state.examples.find((e) => e.id === id);
     ui.exampleDescription.textContent = example ? example.description : "";
     if (!example) return;
+    if (example.kind === "qr") {
+      setMode("qr");
+      await scanImage(await (await fetch(`examples/${example.file}`)).blob());
+      return;
+    }
     if (example.kind === "xml") {
       const content = await (await fetch(`examples/${example.file}`)).text();
       state.xml = { name: example.file, content };
@@ -114,8 +224,7 @@
       ui.publicKeyInput.value = example.publicKey || "";
       setMode("text");
     }
-    if (state.runtime) runCheck();
-    else state.pendingCheck = true;
+    requestCheck();
   }
 
   /* ---------- Check ---------- */
@@ -175,7 +284,9 @@
       return ["error", "Not verified", records.find((r) => r.signature.status === "error").signature.message];
     }
     if (count("valid") === records.length) {
-      return ["ok", "Valid", [...new Set(records.map((r) => r.signature.algorithm))].join(", ")];
+      const algorithms = [...new Set(records.map((r) => r.signature.algorithm))].join(", ");
+      const fromRecord = records.some((r) => r.signature.keySource === "record");
+      return ["ok", "Valid", fromRecord ? `${algorithms} · key from the record` : algorithms];
     }
     if (count("valid")) return ["warn", "Partly checked", `${count("valid")} of ${records.length} records have a key`];
     return ["muted", "Not checked", "No public key"];
@@ -373,6 +484,10 @@
 
   ui.modeText.addEventListener("click", () => setMode("text"));
   ui.modeXml.addEventListener("click", () => setMode("xml"));
+  ui.modeQr.addEventListener("click", () => setMode("qr"));
+  ui.qrCameraButton.addEventListener("click", toggleCamera);
+  ui.qrImageInput.addEventListener("change", () => ui.qrImageInput.files[0] && scanImage(ui.qrImageInput.files[0]));
+  if (!cameraAvailable()) ui.qrCameraButton.hidden = true;
   ui.ocmfInput.addEventListener("input", updateCheckButton);
   ui.xmlInput.addEventListener("change", () => ui.xmlInput.files[0] && loadXmlFile(ui.xmlInput.files[0]));
   ui.exampleSelect.addEventListener("change", () => applyExample(ui.exampleSelect.value));

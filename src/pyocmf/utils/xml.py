@@ -24,7 +24,7 @@ class OcmfRecord:
     public_key: PublicKey | None = None
 
     def verify_signature(self) -> bool:
-        if self.public_key is None:
+        if self.public_key is None and self.ocmf.embedded_public_key is None:
             msg = "No public key available for signature verification"
             raise SignatureVerificationError(msg)
 

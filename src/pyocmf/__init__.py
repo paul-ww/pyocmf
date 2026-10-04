@@ -35,6 +35,7 @@ from pyocmf.exceptions import (
     PublicKeyError,
     PyOCMFError,
     SignatureVerificationError,
+    SpecWarning,
     ValidationError,
     XmlParsingError,
 )
@@ -97,5 +98,6 @@ __all__ = [  # ruff: ignore[unsorted-dunder-all]
     # Exceptions - Cryptography
     "CryptoError",
     "SignatureVerificationError",
+    "SpecWarning",
     "PublicKeyError",
 ]

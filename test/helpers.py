@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from pyocmf.core import OCMF, Payload, Signature
 from pyocmf.core.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
 from pyocmf.enums.identifiers import IdentificationType, UserAssignmentStatus
+from pyocmf.enums.reading import is_end_reason
 from pyocmf.enums.units import EnergyUnit
 from pyocmf.exceptions import PyOCMFError
 from pyocmf.models import OBIS
@@ -240,10 +241,10 @@ def get_transaction_pair(
     for record in container:
         if record.ocmf.payload.RD:
             for reading in record.ocmf.payload.RD:
-                if reading.TX and reading.TX.value == "B":
+                if reading.TX == MeterReadingReason.BEGIN:
                     begin_record = record
                     break
-                if reading.TX and reading.TX.is_end_reading():
+                if is_end_reason(reading.TX):
                     end_record = record
                     break
 

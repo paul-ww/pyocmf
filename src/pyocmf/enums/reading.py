@@ -33,6 +33,10 @@ class MeterReadingReason(enum.StrEnum):
         }
 
 
+def is_end_reason(tx: MeterReadingReason | str | None) -> bool:
+    return isinstance(tx, MeterReadingReason) and tx.is_end_reading()
+
+
 class MeterStatus(enum.StrEnum):
     NOT_PRESENT = "N"
     OK = "G"

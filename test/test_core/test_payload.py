@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import warnings
 
-import pydantic
 import pytest
 
 from pyocmf.core import Payload
@@ -13,6 +12,7 @@ from pyocmf.enums.identifiers import (
     IdentificationFlagRFID,
     IdentificationType,
 )
+from pyocmf.exceptions import SpecWarning
 
 
 class TestIdValidationByType:
@@ -96,8 +96,8 @@ class TestIdValidationByType:
             assert "ISO15693" in str(w[0].message)
             assert payload.ID == "112233445566CC"
 
-    def test_emaid_requires_14_15_alphanumeric(self) -> None:
-        with pytest.raises(pydantic.ValidationError, match="does not match expected format"):
+    def test_emaid_warns_unless_14_15_alphanumeric(self) -> None:
+        with pytest.warns(SpecWarning, match="does not match expected format"):
             Payload(
                 PG="T1",
                 GS="000001",
@@ -137,8 +137,8 @@ class TestIdValidationByType:
             "0A1B2C3D4E5G",  # Non-hex character
         ],
     )
-    def test_evccid_rejects_invalid_format(self, evccid: str) -> None:
-        with pytest.raises(pydantic.ValidationError, match="does not match expected format"):
+    def test_evccid_warns_on_invalid_format(self, evccid: str) -> None:
+        with pytest.warns(SpecWarning, match="does not match expected format"):
             Payload(
                 PG="T1",
                 GS="000001",
@@ -159,8 +159,8 @@ class TestIdValidationByType:
         )
         assert payload.ID == "4111111111111111"
 
-    def test_iso7812_rejects_non_digits(self) -> None:
-        with pytest.raises(pydantic.ValidationError, match="does not match expected format"):
+    def test_iso7812_warns_on_non_digits(self) -> None:
+        with pytest.warns(SpecWarning, match="does not match expected format"):
             Payload(
                 PG="T1",
                 GS="000001",
@@ -240,8 +240,8 @@ class TestIdValidationByType:
         )
         assert payload.ID is not None
 
-    def test_phone_number_rejects_invalid_format(self) -> None:
-        with pytest.raises(pydantic.ValidationError, match="does not match expected format"):
+    def test_phone_number_warns_on_invalid_format(self) -> None:
+        with pytest.warns(SpecWarning, match="does not match expected format"):
             Payload(
                 PG="T1",
                 GS="000001",
@@ -395,9 +395,9 @@ class TestTTMaxLength:
         assert payload.TT is not None
         assert len(payload.TT) == 250
 
-    def test_tt_251_chars_rejected(self) -> None:
+    def test_tt_251_chars_warns(self) -> None:
         tt_251 = "A" * 251
-        with pytest.raises(ValueError, match="String should have at most 250 characters"):
+        with pytest.warns(SpecWarning, match="exceeds 250 characters"):
             Payload(
                 PG="T1",
                 IS=False,

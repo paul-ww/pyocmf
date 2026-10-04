@@ -20,6 +20,7 @@ from pyocmf.exceptions import (
     SignatureVerificationError,
 )
 from pyocmf.models.public_key import PublicKey
+from pyocmf.types.lenient import warn_spec
 from pyocmf.utils.serialization import model_to_ocmf_json
 
 
@@ -50,9 +51,9 @@ class OCMF(pydantic.BaseModel):
                     f"valid hex-encoded. {e}"
                 )
                 raise HexDecodingError(msg) from e
-        parts = ocmf_text.split(OCMF_SEPARATOR, 2)
+        parts = ocmf_text.split(OCMF_SEPARATOR, 3)
 
-        if len(parts) != 3 or parts[0] != OCMF_HEADER:
+        if len(parts) < 3 or parts[0] != OCMF_HEADER:
             msg = (
                 f"String does not match expected OCMF format "
                 f"'{OCMF_HEADER}{OCMF_SEPARATOR}{{payload}}{OCMF_SEPARATOR}{{signature}}'."
@@ -61,6 +62,9 @@ class OCMF(pydantic.BaseModel):
 
         payload_json = parts[1]
         signature_json = parts[2]
+        if len(parts) == 4:
+            # The Transparenzsoftware accepts a public key appended as fourth section
+            warn_spec("Public keys must be transmitted separately, not as a fourth OCMF section")
 
         # parse_float=Decimal builds Decimals from the raw JSON literals, preserving
         # decimal places (e.g. 2935.600) that pydantic's own JSON parser would drop

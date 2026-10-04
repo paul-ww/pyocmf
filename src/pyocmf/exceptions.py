@@ -102,3 +102,7 @@ class SignatureVerificationError(CryptoError):
     ) -> None:
         super().__init__(message, field=field, details=details)
         self.reason = reason
+
+
+class SpecWarning(UserWarning):
+    """Input deviates from the OCMF spec but is accepted, as the Transparenzsoftware does."""

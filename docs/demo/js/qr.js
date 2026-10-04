@@ -101,3 +101,43 @@ async function startQrCameraScan(video, onCode) {
   scan();
   return stop;
 }
+
+// DER encoding of the id-ecPublicKey OID (1.2.840.10045.2.1), present in every EC public key
+const EC_PUBLIC_KEY_OID = "2a8648ce3d0201";
+
+function hexToText(hex) {
+  const bytes = new Uint8Array(hex.match(/../g).map((pair) => parseInt(pair, 16)));
+  return new TextDecoder().decode(bytes);
+}
+
+function base64ToHex(base64) {
+  try {
+    return Array.from(atob(base64), (c) => c.charCodeAt(0).toString(16).padStart(2, "0")).join("");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Classify decoded QR text: an OCMF record (plain or hex, possibly with an appended
+ * key), XML, a bare public key, a link, or something else.
+ */
+function classifyQrText(raw) {
+  const text = raw.trim();
+  if (/^https?:\/\//i.test(text)) return { kind: "url", value: text };
+  if (text.startsWith("<")) return { kind: "xml", value: text };
+
+  const compact = text.replace(/-----(BEGIN|END) PUBLIC KEY-----/g, "").replace(/\s+/g, "");
+  let ocmf = text.startsWith("OCMF|") ? text : null;
+  if (!ocmf && /^([0-9a-f]{2})+$/i.test(compact) && compact.toLowerCase().startsWith("4f434d467c")) {
+    ocmf = hexToText(compact);
+  }
+  if (ocmf) {
+    // A fourth section is the public key, as appended for the Transparenzsoftware
+    return { kind: "ocmf", value: text, hasKey: ocmf.split("|").length > 3 };
+  }
+
+  const hex = /^([0-9a-f]{2})+$/i.test(compact) ? compact : /^[A-Za-z0-9+/]+={0,2}$/.test(compact) ? base64ToHex(compact) : null;
+  if (hex && hex.toLowerCase().includes(EC_PUBLIC_KEY_OID)) return { kind: "key", value: compact };
+  return { kind: "other", value: text };
+}

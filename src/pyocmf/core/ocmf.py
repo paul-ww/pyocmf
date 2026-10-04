@@ -97,13 +97,23 @@ class OCMF(pydantic.BaseModel):
         try:
             payload = Payload.model_validate(json.loads(payload_json, parse_float=decimal.Decimal))
         except (json.JSONDecodeError, pydantic.ValidationError) as e:
-            msg = f"Invalid payload JSON: {e}"
+            violation = _spec_violation(e)
+            msg = (
+                f"Payload deviates from the OCMF spec: {violation}"
+                if violation
+                else f"Invalid payload JSON: {e}"
+            )
             raise OcmfPayloadError(msg) from e
 
         try:
             signature = Signature.model_validate_json(signature_json)
         except pydantic.ValidationError as e:
-            msg = f"Invalid signature JSON: {e}"
+            violation = _spec_violation(e)
+            msg = (
+                f"Signature deviates from the OCMF spec: {violation}"
+                if violation
+                else f"Invalid signature JSON: {e}"
+            )
             raise OcmfSignatureError(msg) from e
 
         ocmf = cls(header=OCMF_HEADER, payload=payload, signature=signature)
@@ -187,3 +197,14 @@ class OCMF(pydantic.BaseModel):
         signature_valid = self.verify_signature(public_key)
         compliance_issues = self.check_eichrecht(other) if eichrecht else []
         return signature_valid, compliance_issues
+
+
+def _spec_violation(error: Exception) -> SpecViolationError | None:
+    """Return the strict-mode spec violation behind a pydantic validation error, if any."""
+    if not isinstance(error, pydantic.ValidationError):
+        return None
+    for detail in error.errors():
+        cause = detail.get("ctx", {}).get("error")
+        if isinstance(cause, SpecViolationError):
+            return cause
+    return None

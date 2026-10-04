@@ -26,6 +26,9 @@ jobs:
         with:
           dependency-group: docs
 
+      - name: Bundle the current pyocmf for the browser demo
+        run: uv run poe demo-wheel
+
       - name: Build documentation
         run: uv run poe docs
 

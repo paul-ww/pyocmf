@@ -1,0 +1,47 @@
+[
+  {
+    "id": "keba",
+    "label": "KEBA KCP30 · single record",
+    "kind": "text",
+    "description": "Begin and end reading in one record. Compliant, with time-synchronization warnings.",
+    "ocmf": "OCMF|{\"FV\":\"1.0\",\"GI\":\"KEBA_KCP30\",\"GS\":\"17619300\",\"GV\":\"2.8.5\",\"PG\":\"T32\",\"IS\":false,\"IL\":\"NONE\",\"IF\":[\"RFID_NONE\",\"OCPP_NONE\",\"ISO15118_NONE\",\"PLMN_NONE\"],\"IT\":\"NONE\",\"ID\":\"\",\"RD\":[{\"TM\":\"2019-08-13T10:03:15,000+0000 I\",\"TX\":\"B\",\"EF\":\"\",\"ST\":\"G\",\"RV\":0.2596,\"RI\":\"1-b:1.8.0\",\"RU\":\"kWh\"},{\"TM\":\"2019-08-13T10:03:36,000+0000 R\",\"TX\":\"E\",\"EF\":\"\",\"ST\":\"G\",\"RV\":0.2597,\"RI\":\"1-b:1.8.0\",\"RU\":\"kWh\"}]}|{\"SD\":\"304502200E2F107C987A300AC1695CA89EA149A8CDFA16188AF0A33EE64B67964AA943F9022100889A72B6D65364BEA8562E7F6A0253157ACFF84FE4929A93B5964D23C4265699\"}",
+    "publicKey": "3059301306072A8648CE3D020106082A8648CE3D030107034200043AEEB45C392357820A58FDFB0857BD77ADA31585C61C430531DFA53B440AFBFDD95AC887C658EA55260F808F55CA948DF235C2108A0D6DC7D4AB1A5E1A7955BE"
+  },
+  {
+    "id": "session",
+    "label": "Charging session with tariff changes",
+    "kind": "text",
+    "description": "Generated record with intermediate readings, plotted as a charging curve. Signed with a throwaway demo key.",
+    "ocmf": "OCMF|{\"FV\":\"1.0\",\"GI\":\"PYOCMF DEMO\",\"GS\":\"DEMO-0001\",\"GV\":\"1.0\",\"PG\":\"T7\",\"MV\":\"Demo\",\"MM\":\"Demo meter\",\"MS\":\"DEMO-M-01\",\"IS\":true,\"IL\":\"VERIFIED\",\"IF\":[\"RFID_PLAIN\",\"OCPP_RS_TLS\"],\"IT\":\"ISO14443\",\"ID\":\"1F2D3A4F\",\"RD\":[{\"TM\":\"2026-06-12T18:02:10,000+0200 S\",\"TX\":\"B\",\"RV\":0.000,\"RI\":\"01-00:B2.08.00*FF\",\"RU\":\"kWh\",\"RT\":\"AC\",\"EF\":\"\",\"ST\":\"G\"},{\"TM\":\"2026-06-12T18:30:00,000+0200 S\",\"TX\":\"T\",\"RV\":5.101},{\"TM\":\"2026-06-12T19:00:00,000+0200 S\",\"TX\":\"T\",\"RV\":10.588},{\"TM\":\"2026-06-12T19:30:00,000+0200 S\",\"TX\":\"T\",\"RV\":13.204},{\"TM\":\"2026-06-12T19:47:22,000+0200 S\",\"TX\":\"E\",\"RV\":13.861}]}|{\"SA\":\"ECDSA-secp256r1-SHA256\",\"SD\":\"30450220491F49F5DCD23599EA68C4FDFF653372ADC8CEE66E8B223860A2CC1800907124022100F9103A27E0AB733E7B9B51C5A6C61FD17FB112CF36D2DB30A6940CA14FB6FB99\"}",
+    "publicKey": "3059301306072A8648CE3D020106082A8648CE3D0301070342000466A6844387AC4BDB9BE250AF6FCB461BB2076F3BC5D5080E5C91A39FD8D0BE59998073AFEA9DD37C46D7D5B1FF840804C994469EEFB675A6CF166363FA4C1AF9"
+  },
+  {
+    "id": "ebee",
+    "label": "eBee · begin and end records",
+    "kind": "xml",
+    "file": "ebee-transaction.xml",
+    "description": "Two records checked together as one transaction."
+  },
+  {
+    "id": "ebee-tampered",
+    "label": "eBee · tampered records",
+    "kind": "xml",
+    "file": "ebee-tampered.xml",
+    "description": "One signature fails and the meter value goes down between begin and end."
+  },
+  {
+    "id": "iskra",
+    "label": "Iskra · time error flag",
+    "kind": "text",
+    "description": "A time error ('t') is reported as a warning; only energy errors fail a record.",
+    "ocmf": "OCMF|{\"FV\":\"1.0\",\"GI\":\"eSystemsMtg OcppChargePoint_v0 ESY-00101.01.2201234567\",\"GS\":\"000007\",\"GV\":\"PWR P0037\",\"PG\":\"T241\",\"MV\":\"Iskra\",\"MM\":\"WM3M4C\",\"MS\":\"W4155775\",\"MF\":\"2.05\",\"IS\":true,\"IT\":\"UNDEFINED\",\"ID\":\"0480423a4b5880\",\"CT\":\"CBIDC\",\"CI\":\"KHStation\",\"RD\":[{\"TM\":\"2023-04-14T11:51:06,000+0000 S\",\"TX\":\"B\",\"RV\":80.77,\"RI\":\"1-b:1.8.0\",\"RU\":\"kWh\",\"RT\":\"AC\",\"EF\":\"t\",\"ST\":\"G\"},{\"TM\":\"2023-04-14T11:54:43,000+0000 S\",\"TX\":\"E\",\"RV\":80.97,\"RI\":\"1-b:1.8.0\",\"RU\":\"kWh\",\"RT\":\"AC\",\"EF\":\"t\",\"ST\":\"G\"}]}|{\"SD\":\"30450220331E469735684E31F6F5903457C6DD8873CEAE1DFDBE4001FFBF94D124481DE7022100B8375F730A0B719B99B2DB89BA5B03CFDF4CE1A8829816BF7BBB75C3042C289D\"}",
+    "publicKey": "3059301306072A8648CE3D020106082A8648CE3D03010703420004890ADD61803B4665C9BFC3F4E40C4696DF54C8FB8E067613CC465D7EA67411C0A9517C0D1A021B0859A829B85D5F6FA567047E5CBD91CD9C01F643003FEA3646"
+  },
+  {
+    "id": "vw",
+    "label": "VW · non-standard card ID",
+    "kind": "xml",
+    "file": "vw-card-id.xml",
+    "description": "Deviates from the spec: accepted with a warning, rejected in strict mode."
+  }
+]

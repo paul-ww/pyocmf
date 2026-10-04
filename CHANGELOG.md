@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-10-04
+
+XML files are checked transaction by transaction, as the Transparenzsoftware does.
+
+### Added
+
+- **XML transaction checks**: `OcmfContainer.check_eichrecht()` pairs the records of an XML file
+  by the `transactionId` and `context` attributes of their values. Records sharing a
+  `transactionId` need exactly one `Transaction.Begin` and one `Transaction.End` record and are
+  checked as a begin/end pair; other records are checked on their own. It returns one
+  `EichrechtResult` per transaction or standalone record.
+- `OcmfRecord.transaction_id` and `OcmfRecord.context`, and `OcmfContainer.transactions()`
+- Docstrings for the public API in the reference documentation
+- The browser demo is part of the documentation site and follows its light/dark theme
+
+### Changed
+
+- **CLI**: `ocmf check file.xml` and the default command check every transaction and standalone
+  record of an XML file; the default command also verifies the signature of every record
+- The browser demo pairs XML records by `transactionId` and `context` instead of by their readings
+- `pyocmf.crypto.verification.verify_signature()` takes `public_key` instead of `public_key_hex`,
+  as it accepts base64 keys too
+
+### Fixed
+
+- The CLI checked only the first record of an XML file, so a transaction whose end value was
+  below its begin value was reported as compliant
+- `ocmf --help` showed "requires pyocmf" instead of "requires pyocmf[crypto]" for `verify`
+- The CLI reference documented `--all` for the default command, which only `verify` has
+
 ## [0.4.0] - 2026-10-04
 
 The Transparenzsoftware is now the reference: pyocmf parses every record it accepts and
@@ -133,6 +163,7 @@ Initial public release.
 - Optional `cryptography` package for signature verification
 - Optional `typer` and `rich` packages for CLI
 
+[0.5.0]: https://github.com/paul-ww/pyocmf/releases/tag/v0.5.0
 [0.4.0]: https://github.com/paul-ww/pyocmf/releases/tag/v0.4.0
 [0.3.0]: https://github.com/paul-ww/pyocmf/releases/tag/v0.3.0
 [0.2.3]: https://github.com/paul-ww/pyocmf/releases/tag/v0.2.3

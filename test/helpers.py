@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import decimal
 from typing import TYPE_CHECKING
+from xml.sax.saxutils import escape, quoteattr
 
 from pyocmf.core import OCMF, Payload, Signature
 from pyocmf.core.reading import MeterReadingReason, MeterStatus, OCMFTimestamp, Reading
@@ -14,6 +15,7 @@ from pyocmf.utils.xml import OcmfContainer
 
 if TYPE_CHECKING:
     import pathlib
+    from collections.abc import Sequence
 
     from pyocmf.compliance.models import EichrechtIssue
     from pyocmf.utils.xml import OcmfRecord
@@ -252,3 +254,22 @@ def get_transaction_pair(
         return (begin_record, end_record)
 
     return None
+
+
+def write_xml(
+    path: pathlib.Path, values: Sequence[tuple[OCMF, int | None, str | None]]
+) -> pathlib.Path:
+    """Write a Transparenzsoftware XML file of (OCMF, transactionId, context) values."""
+    elements = []
+    for ocmf, transaction_id, context in values:
+        attributes = "".join(
+            f" {name}={quoteattr(str(value))}"
+            for name, value in (("transactionId", transaction_id), ("context", context))
+            if value is not None
+        )
+        signed = escape(ocmf.to_string())
+        elements.append(
+            f'<value{attributes}><signedData format="OCMF">{signed}</signedData></value>'
+        )
+    path.write_text(f'<?xml version="1.0"?><values>{"".join(elements)}</values>')
+    return path

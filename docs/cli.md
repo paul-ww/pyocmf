@@ -1,264 +1,276 @@
 # Command Line Interface
 
-PyOCMF includes a CLI for validation, signature verification, and regulatory compliance checking.
+PyOCMF includes a CLI for signature verification, Eichrecht compliance checking, and
+inspecting OCMF records.
 
 !!! note "Installation Required"
-    The CLI requires the `cli` extras. Install with:
+    The CLI requires the `cli` extras, and signature verification the `crypto` extras.
+    Install both with:
     ```bash
-    pip install pyocmf[cli]
-    # or
     pip install pyocmf[all]
     ```
 
 ## Basic Usage
 
 ```bash
-# Validate an OCMF string
-ocmf 'OCMF|{"FV":"1.0",...}|{"SD":"3045..."}'
+# Verify the signature and check Eichrecht compliance (default command)
+ocmf 'OCMF|{"FV":"1.0",...}|{"SD":"3045..."}' --public-key 3059301306072A8648CE3D...
 
-# Validate with verbose output
-ocmf 'OCMF|{...}|{...}' --verbose
+# Verify the signature only
+ocmf verify 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D...
 
-# Validate and verify signature
-ocmf 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D...
-
-# Check Eichrecht compliance
+# Check Eichrecht compliance only, for one record or a begin and end record
 ocmf check 'OCMF|{...}|{...}'
+ocmf check begin.xml end.xml
 
-# Check transaction pair compliance (begin + end)
-ocmf check begin.txt end.txt
+# Show the parsed record
+ocmf inspect 'OCMF|{...}|{...}'
 ```
 
 ## Input Formats
 
-The CLI automatically detects the input format - no flags needed:
+Every command detects the input format, so no flags are needed:
 
-### OCMF String
+- **OCMF string**: `ocmf 'OCMF|{"FV":"1.0","GI":"KEBA_KCP30",...}|{"SD":"3045..."}'`
+- **Hex-encoded OCMF string**: `ocmf 4f434d467c7b2246563a22312e30222c...`
+- **Transparenzsoftware XML file**: `ocmf charging_session.xml`. The public keys stored in
+  the file are used for verification.
 
-```bash
-ocmf 'OCMF|{"FV":"1.0","GI":"KEBA_KCP30",...}|{"SD":"3045..."}'
-```
+An XML file can hold several records. `ocmf` verifies the signature of every record, and
+`ocmf` and `ocmf check` check Eichrecht compliance per transaction (see
+[XML Transactions](#xml-transactions)). `ocmf verify` verifies the first record, or all of
+them with `--all`, and `ocmf inspect` shows all of them.
 
-### Hex-Encoded OCMF
+## Public Keys
 
-Hex-encoded strings are automatically detected and decoded:
-
-```bash
-ocmf 4f434d467c7b2246563a22312e30222c...
-```
-
-### XML File
-
-XML files are automatically detected. The CLI extracts OCMF data and public keys for verification:
-
-```bash
-# Validate first entry
-ocmf charging_session.xml
-
-# Validate all entries
-ocmf charging_session.xml --all
-```
-
-## Options
-
-### `--public-key` / `-k`
-
-Provide a public key (hex or base64) for signature verification. Without it, the key from the
-XML file or a key appended to the OCMF string (`OCMF|{...}|{...}|key`) is used:
-
-```bash
-ocmf 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D020106082A8648CE3D03010703420004...
-```
-
-!!! note "Cryptography Required"
-    Signature verification requires the `crypto` extras:
-    ```bash
-    pip install pyocmf[crypto]
-    # or
-    pip install pyocmf[all]
-    ```
-
-### `--verbose` / `-v`
-
-Show detailed OCMF structure including payload fields, readings, and signature information:
-
-```bash
-ocmf 'OCMF|{...}|{...}' --verbose
-```
-
-### `--all`
-
-Process all OCMF entries in an XML file (default: first only):
-
-```bash
-ocmf charging_session.xml --all
-```
-
-### `--strict`
-
-Reject input that deviates from the OCMF specification. By default such input is
-accepted, as by the Transparenzsoftware, and each deviation is printed as a warning.
-
-```bash
-ocmf inspect transaction.xml --strict
-```
+The OCMF spec requires public keys to be transmitted separately from the record. Pass one
+with `--public-key` / `-k`, as hex or base64 DER. Without it, the CLI uses the key stored
+in the XML file, or a key appended to the OCMF string as a fourth section
+(`OCMF|{...}|{...}|key`), as QR codes for the Transparenzsoftware often carry it. Without
+any key, the signature is not verified.
 
 ## Commands
 
-### Default Command (Validation + Compliance)
+### Default Command
 
-The default command performs both signature verification and Eichrecht compliance checking:
+`ocmf <input>` is short for `ocmf all <input>`. It verifies the signature and then checks
+Eichrecht compliance. For an XML file, it verifies every record and checks each transaction:
 
 ```bash
-# Parse, verify signature, and check compliance
 ocmf 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D...
-
-# Check compliance without signature verification
-ocmf 'OCMF|{...}|{...}'
 ```
+
+| Option | Description |
+|---|---|
+| `--public-key`, `-k` | Public key, hex or base64 |
+| `--verbose`, `-v` | Also show compliance warnings and the parsed record |
+| `--strict` | Reject input that deviates from the OCMF spec |
 
 ### `verify` - Signature Verification Only
 
-Verify cryptographic signatures without compliance checking:
-
 ```bash
-# Verify signature for a single OCMF string
 ocmf verify 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D...
 
-# Verify all entries in XML file
+# Verify every record in an XML file
 ocmf verify charging_session.xml --all
 ```
 
+| Option | Description |
+|---|---|
+| `--public-key`, `-k` | Public key, hex or base64 |
+| `--verbose`, `-v` | Also show the parsed record |
+| `--all` | Verify all records in an XML file, not only the first |
+| `--strict` | Reject input that deviates from the OCMF spec |
+
 ### `check` - Eichrecht Compliance Only
 
-Check regulatory compliance against German Eichrecht (calibration law) requirements:
-
 ```bash
-# Check a single record (transaction checks run if it holds begin and end readings)
+# A single record; transaction checks run if it holds both the begin and the end reading
 ocmf check 'OCMF|{...}|{...}'
 
-# Check transaction pair (begin + end), as OCMF strings or XML files
+# A begin and an end record, as OCMF strings or XML files
 ocmf check 'OCMF|{...begin...}|{...}' 'OCMF|{...end...}|{...}'
+
+# Every transaction and standalone record of an XML file
+ocmf check charging_session.xml
 
 # Show warnings in addition to errors
 ocmf check 'OCMF|{...}|{...}' --verbose
 ```
 
-What is checked:
-- Meter status must be 'G' (OK)
-- No energy error flag ('E'); a time error flag ('t') is only a warning
-- Time synchronization status; relative time ('R') at begin requires 'R' at end
-- Cable loss compensation (CL) rules, reported as warnings because the Transparenzsoftware ignores CL
-- Exactly one begin and one end reading among the billing-relevant registers
-  (loss-compensated registers take precedence), for a pair or for a single record
-  holding a complete transaction
-- Meter serial number matching
-- OBIS code and unit consistency
-- Value progression (no regression)
-- User identification requirements
-- Pagination context; an end counter not above the begin counter is a warning
+| Option | Description |
+|---|---|
+| `--verbose`, `-v` | Show warnings in addition to errors |
+| `--strict` | Reject input that deviates from the OCMF spec |
+
+The checks follow the Transparenzsoftware and use the law-relevant readings, preferring
+loss-compensated registers. Errors (the record cannot be billed):
+
+- Meter status other than 'G' (OK)
+- Energy error flag ('E')
+- No readings, or not exactly one begin and one end reading
+- Mismatching meter serial numbers, OBIS codes or units
+- Decreasing reading values or timestamps
+- Relative time ('R') at the begin but not at the end
+- Invalid identification level
+- Begin and end in different pagination contexts
+
+Warnings:
+
+- Time not synchronized (status other than 'S'), or a time error flag ('t')
+- Cable loss compensation (CL) rules, which the Transparenzsoftware ignores
+- Mismatching identification data
+- An end pagination counter not above the begin counter
+
+#### XML Transactions
+
+Like the Transparenzsoftware, the CLI pairs the records of an XML file by the
+`transactionId` and `context` attributes of their `<value>` elements:
+
+```xml
+<value transactionId="15060" context="Transaction.Begin">...</value>
+<value transactionId="15060" context="Transaction.End">...</value>
+```
+
+Records sharing a `transactionId` form a transaction. It needs exactly one record with the
+context `Transaction.Begin` and one with `Transaction.End`; otherwise the transaction is not
+compliant. Records without a `transactionId`, or alone in their transaction, are checked on
+their own. When two files are given, the first record of each is used.
+
+### `inspect` - Show the Parsed Record
+
+```bash
+ocmf inspect 'OCMF|{...}|{...}'
+```
+
+| Option | Description |
+|---|---|
+| `--strict` | Reject input that deviates from the OCMF spec |
+
+## Spec Deviations
+
+Input that deviates from the OCMF specification is accepted by default, as by the
+Transparenzsoftware, and each deviation is printed as a warning. With `--strict`, it is
+rejected instead:
+
+```bash
+ocmf inspect transaction.xml --strict
+```
+
+## Exit Codes
+
+The CLI exits with `1` if the input cannot be parsed, the signature is invalid or cannot
+be checked, or a record or transaction is not Eichrecht compliant. Otherwise it exits with `0`;
+compliance warnings do not change the exit code.
 
 ## Output Examples
 
-### Successful Validation
+### Signature and Compliance
 
 ```
-✓ Successfully parsed OCMF string
-✓ OCMF validation passed
 ✓ Signature verification: VALID
   Algorithm:    ECDSA-secp256r1-SHA256
   Encoding:     hex
+
+✓ Eichrecht compliance: COMPLIANT
 ```
 
-### Compliance Check Results
+### Compliance Issues
+
+With `--verbose`, warnings are listed as well:
 
 ```
-✓ Eichrecht compliance check passed
-  No issues found
-```
+✗ Eichrecht compliance: NOT COMPLIANT
 
-Or when issues are detected:
-
-```
-✗ Eichrecht compliance check failed
-
-Errors (2):
+Errors:
   [ST] Meter status must be 'G' (OK) for billing-relevant readings, got 'N' (METER_STATUS)
   [EF] Energy error flag ('E') set on billing-relevant reading: 'E' (ERROR_FLAGS)
 
-Warnings (1):
-  [TM] Time should be synchronized (status 'S') for billing, got 'U' (TIME_SYNC)
+Warnings:
+  [TM] Time should be synchronized (status 'S') for billing, got 'I' (TIME_SYNC)
+  [TM] Time should be synchronized (status 'S') for billing, got 'R' (TIME_SYNC)
 ```
 
-### Validation with Details
+A record with warnings only is reported as `COMPLIANT WITH WARNINGS`.
 
-Using `--verbose` shows the complete OCMF structure:
-
-```
-✓ Successfully parsed OCMF string
-✓ OCMF validation passed
-
-OCMF Structure:
-
-Payload:
-  Format Version:  1.0
-  Gateway ID:      KEBA_KCP30
-  Gateway Serial:  12345678
-  Pagination:      T1234
-
-Readings: 2 reading(s)
-
-╭─ Reading 1 ─────────────────────────╮
-│ Time:        2024-01-15T10:30:00Z   │
-│ Type:        Transaction.Begin      │
-│ Value:       0.0 kWh                │
-│ Identifier:  RFID_12345             │
-│ Status:      G                      │
-╰─────────────────────────────────────╯
-
-Signature:
-  Algorithm:  ECDSA-secp256r1-SHA256
-  Encoding:   hex
-  Data:       3045022100...
-```
-
-### XML File Processing
+### XML Transaction
 
 ```
-✓ Found 2 OCMF entry(ies) in XML file
+Transaction 15060 (2 records)
 
-Entry 1/2:
-✓ Successfully parsed OCMF string
-✓ OCMF validation passed
-✓ Signature verification: VALID
-  Algorithm:    ECDSA-secp256r1-SHA256
-  Encoding:     hex
+✗ Eichrecht compliance: NOT COMPLIANT
 
-Entry 2/2:
-✓ Successfully parsed OCMF string
-✓ OCMF validation passed
-✓ Signature verification: VALID
-  Algorithm:    ECDSA-secp256r1-SHA256
-  Encoding:     hex
+Errors:
+  [RV] End value (7753) must be >= begin value (7763) (VALUE_REGRESSION)
 ```
 
-## Error Handling
-
-The CLI provides clear error messages for validation failures:
-
-```
-✗ OCMF validation failed: Invalid signature encoding: invalid_encoding
-```
+### Invalid Signature
 
 ```
 ✗ Signature verification: INVALID
 ⚠ The signature does not match the payload
 ```
 
-## Help
+### All Records of an XML File
 
-View all available options:
+```
+✓ Found 2 OCMF record(s) in XML file
+
+Entry 1/2:
+
+✓ Signature verification: VALID
+  Algorithm:    ECDSA-secp256r1-SHA256
+  Encoding:     hex
+
+Entry 2/2:
+
+✓ Signature verification: VALID
+  Algorithm:    ECDSA-secp256r1-SHA256
+  Encoding:     hex
+```
+
+### Parsed Record
+
+```
+OCMF Structure:
+
+Payload:
+  Format Version:    1.0
+  Gateway ID:        KEBA_KCP30
+  Gateway Serial:    17619300
+  Pagination:        T32
+
+Readings: 2 reading(s)
+╭──────────────────── Reading 1 ─────────────────────╮
+│   Time:          2019-08-13T10:03:15,000+0000 I    │
+│   Type:          B                                 │
+│   Value:         0.2596 kWh                        │
+│   Identifier:    1-b:1.8.0                         │
+│   Status:        G                                 │
+╰────────────────────────────────────────────────────╯
+╭──────────────────── Reading 2 ─────────────────────╮
+│   Time:          2019-08-13T10:03:36,000+0000 R    │
+│   Type:          E                                 │
+│   Value:         0.2597 kWh                        │
+│   Identifier:    1-b:1.8.0                         │
+│   Status:        G                                 │
+╰────────────────────────────────────────────────────╯
+
+Signature:
+  Algorithm:    ECDSA-secp256r1-SHA256
+  Encoding:     hex
+  Data:         304502200E2F107C987A300AC1695CA8...
+```
+
+### Unreadable Input
+
+```
+✗ OCMF parsing failed: Invalid OCMF string: must start with 'OCMF|' or be valid hex-encoded.
+```
+
+## Help
 
 ```bash
 ocmf --help
+ocmf check --help
 ```

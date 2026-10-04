@@ -36,6 +36,12 @@ _MAX_CHARGE_CONTROLLER_FIRMWARE_LENGTH = 25
 
 
 class Payload(pydantic.BaseModel):
+    """Payload section of an OCMF record: gateway, meter, user assignment and readings.
+
+    Reading fields left out after the first reading are inherited from the previous
+    reading, as the OCMF spec allows.
+    """
+
     model_config = pydantic.ConfigDict(extra="allow")
 
     FV: str | None = pydantic.Field(default=None, description="Format Version")

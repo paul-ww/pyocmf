@@ -51,6 +51,7 @@ class OBISGroups:
 
 
 def parse_obis(obis_code: str) -> OBISGroups | None:
+    """Parse an OBIS code into its groups, read as hex as in the OCMF spec; None if malformed."""
     match = _OBIS_PATTERN.match(obis_code.strip())
     if match is None:
         return None
@@ -71,6 +72,8 @@ def _normalize(obis_code: str) -> str:
 
 @dataclass
 class OBISInfo:
+    """Description and classification of a known OBIS code."""
+
     code: str
     description: str
     billing_relevant: bool
@@ -198,11 +201,18 @@ def normalize_obis_code(obis_code: str) -> str:
 
 
 def get_obis_info(obis_code: str) -> OBISInfo | None:
+    """Look up a known OBIS code; None for codes not in the registry."""
     groups = parse_obis(obis_code)
     return _KNOWN_OBIS_BY_KEY.get(groups.key) if groups else None
 
 
 def is_billing_relevant(obis_code: str) -> bool:
+    """Whether the register holds energy that can be billed.
+
+    Known codes use the registry. Other cumulative energy registers count when they
+    are law-relevant or hold active export energy, so this is broader than
+    ``is_law_relevant``, which the Eichrecht checks use.
+    """
     if (info := get_obis_info(obis_code)) is not None:
         return info.billing_relevant
     groups = parse_obis(obis_code)
@@ -214,7 +224,11 @@ def is_billing_relevant(obis_code: str) -> bool:
 
 
 def is_law_relevant(obis_code: str) -> bool:
-    """Whether the register is compared for a transaction, as in the Transparenzsoftware."""
+    """Whether the register is compared for a transaction, as in the Transparenzsoftware.
+
+    These are cumulative energy registers for active import (01), the vendor registers
+    98 (loss-compensated) and 9E, and the range B0-C7 that OCMF spec Table 25 reserves.
+    """
     groups = parse_obis(obis_code)
     return groups is not None and groups.is_cumulative_energy and groups.c in _LAW_RELEVANT_C
 
@@ -236,10 +250,12 @@ def _is_reserved_register(obis_code: str, c_values: set[int]) -> bool:
 
 
 def is_accumulation_register(obis_code: str) -> bool:
+    """Whether the code is an OCMF reserved energy register (B0-B3, C0-C3; spec Table 25)."""
     return _is_reserved_register(obis_code, _ACCUMULATION_C)
 
 
 def is_transaction_register(obis_code: str) -> bool:
+    """Whether the code is an OCMF reserved per-transaction register (B2, B3, C2, C3)."""
     return _is_reserved_register(obis_code, _TRANSACTION_C)
 
 

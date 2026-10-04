@@ -44,10 +44,8 @@ def verify_signature(ocmf: OCMF, public_key: str) -> None:
         sys.exit(1)
 
 
-def display_compliance_result(
-    issues: list[EichrechtIssue], is_compliant: bool, label: str | None = None
-) -> None:
-    """Display compliance check results."""
+def display_compliance_result(issues: list[EichrechtIssue], label: str | None = None) -> bool:
+    """Display compliance check results and return whether they are compliant."""
     label_str = f" {label}" if label else ""
 
     if not issues:
@@ -55,7 +53,7 @@ def display_compliance_result(
             f"\n[green]✓[/green] Eichrecht compliance: "
             f"[bold green]COMPLIANT{label_str}[/bold green]"
         )
-        return
+        return True
 
     errors = [i for i in issues if i.severity == IssueSeverity.ERROR]
     warnings = [i for i in issues if i.severity == IssueSeverity.WARNING]
@@ -80,8 +78,7 @@ def display_compliance_result(
         for issue in warnings:
             _display_issue(issue)
 
-    if not is_compliant:
-        sys.exit(1)
+    return not errors
 
 
 def _display_issue(issue: EichrechtIssue) -> None:

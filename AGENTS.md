@@ -41,9 +41,11 @@ S.A.F.E. e.V. is the reference implementation and the bar for behaviour; see
   - `helpers.py`, `conftest.py`: Builders for readings, payloads and transaction pairs
   - `resources/`: Test data, including the `transparenzsoftware` submodule
 - `spec/OCMF-Open-Charge-Metering-Format/`: OCMF specification (submodule)
+- `docs/`: MkDocs Material site. `index.md` mirrors `README.md`, `cli.md` documents the CLI and
+  `api.md` lists the API reference, rendered from docstrings by mkdocstrings
 - `docs/demo/`: Pyodide browser demo, a docs page (`index.md`) with its own CSS/JS. `py/demo.py`
-  holds the Python side, called from `js/runtime.js`; `examples/` holds the example records. It installs the wheel
-  built by `poe demo-wheel` and falls back to PyPI.
+  holds the Python side, called from `js/runtime.js`; `examples/` holds the example records.
+  It installs the wheel built by `poe demo-wheel` and falls back to PyPI.
 
 ## Setup Commands
 
@@ -71,9 +73,9 @@ Note: You can run commands directly with `uv run` without activating the virtual
 
 ## Development Workflow
 
-**Run Python scripts or modules:**
+**Run the CLI or Python scripts:**
 ```bash
-uv run python -m pyocmf
+uv run ocmf --help
 uv run python your_script.py
 ```
 
@@ -327,7 +329,7 @@ uv run poe test        # Run tests
 uv sync                              # Install all dependencies
 
 # Development
-uv run python -m pyocmf              # Run module
+uv run ocmf --help                   # Run the CLI
 uv run python                        # Interactive shell
 
 # Testing
@@ -496,6 +498,8 @@ changing parsing or compliance behaviour.
 - Follow existing code organization patterns
 - Update exceptions in `exceptions.py` if adding new error types
 - Export public APIs through `__init__.py`
+- Update the docs: `README.md` and `docs/index.md` together, `docs/cli.md` for CLI changes,
+  `docs/api.md` for new public APIs
 
 ## Task Automation with Poe
 

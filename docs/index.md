@@ -1,8 +1,9 @@
 # PyOCMF
 
 [![PyPI version](https://img.shields.io/pypi/v/pyocmf)](https://pypi.org/project/pyocmf/)
-[![Python versions](https://img.shields.io/pypi/pyversions/pyocmf)](https://pypi.org/project/pyocmf/)
+[![Python versions](https://img.shields.io/pypi/pyversions/pyocmf?logo=python&logoColor=white)](https://pypi.org/project/pyocmf/)
 [![CI](https://github.com/paul-ww/pyocmf/actions/workflows/test.yml/badge.svg)](https://github.com/paul-ww/pyocmf/actions/workflows/test.yml)
+[![ty](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ty/main/assets/badge/v0.json)](https://github.com/astral-sh/ty)
 
 Python library for parsing, validating, and verifying OCMF (Open Charge Metering Format) signatures from electric vehicle charging stations.
 
@@ -17,7 +18,7 @@ Python library for parsing, validating, and verifying OCMF (Open Charge Metering
 - Type-safe models using Pydantic
 - Accepts every record the Transparenzsoftware accepts, reports spec deviations as warnings, and offers an optional strict mode
 - Eichrecht compliance checks aligned with the Transparenzsoftware
-- Command-line interface for validation and verification
+- Command-line interface for verification, compliance checks and inspection
 
 ## Installation
 
@@ -53,8 +54,8 @@ print(ocmf.payload.GI)  # Gateway ID: "KEBA_KCP30"
 print(ocmf.payload.GS)  # Gateway serial number
 print(ocmf.payload.RD)  # List of meter readings
 
-# Verify signature (requires pyocmf[crypto])
-is_valid = ocmf.verify_signature(public_key_hex)
+# Verify signature with a hex or base64 public key (requires pyocmf[crypto])
+is_valid = ocmf.verify_signature(public_key)
 
 # Strings with the key appended (OCMF|payload|signature|key), as in QR codes for the
 # Transparenzsoftware, verify without one; parsing them emits a SpecWarning
@@ -64,14 +65,17 @@ is_valid = OCMF.from_string(ocmf_with_key).verify_signature()
 ## Command Line Interface
 
 ```bash
-# Validate an OCMF string
-ocmf 'OCMF|{"FV":"1.0",...}|{"SD":"3045..."}'
+# Verify the signature and check Eichrecht compliance
+ocmf 'OCMF|{"FV":"1.0",...}|{"SD":"3045..."}' --public-key 3059301306072A8648CE3D...
 
-# Validate and verify signature
-ocmf 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D...
-
-# Validate from XML file (extracts public key automatically)
+# XML files carry their public keys; their transactions are checked as a whole
 ocmf charging_session.xml
+
+# Check a begin and an end record as one transaction
+ocmf check begin.xml end.xml
+
+# Show the parsed record
+ocmf inspect 'OCMF|{...}|{...}'
 ```
 
 See the [CLI Reference](cli.md) for details.
@@ -91,6 +95,11 @@ See the [CLI Reference](cli.md) for details.
         if entry.public_key:
             is_valid = entry.verify_signature()
             print(f"Signature: {'Valid' if is_valid else 'Invalid'}")
+
+    # Records sharing a transactionId are checked as one transaction, as the
+    # Transparenzsoftware does; other records are checked on their own
+    for result in container.check_eichrecht(errors_only=True):
+        print(result.transaction_id, "compliant" if result.is_compliant else result.issues)
     ```
 
 ??? example "Eichrecht compliance checking"
@@ -112,9 +121,11 @@ See the [CLI Reference](cli.md) for details.
 
     The checks follow the Transparenzsoftware. They compare the billing-relevant begin and end
     readings (loss-compensated registers take precedence) and report errors for a meter status
-    other than OK, an energy error flag, decreasing values or timestamps, mismatching OBIS
-    codes, units or serial numbers, and invalid identification levels. Time synchronization,
-    time error flags, cable loss and identification data mismatches are reported as warnings.
+    other than OK, an energy error flag, a missing or repeated begin or end reading,
+    decreasing values or timestamps, mismatching OBIS codes, units, serial numbers or
+    pagination contexts, and invalid identification levels. Time synchronization, time error
+    flags, cable loss, identification data mismatches and pagination gaps are reported as
+    warnings.
 
 ??? example "Public key metadata"
     Extract structured metadata from public keys per OCMF spec Table 23.
@@ -179,7 +190,7 @@ for warning in caught:
 ```
 
 Pass `strict=True` to reject non-compliant records instead. The deviation is raised as
-the usual `OcmfPayloadError` or `OcmfSignatureError`:
+the usual `OcmfFormatError`, `OcmfPayloadError` or `OcmfSignatureError`:
 
 ```python
 ocmf = OCMF.from_string(ocmf_string, strict=True)

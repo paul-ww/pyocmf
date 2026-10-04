@@ -74,6 +74,18 @@ class TestAllCommand:
         assert "COMPLIANT WITH WARNINGS" in result.stdout
         assert "OCMF Structure:" in result.stdout
 
+    @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
+    def test_all_xml_verifies_every_record_and_checks_the_transaction(
+        self, cli_runner: CliRunner, transparency_xml_dir: pathlib.Path
+    ) -> None:
+        xml_file = transparency_xml_dir / "test_ocmf_ebee_01.xml"
+
+        result = cli_runner.invoke(app, ["all", str(xml_file)])
+
+        assert result.exit_code == 0
+        assert result.stdout.count("Signature verification: VALID") == 2
+        assert "Transaction 15060 (2 records)" in result.stdout
+
 
 class TestVerifyCommand:
     @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
@@ -225,6 +237,27 @@ class TestCheckCommand:
         assert result.exit_code == 0
         assert "COMPLIANT" in result.stdout
         assert "transaction pair" in result.stdout
+
+    def test_check_xml_transaction(
+        self, cli_runner: CliRunner, transparency_xml_dir: pathlib.Path
+    ) -> None:
+        xml_file = transparency_xml_dir / "test_ocmf_ebee_01.xml"
+
+        result = cli_runner.invoke(app, ["check", str(xml_file)])
+
+        assert result.exit_code == 0
+        assert "Transaction 15060 (2 records)" in result.stdout
+        assert "COMPLIANT" in result.stdout
+
+    def test_check_xml_transaction_compares_begin_and_end(
+        self, cli_runner: CliRunner, transparency_xml_dir: pathlib.Path
+    ) -> None:
+        xml_file = transparency_xml_dir / "test_ocmf_ebee_02.xml"
+
+        result = cli_runner.invoke(app, ["check", str(xml_file)])
+
+        assert result.exit_code == 1
+        assert "VALUE_REGRESSION" in result.stdout
 
     def test_check_invalid_ocmf(self, cli_runner: CliRunner) -> None:
         result = cli_runner.invoke(app, ["check", "INVALID|data|here"])

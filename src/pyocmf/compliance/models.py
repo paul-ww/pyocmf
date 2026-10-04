@@ -5,11 +5,15 @@ from dataclasses import dataclass
 
 
 class IssueSeverity(enum.StrEnum):
+    """Severity of an Eichrecht issue: errors fail compliance, warnings do not."""
+
     ERROR = "error"
     WARNING = "warning"
 
 
 class IssueCode(enum.StrEnum):
+    """Identifies the rule an Eichrecht issue comes from."""
+
     # Reading-level issues
     METER_STATUS = "METER_STATUS"
     ERROR_FLAGS = "ERROR_FLAGS"
@@ -36,6 +40,8 @@ class IssueCode(enum.StrEnum):
 
 @dataclass
 class EichrechtIssue:
+    """A single finding of an Eichrecht compliance check."""
+
     code: IssueCode
     message: str
     field: str | None = None

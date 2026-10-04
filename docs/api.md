@@ -108,6 +108,12 @@ A single OCMF record with its associated public key.
 
 ::: pyocmf.utils.xml.OcmfRecord
 
+### EichrechtResult
+
+Eichrecht issues of one transaction or standalone record of an XML file.
+
+::: pyocmf.utils.xml.EichrechtResult
+
 ## Exceptions
 
 All exceptions inherit from `PyOCMFError`.

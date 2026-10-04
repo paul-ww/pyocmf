@@ -36,8 +36,10 @@ Every command detects the input format, so no flags are needed:
 - **Transparenzsoftware XML file**: `ocmf charging_session.xml`. The public keys stored in
   the file are used for verification.
 
-An XML file can hold several records. `ocmf`, `ocmf check` and `ocmf verify` use the first
-one; `ocmf verify --all` verifies all of them and `ocmf inspect` shows all of them.
+An XML file can hold several records. `ocmf` verifies the signature of every record, and
+`ocmf` and `ocmf check` check Eichrecht compliance per transaction (see
+[XML Transactions](#xml-transactions)). `ocmf verify` verifies the first record, or all of
+them with `--all`, and `ocmf inspect` shows all of them.
 
 ## Public Keys
 
@@ -52,7 +54,7 @@ any key, the signature is not verified.
 ### Default Command
 
 `ocmf <input>` is short for `ocmf all <input>`. It verifies the signature and then checks
-Eichrecht compliance:
+Eichrecht compliance. For an XML file, it verifies every record and checks each transaction:
 
 ```bash
 ocmf 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D...
@@ -89,6 +91,9 @@ ocmf check 'OCMF|{...}|{...}'
 # A begin and an end record, as OCMF strings or XML files
 ocmf check 'OCMF|{...begin...}|{...}' 'OCMF|{...end...}|{...}'
 
+# Every transaction and standalone record of an XML file
+ocmf check charging_session.xml
+
 # Show warnings in addition to errors
 ocmf check 'OCMF|{...}|{...}' --verbose
 ```
@@ -117,6 +122,21 @@ Warnings:
 - Mismatching identification data
 - An end pagination counter not above the begin counter
 
+#### XML Transactions
+
+Like the Transparenzsoftware, the CLI pairs the records of an XML file by the
+`transactionId` and `context` attributes of their `<value>` elements:
+
+```xml
+<value transactionId="15060" context="Transaction.Begin">...</value>
+<value transactionId="15060" context="Transaction.End">...</value>
+```
+
+Records sharing a `transactionId` form a transaction. It needs exactly one record with the
+context `Transaction.Begin` and one with `Transaction.End`; otherwise the transaction is not
+compliant. Records without a `transactionId`, or alone in their transaction, are checked on
+their own. When two files are given, the first record of each is used.
+
 ### `inspect` - Show the Parsed Record
 
 ```bash
@@ -140,7 +160,7 @@ ocmf inspect transaction.xml --strict
 ## Exit Codes
 
 The CLI exits with `1` if the input cannot be parsed, the signature is invalid or cannot
-be checked, or the record is not Eichrecht compliant. Otherwise it exits with `0`;
+be checked, or a record or transaction is not Eichrecht compliant. Otherwise it exits with `0`;
 compliance warnings do not change the exit code.
 
 ## Output Examples
@@ -172,6 +192,17 @@ Warnings:
 ```
 
 A record with warnings only is reported as `COMPLIANT WITH WARNINGS`.
+
+### XML Transaction
+
+```
+Transaction 15060 (2 records)
+
+✗ Eichrecht compliance: NOT COMPLIANT
+
+Errors:
+  [RV] End value (7753) must be >= begin value (7763) (VALUE_REGRESSION)
+```
 
 ### Invalid Signature
 

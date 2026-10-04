@@ -1,7 +1,8 @@
 """Eichrecht parity with the Transparenzsoftware law checks.
 
-Ports the cases of OCMFVerifiedDataTest and OCMFVerificationParserTest, plus the
-transaction outcomes the Transparenzsoftware reports for its XML corpus.
+Ports the cases of OCMFVerifiedDataTest and OCMFVerificationParserTest, the transaction
+pairing of VerifierTest, plus the transaction outcomes the Transparenzsoftware reports for
+its XML corpus.
 """
 
 from __future__ import annotations
@@ -9,6 +10,7 @@ from __future__ import annotations
 import decimal
 import pathlib
 import warnings
+from collections.abc import Sequence
 
 import pytest
 
@@ -20,7 +22,7 @@ from pyocmf.enums.identifiers import UserAssignmentStatus
 from pyocmf.enums.reading import MeterReadingReason, MeterStatus
 from pyocmf.enums.units import EnergyUnit
 from pyocmf.exceptions import SpecWarning
-from pyocmf.utils.xml import OcmfContainer
+from pyocmf.utils.xml import CONTEXT_BEGIN, CONTEXT_END, OcmfContainer
 
 from ..helpers import (
     assert_has_error,
@@ -30,6 +32,7 @@ from ..helpers import (
     create_test_reading,
     create_transaction_pair,
     get_transaction_pair,
+    write_xml,
 )
 
 IMPORT_OBIS = "01-00:01.08.00*FF"
@@ -352,3 +355,68 @@ class TestCorpusTransactions:
         self, transparency_xml_dir: pathlib.Path, xml_file: str
     ) -> None:
         assert IssueCode.METER_STATUS in _single_payload_errors(transparency_xml_dir / xml_file)
+
+
+class TestXmlTransactionPairing:
+    """VerifierTest: verifyTransaction() pairs XML values by transactionId and context."""
+
+    def _pairing_errors(
+        self, tmp_path: pathlib.Path, values: Sequence[tuple[str, str, str | None]]
+    ) -> set[IssueCode]:
+        """Check one transaction of (begin or end record, pagination, context) values."""
+        records = []
+        for kind, pagination, context in values:
+            begin, end = create_transaction_pair(begin_pagination=pagination)
+            records.append((begin if kind == "begin" else end, 1, context))
+        [result] = OcmfContainer.from_xml(write_xml(tmp_path / "t.xml", records)).check_eichrecht()
+        return {i.code for i in result.issues}
+
+    # verifyTransactionTestNoStartValues
+    def test_no_start_value(self, tmp_path: pathlib.Path) -> None:
+        values = [("begin", "T1", None), ("end", "T1", CONTEXT_END)]
+        assert self._pairing_errors(tmp_path, values) == {IssueCode.BEGIN_TX}
+
+    # verifyTransactionTestNoStopValues
+    def test_no_stop_value(self, tmp_path: pathlib.Path) -> None:
+        values = [("begin", "T1", CONTEXT_BEGIN), ("end", "T1", None)]
+        assert self._pairing_errors(tmp_path, values) == {IssueCode.END_TX}
+
+    # verifyTransactionTooManyStart
+    def test_too_many_start_values(self, tmp_path: pathlib.Path) -> None:
+        values = [
+            ("begin", "T1", CONTEXT_BEGIN),
+            ("begin", "T3", CONTEXT_BEGIN),
+            ("end", "T1", CONTEXT_END),
+        ]
+        assert self._pairing_errors(tmp_path, values) == {IssueCode.MULTIPLE_BEGIN}
+
+    # verifyTransactionTooManyStop
+    def test_too_many_stop_values(self, tmp_path: pathlib.Path) -> None:
+        values = [
+            ("begin", "T1", CONTEXT_BEGIN),
+            ("end", "T1", CONTEXT_END),
+            ("end", "T3", CONTEXT_END),
+        ]
+        assert self._pairing_errors(tmp_path, values) == {IssueCode.MULTIPLE_END}
+
+    @pytest.mark.parametrize(
+        ("xml_file", "expected_errors"),
+        [
+            ("test_ocmf_ebee_01.xml", set()),
+            ("brainpoolP256r1.xml", set()),
+            ("nistP384_0Wh.xml", set()),
+            ("OCMF_Test_Data_00.xml", set()),
+            ("ocmf_sec.xml", set()),
+            ("test_ocmf_ebee_02.xml", {IssueCode.VALUE_REGRESSION}),
+            ("20211007-device-with-evt-ocmf-sss-ses.xml", {IssueCode.METER_STATUS}),
+        ],
+    )
+    def test_corpus_transactions(
+        self, transparency_xml_dir: pathlib.Path, xml_file: str, expected_errors: set[IssueCode]
+    ) -> None:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SpecWarning)
+            results = OcmfContainer.from_xml(transparency_xml_dir / xml_file).check_eichrecht()
+        [transaction] = [r for r in results if r.transaction_id is not None]
+        assert expected_errors <= _errors(transaction.issues)
+        assert transaction.is_compliant is not expected_errors

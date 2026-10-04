@@ -73,7 +73,7 @@ is_valid = OCMF.from_string(ocmf_with_key).verify_signature()
 # Verify the signature and check Eichrecht compliance
 ocmf 'OCMF|{"FV":"1.0",...}|{"SD":"3045..."}' --public-key 3059301306072A8648CE3D...
 
-# XML files carry their public keys
+# XML files carry their public keys; their transactions are checked as a whole
 ocmf charging_session.xml
 
 # Check a begin and an end record as one transaction
@@ -100,6 +100,11 @@ for entry in container:
     if entry.public_key:
         is_valid = entry.verify_signature()
         print(f"Signature: {'Valid' if is_valid else 'Invalid'}")
+
+# Records sharing a transactionId are checked as one transaction, as the
+# Transparenzsoftware does; other records are checked on their own
+for result in container.check_eichrecht(errors_only=True):
+    print(result.transaction_id, "compliant" if result.is_compliant else result.issues)
 ```
 
 </details>

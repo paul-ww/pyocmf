@@ -41,7 +41,7 @@ from pyocmf.exceptions import (
 )
 from pyocmf.models import OBIS, CableLossCompensation, OCMFTimestamp, PublicKey
 from pyocmf.registries.obis import get_obis_info, is_billing_relevant
-from pyocmf.utils.xml import OcmfContainer, OcmfRecord
+from pyocmf.utils.xml import EichrechtResult, OcmfContainer, OcmfRecord
 
 __all__ = [  # ruff: ignore[unsorted-dunder-all]
     # Version
@@ -76,6 +76,7 @@ __all__ = [  # ruff: ignore[unsorted-dunder-all]
     # Utilities
     "OcmfContainer",
     "OcmfRecord",
+    "EichrechtResult",
     # Registries
     "get_obis_info",
     "is_billing_relevant",

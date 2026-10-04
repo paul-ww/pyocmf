@@ -13,14 +13,7 @@ import warnings
 from typing import TYPE_CHECKING, Any
 
 import pyocmf
-from pyocmf import (
-    OCMF,
-    IssueSeverity,
-    OcmfContainer,
-    PyOCMFError,
-    SpecWarning,
-    check_eichrecht_transaction,
-)
+from pyocmf import OCMF, IssueSeverity, OcmfContainer, PyOCMFError, SpecWarning
 from pyocmf.enums.reading import MeterReadingReason, is_end_reason
 
 if TYPE_CHECKING:
@@ -28,6 +21,9 @@ if TYPE_CHECKING:
 
     from pyocmf.compliance import EichrechtIssue
     from pyocmf.core import Payload, Reading
+    from pyocmf.utils.xml import EichrechtResult
+
+    Parsed = tuple[list[tuple[OCMF, str | None]], OcmfContainer | None]
 
 
 def runtime_info() -> str:
@@ -36,31 +32,32 @@ def runtime_info() -> str:
 
 
 def analyze_text(text: str, public_key: str | None, strict: bool) -> str:
-    def parse() -> list[tuple[OCMF, str | None]]:
-        return [(OCMF.from_string(text, strict=strict), public_key or None)]
+    def parse() -> Parsed:
+        return [(OCMF.from_string(text, strict=strict), public_key or None)], None
 
     return _analyze(parse, given_key_source="input")
 
 
 def analyze_xml(content: str, strict: bool) -> str:
-    def parse() -> list[tuple[OCMF, str | None]]:
+    def parse() -> Parsed:
         with tempfile.TemporaryDirectory() as directory:
             path = pathlib.Path(directory) / "upload.xml"
             path.write_text(content, encoding="utf-8")
             container = OcmfContainer.from_xml(path, strict=strict)
-        return [
+        records = [
             (record.ocmf, record.public_key.key if record.public_key else None)
             for record in container
         ]
+        return records, container
 
     return _analyze(parse, given_key_source="file")
 
 
-def _analyze(parse: Callable[[], list[tuple[OCMF, str | None]]], given_key_source: str) -> str:
+def _analyze(parse: Callable[[], Parsed], given_key_source: str) -> str:
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", SpecWarning)
         try:
-            parsed = parse()
+            parsed, container = parse()
         except PyOCMFError as e:
             return json.dumps({"ok": False, "error": str(e), "errorType": type(e).__name__})
 
@@ -69,7 +66,7 @@ def _analyze(parse: Callable[[], list[tuple[OCMF, str | None]]], given_key_sourc
     return json.dumps({
         "ok": True,
         "records": records,
-        "transaction": _transaction([ocmf for ocmf, _ in parsed]),
+        "transaction": _transaction(container),
         "specDeviations": deviations,
     })
 
@@ -99,25 +96,24 @@ def _record(ocmf: OCMF, public_key: str | None, given_key_source: str) -> dict[s
     }
 
 
-def _transaction(records: list[OCMF]) -> dict[str, Any] | None:
-    begins = [o for o in records if _has_begin(o.payload) and not _has_end(o.payload)]
-    ends = [o for o in records if _has_end(o.payload) and not _has_begin(o.payload)]
-    if not begins or not ends:
+def _transaction(container: OcmfContainer | None) -> dict[str, Any] | None:
+    # Records are paired by their transactionId and context, as the Transparenzsoftware does
+    results = container.check_eichrecht() if container else []
+    result = next((r for r in results if r.transaction_id is not None), None)
+    if result is None:
         return None
-    begin, end = begins[0].payload, ends[-1].payload
+    begin, end = _begin_and_end(result)
     return {
         "pagination": [begin.PG, end.PG],
-        "issues": _issues(check_eichrecht_transaction(begin, end)),
+        "issues": _issues(result.issues),
         "energy": _energy([*begin.RD, *end.RD]),
     }
 
 
-def _has_begin(payload: Payload) -> bool:
-    return any(r.TX == MeterReadingReason.BEGIN for r in payload.RD)
-
-
-def _has_end(payload: Payload) -> bool:
-    return any(is_end_reason(r.TX) for r in payload.RD)
+def _begin_and_end(result: EichrechtResult) -> tuple[Payload, Payload]:
+    begin = next((r for r in result.records if r.context == "Transaction.Begin"), None)
+    end = next((r for r in reversed(result.records) if r.context == "Transaction.End"), None)
+    return (begin or result.records[0]).ocmf.payload, (end or result.records[-1]).ocmf.payload
 
 
 def _energy(readings: list[Reading]) -> dict[str, Any] | None:

@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Annotated
 
 import typer
 
-from pyocmf.compliance import IssueSeverity
 from pyocmf.core.ocmf import OCMF
 from pyocmf.exceptions import PyOCMFError
 
@@ -24,7 +23,7 @@ from .utils import (
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from pyocmf.utils.xml import OcmfRecord
+    from pyocmf.utils.xml import OcmfContainer, OcmfRecord
 
 
 StrictOption = Annotated[
@@ -70,30 +69,54 @@ def all_checks(
 ) -> None:
     """Run both signature verification and compliance check (default command)."""
     with _exit_on_error():
-        input_type = detect_input_type(ocmf_input)
-
-        if input_type == InputType.XML:
+        if detect_input_type(ocmf_input) == InputType.XML:
             container = load_xml_container(ocmf_input, strict=strict)
-            record = container[0]
-            ocmf = record.ocmf
-            key_to_use = _resolve_public_key(record, public_key)
+            for i, record in enumerate(container, 1):
+                if len(container) > 1:
+                    console.print(f"\n[bold cyan]Entry {i}/{len(container)}:[/bold cyan]")
+                _verify_or_skip(record.ocmf, _resolve_public_key(record, public_key))
+            console.print()
+            is_compliant = _check_xml(container, verbose)
+            records = [record.ocmf for record in container]
         else:
             ocmf = parse_ocmf_string(ocmf_input, strict=strict)
-            key_to_use = public_key or ocmf.embedded_public_key
-
-        if key_to_use:
-            verify_signature(ocmf, key_to_use)
-        else:
-            console.print(
-                "[yellow]⚠[/yellow] No public key available - skipping signature verification"
-            )
-
-        console.print()
-        issues = ocmf.check_eichrecht(errors_only=not verbose)
-        display_compliance_result(issues, ocmf.is_eichrecht_compliant)
+            _verify_or_skip(ocmf, public_key or ocmf.embedded_public_key)
+            console.print()
+            is_compliant = display_compliance_result(ocmf.check_eichrecht(errors_only=not verbose))
+            records = [ocmf]
 
         if verbose:
-            display_ocmf_structure(ocmf)
+            for ocmf in records:
+                display_ocmf_structure(ocmf)
+        if not is_compliant:
+            sys.exit(1)
+
+
+def _verify_or_skip(ocmf: OCMF, public_key: str | None) -> None:
+    if public_key:
+        verify_signature(ocmf, public_key)
+    else:
+        console.print(
+            "[yellow]⚠[/yellow] No public key available - skipping signature verification"
+        )
+
+
+def _check_xml(container: OcmfContainer, verbose: bool) -> bool:
+    """Check each transaction and standalone record of an XML file; True if all comply."""
+    results = container.check_eichrecht(errors_only=not verbose)
+    positions = {id(record): i for i, record in enumerate(container, 1)}
+    for result in results:
+        if result.transaction_id is not None:
+            console.print(
+                f"[bold cyan]Transaction {result.transaction_id}[/bold cyan] "
+                f"({len(result.records)} records)"
+            )
+        elif len(results) > 1:
+            position = positions[id(result.records[0])]
+            console.print(f"[bold cyan]Record {position}/{len(container)}[/bold cyan]")
+        display_compliance_result(result.issues)
+        console.print()
+    return all(result.is_compliant for result in results)
 
 
 # Typer renders docstrings as Rich markup; the backslash keeps [crypto] from vanishing
@@ -144,28 +167,28 @@ def check(
 ) -> None:
     """Check Eichrecht regulatory compliance.
 
-    Transaction checks need a begin and an end reading, either within one record or
-    as a begin and an end record.
+    Transaction checks need a begin and an end reading: within one record, as a begin
+    and an end record, or as records of an XML file that share a transaction ID.
     """
     with _exit_on_error():
-        ocmf1 = load_ocmf(input1, strict=strict)
-
         if input2:
+            ocmf1 = load_ocmf(input1, strict=strict)
             ocmf2 = load_ocmf(input2, strict=strict)
             issues = ocmf1.check_eichrecht(other=ocmf2, errors_only=not verbose)
-            is_compliant = not any(i.severity == IssueSeverity.ERROR for i in issues)
-            label = "transaction pair"
+            is_compliant = display_compliance_result(issues, "transaction pair")
+        elif detect_input_type(input1) == InputType.XML:
+            is_compliant = _check_xml(load_xml_container(input1, strict=strict), verbose)
         else:
+            ocmf = parse_ocmf_string(input1, strict=strict)
             console.print(
                 "[yellow]ℹ[/yellow] Single OCMF record: transaction checks only run if it "  # ruff: ignore[ambiguous-unicode-character-string]
                 "holds both the begin and the end reading. Otherwise pass both records:"
             )
             console.print("  [dim]ocmf check <begin-ocmf> <end-ocmf>[/dim]\n")
-            issues = ocmf1.check_eichrecht(errors_only=not verbose)
-            is_compliant = ocmf1.is_eichrecht_compliant
-            label = None
+            is_compliant = display_compliance_result(ocmf.check_eichrecht(errors_only=not verbose))
 
-        display_compliance_result(issues, is_compliant, label)
+        if not is_compliant:
+            sys.exit(1)
 
 
 def inspect(

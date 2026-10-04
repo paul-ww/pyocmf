@@ -1,142 +1,120 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PyOCMF Demo</title>
-        <link rel="stylesheet" href="css/styles.css" />
-    </head>
-    <body>
-        <header>
-            <div class="container">
-                <h1>PyOCMF Demo</h1>
-                <p class="subtitle">
-                    Parse and validate OCMF charging data in your browser
-                </p>
-            </div>
-        </header>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PyOCMF Demo</title>
+    <meta
+      name="description"
+      content="Check OCMF charging records in your browser: signature, Eichrecht compliance and spec conformance."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="masthead-inner">
+        <div>
+          <h1>PyOCMF</h1>
+          <p>Check OCMF charging records in your browser. Nothing leaves this page.</p>
+        </div>
+        <p id="runtimeStatus" class="runtime" role="status">Starting Python…</p>
+      </div>
+    </header>
 
-        <main class="container">
-            <!-- Loading Section -->
-            <div id="loadingSection" class="content-section">
-                <div class="loading-container">
-                    <h2>Initializing Python Runtime</h2>
-                    <div class="progress-bar-container">
-                        <div id="loadingProgress" class="progress-bar"></div>
-                    </div>
-                    <p id="loadingText">Loading Pyodide...</p>
-                </div>
-            </div>
+    <main class="sheet">
+      <section class="input" aria-labelledby="inputHeading">
+        <h2 id="inputHeading" class="visually-hidden">Input</h2>
 
-            <!-- Input Section -->
-            <div id="inputSection" class="content-section hidden">
-                <div class="input-container">
-                    <div class="input-methods">
-                        <button class="method-tab active" data-method="text">
-                            Text Input
-                        </button>
-                        <button class="method-tab" data-method="file">
-                            XML File
-                        </button>
-                    </div>
+        <div class="step">
+          <h3><span class="step-number">1</span>Record</h3>
+          <div class="segmented" role="tablist" aria-label="Input type">
+            <button id="modeText" type="button" role="tab" aria-selected="true" aria-controls="textPanel">
+              Paste record
+            </button>
+            <button id="modeXml" type="button" role="tab" aria-selected="false" aria-controls="xmlPanel">
+              Open XML file
+            </button>
+          </div>
 
-                    <!-- Text Input -->
-                    <div id="textInputMethod" class="input-method">
-                        <div class="form-group">
-                            <label for="ocmfInput">OCMF Data:</label>
-                            <textarea
-                                id="ocmfInput"
-                                rows="6"
-                                placeholder="Paste OCMF string here (OCMF|{...}|{...})..."
-                            ></textarea>
-                        </div>
+          <div id="textPanel" role="tabpanel" aria-labelledby="modeText">
+            <label class="field-label" for="ocmfInput">OCMF string, plain or hex-encoded</label>
+            <textarea
+              id="ocmfInput"
+              rows="7"
+              spellcheck="false"
+              placeholder='OCMF|{"FV":"1.0","GI":…}|{"SD":"3045…"}'
+            ></textarea>
+          </div>
 
-                        <div class="form-group">
-                            <label for="publicKeyInput"
-                                >Public Key (hex, optional):</label
-                            >
-                            <input
-                                type="text"
-                                id="publicKeyInput"
-                                placeholder="3059301306072A8648CE3D020106082A8648CE3D03010703420004..."
-                            />
-                        </div>
+          <div id="xmlPanel" role="tabpanel" aria-labelledby="modeXml" hidden>
+            <label class="dropzone" for="xmlInput" id="dropzone">
+              <span id="xmlName">Choose or drop a Transparenzsoftware XML file</span>
+              <small>Public keys are read from the file</small>
+            </label>
+            <input id="xmlInput" type="file" accept=".xml,text/xml,application/xml" class="visually-hidden" />
+          </div>
 
-                        <div class="button-group">
-                            <button id="parseBtn" class="btn btn-primary">
-                                Parse & Validate
-                            </button>
-                            <button
-                                id="loadExampleBtn"
-                                class="btn btn-secondary"
-                            >
-                                Load Example
-                            </button>
-                        </div>
-                    </div>
+          <div class="examples">
+            <label class="field-label" for="exampleSelect">Or load an example</label>
+            <select id="exampleSelect">
+              <option value="">Choose an example…</option>
+            </select>
+            <p id="exampleDescription" class="hint"></p>
+          </div>
+        </div>
 
-                    <!-- File Upload -->
-                    <div id="fileInputMethod" class="input-method hidden">
-                        <div class="form-group">
-                            <label for="xmlFileInput">Upload XML File:</label>
-                            <input
-                                type="file"
-                                id="xmlFileInput"
-                                accept=".xml"
-                                class="file-input"
-                            />
-                            <p class="help-text">
-                                Transparenzsoftware-compatible XML files
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="step" id="keyStep">
+          <h3><span class="step-number">2</span>Public key <small>optional</small></h3>
+          <label class="field-label" for="publicKeyInput">Hex or base64</label>
+          <input id="publicKeyInput" type="text" spellcheck="false" autocomplete="off" placeholder="3059301306072A8648CE3D0201…" />
+          <p id="keyHint" class="hint">Without a key, the signature is not verified.</p>
+        </div>
 
-            <!-- Result Section -->
-            <div id="resultSection" class="content-section hidden">
-                <div class="result-container">
-                    <div class="result-header">
-                        <h2>Results</h2>
-                        <button
-                            class="btn btn-secondary"
-                            onclick="location.reload()"
-                        >
-                            Parse Another
-                        </button>
-                    </div>
-                    <div id="resultContainer"></div>
-                </div>
-            </div>
+        <div class="step">
+          <h3><span class="step-number">3</span>Check</h3>
+          <label class="checkbox" for="strictInput">
+            <input id="strictInput" type="checkbox" />
+            <span>Strict mode <small>Reject records that deviate from the OCMF Spec</small></span>
+          </label>
+          <button id="checkButton" type="button" class="primary" disabled>Preparing Python…</button>
+        </div>
+      </section>
 
-            <!-- Error Section -->
-            <div id="errorSection" class="content-section hidden">
-                <div class="error-container">
-                    <h2>Error</h2>
-                    <p id="errorMessage" class="error-message"></p>
-                    <button class="btn btn-primary" onclick="location.reload()">
-                        Try Again
-                    </button>
-                </div>
-            </div>
-        </main>
+      <section class="result" aria-labelledby="resultHeading" aria-live="polite">
+        <h2 id="resultHeading" class="visually-hidden">Result</h2>
+        <div id="result">
+          <div class="empty">
+            <p class="empty-title">Results appear here</p>
+            <p>Each record is checked three ways:</p>
+            <dl class="empty-list">
+              <dt>Signature</dt>
+              <dd>Is the record unchanged since the meter signed it?</dd>
+              <dt>Eichrecht</dt>
+              <dd>Can the charging session be billed under German calibration law?</dd>
+              <dt>OCMF Spec</dt>
+              <dd>Does the record follow the format specification?</dd>
+            </dl>
+          </div>
+        </div>
+      </section>
+    </main>
 
-        <footer>
-            <div class="container">
-                <p>
-                    <a href="https://github.com/paul-ww/pyocmf" target="_blank"
-                        >PyOCMF</a
-                    >
-                    | Powered by
-                    <a href="https://pyodide.org" target="_blank">Pyodide</a>
-                </p>
-            </div>
-        </footer>
+    <footer class="colophon">
+      <p>
+        <a href="https://github.com/paul-ww/pyocmf">PyOCMF</a> runs here with
+        <a href="https://pyodide.org">Pyodide</a>. Unofficial; for binding verification use the
+        <a href="https://www.safe-ev.de/de/transparenzsoftware.php">Transparenzsoftware</a>.
+      </p>
+    </footer>
 
-        <script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
-        <script src="js/pyodide-loader.js"></script>
-        <script src="js/ocmf-bridge.js"></script>
-        <script src="js/ui-controller.js"></script>
-        <script src="js/main.js"></script>
-    </body>
+    <script src="https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js"></script>
+    <script src="js/runtime.js"></script>
+    <script src="js/app.js"></script>
+  </body>
 </html>

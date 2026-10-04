@@ -117,6 +117,15 @@ class TestVerifyCommand:
         assert result.exit_code == 1
         assert "Signature verification failed" in result.stdout
 
+    @pytest.mark.skipif(not CRYPTOGRAPHY_AVAILABLE, reason="cryptography not installed")
+    def test_verify_uses_embedded_public_key(
+        self, cli_runner: CliRunner, keba_ocmf_string: str, keba_public_key: str
+    ) -> None:
+        result = cli_runner.invoke(app, ["verify", f"{keba_ocmf_string}|{keba_public_key}"])
+
+        assert result.exit_code == 0
+        assert "VALID" in result.stdout
+
     def test_verify_without_public_key(self, cli_runner: CliRunner, keba_ocmf_string: str) -> None:
         result = cli_runner.invoke(app, ["verify", keba_ocmf_string])
 

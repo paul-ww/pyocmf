@@ -7,7 +7,7 @@
 Python library for parsing, validating, and verifying OCMF (Open Charge Metering Format) signatures from electric vehicle charging stations.
 
 !!! tip "Try it in your browser"
-    **[Launch the Browser Demo](demo/index.html)** - No installation required! Parse and validate OCMF data directly in your browser using Pyodide.
+    **[Launch the Browser Demo](demo/index.html)** - No installation required! Paste a record, open an XML file or scan a QR code, and check it directly in your browser using Pyodide.
 
 ## Features
 
@@ -55,6 +55,10 @@ print(ocmf.payload.RD)  # List of meter readings
 
 # Verify signature (requires pyocmf[crypto])
 is_valid = ocmf.verify_signature(public_key_hex)
+
+# Strings with the key appended (OCMF|payload|signature|key), as in QR codes for the
+# Transparenzsoftware, verify without one; parsing them emits a SpecWarning
+is_valid = OCMF.from_string(ocmf_with_key).verify_signature()
 ```
 
 ## Command Line Interface

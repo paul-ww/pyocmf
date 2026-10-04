@@ -20,8 +20,9 @@ from pyocmf.exceptions import (
 )
 from pyocmf.utils.xml import OcmfContainer
 
-from ..conftest import KEBA_OCMF_STRING
+from ..conftest import KEBA_OCMF_STRING, KEBA_PUBLIC_KEY
 from ..helpers import assert_has_error, assert_no_errors, create_transaction_pair
+from ..test_compliance.test_transparenzsoftware_parity import EF_T_PUBLIC_KEY
 
 # OCMFVerificationParserTest: pre-1.0 ABL record (FV 0.1, VI/VV keys, IS as level, EI)
 ABL_PAYLOAD = (
@@ -161,6 +162,71 @@ class TestExceededLimits:
     def test_appended_public_key_section(self) -> None:
         ocmf = _parse_with_spec_warning(f"{ABL_OCMF}|{ABL_PUBLIC_KEY}", "fourth OCMF section")
         assert ocmf.signature.SD.startswith("3046")
+
+
+requires_crypto = pytest.mark.skipif(
+    not CRYPTOGRAPHY_AVAILABLE, reason="cryptography package not installed"
+)
+
+
+def _parse_quietly(ocmf_string: str) -> OCMF:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SpecWarning)
+        return OCMF.from_string(ocmf_string)
+
+
+class TestEmbeddedPublicKey:
+    """Public key appended as fourth section, as in Transparenzsoftware QR codes."""
+
+    def test_key_is_kept(self) -> None:
+        ocmf = _parse_quietly(f"{KEBA_OCMF_STRING}|{KEBA_PUBLIC_KEY}")
+        assert ocmf.embedded_public_key == KEBA_PUBLIC_KEY
+
+    def test_whitespace_in_key_is_ignored(self) -> None:
+        spaced = " ".join(KEBA_PUBLIC_KEY[i : i + 4] for i in range(0, len(KEBA_PUBLIC_KEY), 4))
+        ocmf = _parse_quietly(f"{KEBA_OCMF_STRING}|{spaced}\n")
+        assert ocmf.embedded_public_key == KEBA_PUBLIC_KEY
+
+    def test_no_key_without_fourth_section(self) -> None:
+        assert OCMF.from_string(KEBA_OCMF_STRING).embedded_public_key is None
+
+    def test_key_is_not_serialized(self) -> None:
+        ocmf = _parse_quietly(f"{KEBA_OCMF_STRING}|{KEBA_PUBLIC_KEY}")
+        assert KEBA_PUBLIC_KEY not in ocmf.to_string()
+
+    @requires_crypto
+    def test_verify_uses_embedded_key(self) -> None:
+        ocmf = _parse_quietly(f"{KEBA_OCMF_STRING}|{KEBA_PUBLIC_KEY}")
+        assert ocmf.verify_signature() is True
+        assert ocmf.verify()[0] is True
+
+    @requires_crypto
+    def test_hex_encoded_string_with_key(self) -> None:
+        hex_string = f"{KEBA_OCMF_STRING}|{KEBA_PUBLIC_KEY}".encode().hex()
+        assert _parse_quietly(hex_string).verify_signature() is True
+
+    @requires_crypto
+    def test_explicit_key_takes_precedence(self) -> None:
+        ocmf = _parse_quietly(f"{KEBA_OCMF_STRING}|{KEBA_PUBLIC_KEY}")
+        assert ocmf.verify_signature(EF_T_PUBLIC_KEY) is False
+
+    def test_verify_without_any_key_fails(self) -> None:
+        with pytest.raises(SignatureVerificationError, match="No public key given"):
+            OCMF.from_string(KEBA_OCMF_STRING).verify_signature()
+
+    @requires_crypto
+    def test_xml_record_falls_back_to_embedded_key(self, tmp_path: pathlib.Path) -> None:
+        xml_path = tmp_path / "embedded.xml"
+        xml_path.write_text(
+            f"<values><value><signedData>{KEBA_OCMF_STRING}|{KEBA_PUBLIC_KEY}</signedData>"
+            "</value></values>",
+            encoding="utf-8",
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SpecWarning)
+            record = OcmfContainer.from_xml(xml_path)[0]
+        assert record.public_key is None
+        assert record.verify_signature() is True
 
 
 class TestTimeSynchronicityLawChecks:

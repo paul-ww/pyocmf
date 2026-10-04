@@ -32,6 +32,7 @@ class OCMF(pydantic.BaseModel):
     payload: Payload
     signature: Signature
     _original_payload_json: str | None = pydantic.PrivateAttr(default=None)
+    _embedded_public_key: str | None = pydantic.PrivateAttr(default=None)
 
     @classmethod
     def from_string(cls, ocmf_string: str, *, strict: bool = False) -> OCMF:
@@ -83,14 +84,17 @@ class OCMF(pydantic.BaseModel):
 
         payload_json = parts[1]
         signature_json = parts[2]
+        embedded_public_key = None
         if len(parts) == 4:
-            # The Transparenzsoftware accepts a public key appended as fourth section
+            # The Transparenzsoftware (and QR codes for it) append the public key as a
+            # fourth section
             try:
                 warn_spec(
                     "Public keys must be transmitted separately, not as a fourth OCMF section"
                 )
             except SpecViolationError as e:
                 raise OcmfFormatError(str(e)) from e
+            embedded_public_key = "".join(parts[3].split()) or None
 
         # parse_float=Decimal builds Decimals from the raw JSON literals, preserving
         # decimal places (e.g. 2935.600) that pydantic's own JSON parser would drop
@@ -120,6 +124,7 @@ class OCMF(pydantic.BaseModel):
         # re-run the payload's validators (and report every spec deviation twice)
         ocmf = cls.model_construct(header=OCMF_HEADER, payload=payload, signature=signature)
         ocmf._original_payload_json = payload_json
+        ocmf._embedded_public_key = embedded_public_key
         return ocmf
 
     def to_string(self, hex: bool = False) -> str:
@@ -135,13 +140,33 @@ class OCMF(pydantic.BaseModel):
             return ocmf_string.encode("utf-8").hex()
         return ocmf_string
 
-    def verify_signature(self, public_key: PublicKey | str) -> bool:
+    @property
+    def embedded_public_key(self) -> str | None:
+        """Public key appended to the parsed string as a fourth section, if any.
+
+        The OCMF spec requires keys to be transmitted separately, but the
+        Transparenzsoftware accepts them appended (``OCMF|payload|signature|key``),
+        for example in QR codes. Parsing such a string emits a SpecWarning.
+        """
+        return self._embedded_public_key
+
+    def verify_signature(self, public_key: PublicKey | str | None = None) -> bool:
         """Verify the cryptographic signature of the OCMF data.
 
         Per OCMF spec, public keys must be transmitted out-of-band (separately from OCMF data).
+        Without ``public_key``, the key embedded in the parsed string is used.
         Requires that the OCMF was parsed from a string (not constructed programmatically)
         because signature verification needs the exact original payload bytes.
+
+        Raises:
+            SignatureVerificationError: If no public key is given or embedded, or the
+                signature cannot be checked
+
         """
+        key = public_key if public_key is not None else self._embedded_public_key
+        if key is None:
+            msg = "No public key given and none embedded in the OCMF string"
+            raise SignatureVerificationError(msg)
         if self._original_payload_json is None:
             msg = (
                 "Cannot verify signature: original payload JSON not available. "
@@ -155,7 +180,7 @@ class OCMF(pydantic.BaseModel):
             signature_data=self.signature.SD,
             signature_method=self.signature.SA,
             signature_encoding=self.signature.SE,
-            public_key_hex=public_key.key if isinstance(public_key, PublicKey) else public_key,
+            public_key_hex=key.key if isinstance(key, PublicKey) else key,
         )
 
     def check_eichrecht(
@@ -186,13 +211,14 @@ class OCMF(pydantic.BaseModel):
 
     def verify(
         self,
-        public_key: PublicKey | str,
+        public_key: PublicKey | str | None = None,
         other: OCMF | None = None,
         eichrecht: bool = True,
     ) -> tuple[bool, list[EichrechtIssue]]:
         """Verify both cryptographic signature and legal compliance.
 
         Combines signature verification and Eichrecht compliance checking.
+        Without ``public_key``, the key embedded in the parsed string is used.
         Returns (signature_valid, compliance_issues).
         Set eichrecht=False to skip compliance checking.
         """

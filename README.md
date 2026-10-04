@@ -8,7 +8,7 @@ Python library for parsing, validating, and verifying OCMF (Open Charge Metering
 
 > **Note**: This is an unofficial library that implements parts of the [OCMF specification](https://github.com/SAFE-eV/OCMF-Open-Charge-Metering-Format). It is not affiliated with or endorsed by [S.A.F.E. e.V.](https://www.safe-ev.de/). For official verification of charging session data, please use the [Transparenzsoftware](https://www.safe-ev.de/de/transparenzsoftware.php) provided by S.A.F.E. e.V. This library may be incomplete or contain discrepancies from the official specification.
 
-**[Try PyOCMF in your browser](https://paul-ww.github.io/pyocmf/demo/)** - No installation required! Parse and validate OCMF data locally and directly in your web browser using [Pyodide](https://github.com/pyodide/pyodide).
+**[Try PyOCMF in your browser](https://paul-ww.github.io/pyocmf/demo/)** - No installation required! Paste a record, open an XML file or scan a QR code, and check it locally in your web browser using [Pyodide](https://github.com/pyodide/pyodide).
 
 ## Features
 
@@ -59,6 +59,10 @@ print(ocmf.payload.RD)  # List of meter readings
 
 # Verify signature (requires pyocmf[crypto])
 is_valid = ocmf.verify_signature(public_key_hex)
+
+# Strings with the key appended (OCMF|payload|signature|key), as in QR codes for the
+# Transparenzsoftware, verify without one; parsing them emits a SpecWarning
+is_valid = OCMF.from_string(ocmf_with_key).verify_signature()
 ```
 
 ## Command Line Interface

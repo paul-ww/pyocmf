@@ -211,9 +211,10 @@ def _contains_complete_transaction(payload: Payload) -> bool:
 def check_eichrecht_payload(payload: Payload) -> list[EichrechtIssue]:
     """Check a single payload for Eichrecht compliance.
 
-    Every reading is checked individually. A payload holding a complete transaction
-    (begin and end reading in the transaction context) is additionally checked like a
-    begin/end pair.
+    Like the Transparenzsoftware, only law-relevant readings are checked. A payload
+    holding a complete transaction (begin and end reading in the transaction context)
+    is checked like a begin/end pair; otherwise each law-relevant reading is checked
+    on its own.
     """
     if not payload.RD:
         return [
@@ -224,18 +225,21 @@ def check_eichrecht_payload(payload: Payload) -> list[EichrechtIssue]:
             )
         ]
 
-    issues: list[EichrechtIssue] = []
-    for reading in payload.RD:
-        issues.extend(check_eichrecht_reading(reading))
+    if not _contains_complete_transaction(payload):
+        return [
+            issue
+            for reading in _law_relevant_readings(payload.RD)
+            for issue in check_eichrecht_reading(reading)
+        ]
 
-    if _contains_complete_transaction(payload):
-        begin, end, selection_issues = _select_transaction_readings(payload.RD)
-        issues.extend(selection_issues)
-        if begin is not None and end is not None:
-            issues.extend(_check_transaction_readings(begin, end))
-        if issue := _check_identification_level(payload, "transaction"):
-            issues.append(issue)
-
+    begin, end, issues = _select_transaction_readings(payload.RD)
+    for reading in (begin, end):
+        if reading is not None:
+            issues.extend(check_eichrecht_reading(reading))
+    if begin is not None and end is not None:
+        issues.extend(_check_transaction_readings(begin, end))
+    if issue := _check_identification_level(payload, "transaction"):
+        issues.append(issue)
     return issues
 
 

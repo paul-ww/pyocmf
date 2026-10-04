@@ -14,9 +14,10 @@ Python library for parsing, validating, and verifying OCMF (Open Charge Metering
 
 - Parse OCMF strings into validated Python objects
 - Verify cryptographic signatures for data integrity
-- Support for ECDSA with multiple curves (secp192r1, secp256r1, secp384r1, secp521r1, brainpool variants)
-- Type-safe validation using Pydantic
-- Eichrecht compliance validation for German calibration law requirements
+- Support for ECDSA with multiple curves (secp256k1, secp192r1, secp256r1, secp384r1, secp521r1, brainpool variants)
+- Type-safe models using Pydantic
+- Accepts every record the Transparenzsoftware accepts, reports spec deviations as warnings, and offers an optional strict mode
+- Eichrecht compliance checks aligned with the Transparenzsoftware
 
 ## Installation
 
@@ -100,17 +101,24 @@ for entry in container:
 Validate German calibration law requirements for charging transactions.
 
 ```python
-from pyocmf import OCMF, check_eichrecht_transaction
+from pyocmf import OCMF
 
 ocmf_begin = OCMF.from_string(begin_string)
 ocmf_end = OCMF.from_string(end_string)
 
-issues = check_eichrecht_transaction(ocmf_begin, ocmf_end)
+issues = ocmf_begin.check_eichrecht(ocmf_end, errors_only=True)
 if not issues:
     print("Transaction is Eichrecht compliant")
+
+# A single record holding both the begin and the end reading is checked the same way
+issues = OCMF.from_string(record_string).check_eichrecht(errors_only=True)
 ```
 
-Checks include meter status, error flags, time sync, cable loss compensation, transaction consistency, and user identification.
+The checks follow the Transparenzsoftware. They compare the billing-relevant begin and end
+readings (loss-compensated registers take precedence) and report errors for a meter status
+other than OK, an energy error flag, decreasing values or timestamps, mismatching OBIS
+codes, units or serial numbers, and invalid identification levels. Time synchronization,
+time error flags, cable loss and identification data mismatches are reported as warnings.
 
 </details>
 
@@ -124,7 +132,7 @@ from pyocmf import PublicKey
 
 public_key = PublicKey.from_string(public_key_hex)
 print(f"Curve: {public_key.curve}")
-print(f"Key Size: {public_key.key_size} bits")
+print(f"Key Size: {public_key.size} bits")
 
 # Check if key matches signature algorithm
 matches = public_key.matches_signature_algorithm(ocmf.signature.SA)
@@ -134,12 +142,15 @@ matches = public_key.matches_signature_algorithm(ocmf.signature.SA)
 
 ## Supported Signature Algorithms
 
-PyOCMF supports all ECDSA signature algorithms defined in the OCMF specification:
+PyOCMF supports the ECDSA signature algorithms defined in the OCMF specification:
 
 - **secp192k1**, **secp256k1** - Koblitz curves
 - **secp192r1**, **secp256r1**, **secp384r1**, **secp521r1** - NIST curves  
 - **brainpool256r1**, **brainpoolP256r1**, **brainpool384r1** - Brainpool curves
 - **SHA256** and **SHA512** hash functions
+
+secp192k1 is defined by the specification but cannot be verified, because the
+`cryptography` package does not support this curve.
 
 ## Error Handling
 
@@ -154,6 +165,8 @@ except OcmfFormatError as e:
 except SignatureVerificationError as e:
     print(f"Signature verification error: {e}")
 ```
+
+All library errors derive from `PyOCMFError`.
 
 ## Spec Deviations
 
@@ -188,8 +201,8 @@ On the command line, use `--strict`.
 ## Development
 
 ```bash
-# Clone the repository
-git clone https://github.com/paul-ww/pyocmf.git
+# Clone the repository with its submodules (OCMF spec and Transparenzsoftware test data)
+git clone --recursive https://github.com/paul-ww/pyocmf.git
 cd pyocmf
 
 # Install dependencies with uv
@@ -204,6 +217,8 @@ uv run ty check src test
 # Run linting
 uv run ruff check .
 ```
+
+See [AGENTS.md](AGENTS.md) for project conventions, including Transparenzsoftware parity.
 
 ## Documentation
 

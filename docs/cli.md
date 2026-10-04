@@ -133,11 +133,11 @@ ocmf verify charging_session.xml --all
 Check regulatory compliance against German Eichrecht (calibration law) requirements:
 
 ```bash
-# Check single reading
+# Check a single record (transaction checks run if it holds begin and end readings)
 ocmf check 'OCMF|{...}|{...}'
 
-# Check transaction pair (begin + end)
-ocmf check begin_reading.txt end_reading.txt
+# Check transaction pair (begin + end), as OCMF strings or XML files
+ocmf check 'OCMF|{...begin...}|{...}' 'OCMF|{...end...}|{...}'
 
 # Show warnings in addition to errors
 ocmf check 'OCMF|{...}|{...}' --verbose
@@ -146,7 +146,7 @@ ocmf check 'OCMF|{...}|{...}' --verbose
 What is checked:
 - Meter status must be 'G' (OK)
 - No energy error flag ('E'); a time error flag ('t') is only a warning
-- Time synchronization status
+- Time synchronization status; relative time ('R') at begin requires 'R' at end
 - Cable loss compensation (CL) rules, reported as warnings because the Transparenzsoftware ignores CL
 - Exactly one begin and one end reading among the billing-relevant registers
   (loss-compensated registers take precedence), for a pair or for a single record

@@ -5,10 +5,15 @@
 pyocmf is a Python library for parsing and validating Open Charge Metering Format (OCMF) data. OCMF is a standardized format for metering data from electric vehicle charging stations, ensuring transparency and tamper-proof documentation of charging sessions.
 
 The library provides:
-- Parsing of OCMF strings and XML files
-- Validation using Pydantic models
-- Type-safe handling of identifiers, units, and cryptographic signatures
-- Support for cable loss compensation and reading data
+- Parsing of OCMF strings (plain or hex) and Transparenzsoftware XML files
+- Lenient parsing that reports spec deviations as warnings, plus an optional strict mode
+- ECDSA signature verification
+- Eichrecht (German calibration law) compliance checks
+- An `ocmf` command-line interface
+
+The [Transparenzsoftware](https://github.com/SAFE-eV/transparenzsoftware) (TPS) by
+S.A.F.E. e.V. is the reference implementation and the bar for behaviour; see
+"Transparenzsoftware Parity" below.
 
 **Key Technologies:**
 - Python 3.11+
@@ -20,14 +25,22 @@ The library provides:
 
 **Project Structure:**
 - `src/pyocmf/`: Main package code
-  - `ocmf.py`: Core OCMF model and parsing
-  - `sections/`: Payload, signature, and reading models
-  - `types/`: Type definitions (identifiers, units, crypto, cable loss)
-  - `utils/`: XML parsing utilities
-  - `exceptions.py`: Custom exception types
-- `test/`: Test suite
-  - `test_ocmf/`: Unit tests organized by module
-  - `resources/`: Test data and fixtures
+  - `core/`: `OCMF` (parsing, serialization, verification entry points), `Payload`,
+    `Reading`, `Signature`
+  - `compliance/`: Eichrecht checks for readings, single payloads and transaction pairs
+  - `crypto/`: Signature verification and optional `cryptography` handling
+  - `models/`: Value objects (`OBIS`, `OCMFTimestamp`, `PublicKey`, cable loss)
+  - `registries/`: OBIS code parsing and classification (billing/law relevance)
+  - `enums/`: Code tables from the OCMF spec
+  - `types/`: Annotated types, including `lenient.py` (spec-deviation handling)
+  - `utils/`: XML container and OCMF JSON serialization
+  - `cli/`: Typer/Rich command-line interface
+  - `exceptions.py`: Exception types and `SpecWarning`
+- `test/`: Test suite, mirroring the package (`test_core/`, `test_compliance/`, ...)
+  - `integration/`: Round-trip and signature tests over the TPS XML corpus
+  - `helpers.py`, `conftest.py`: Builders for readings, payloads and transaction pairs
+  - `resources/`: Test data, including the `transparenzsoftware` submodule
+- `spec/OCMF-Open-Charge-Metering-Format/`: OCMF specification (submodule)
 
 ## Setup Commands
 
@@ -94,12 +107,12 @@ uv run pytest -v
 
 **Run specific test file:**
 ```bash
-uv run pytest test/test_ocmf/test_roundtrip.py
+uv run pytest test/integration/test_roundtrip.py
 ```
 
 **Run specific test by name:**
 ```bash
-uv run pytest test/test_ocmf/test_types/test_identifiers.py::test_specific_function
+uv run pytest test/test_core/test_payload.py::TestIdValidationByType::test_local_type_accepts_any_string
 ```
 
 **Run tests matching a pattern:**
@@ -108,10 +121,10 @@ uv run pytest -k "test_pattern"
 ```
 
 **Test file organization:**
-- Tests are located in `test/test_ocmf/`
+- Tests live in `test/`, one directory per package module (`test_core/`, `test_compliance/`, ...)
 - Test files follow the pattern `test_*.py`
 - Test resources and fixtures are in `test/resources/`
-- The project uses pytest with configuration in `pyproject.toml`
+- pytest is configured in `pytest.ini`
 
 **Important testing notes:**
 - Tests must pass before merging
@@ -207,7 +220,7 @@ uv run ty check src test
 **File organization:**
 - Source code in `src/pyocmf/`
 - Use `__init__.py` to expose public API
-- Group related functionality in subdirectories (sections/, types/, utils/)
+- Group related functionality in subdirectories (core/, compliance/, models/, ...)
 - Follow Python package naming conventions (lowercase, underscores)
 
 ## Build and Deployment
@@ -361,6 +374,14 @@ git submodule update --init --recursive
 git submodule update --remote
 ```
 
+`git pull` does not move submodules to the commits the superproject pins. After pulling,
+run `git submodule update --init --recursive`, or set `git config submodule.recurse true`
+once.
+
+When bumping the `transparenzsoftware` submodule, `test_every_corpus_file_with_keys_has_expectation`
+fails for new XML files until their expected signature outcomes are added to
+`EXPECTED_SIGNATURES` in `test/integration/test_transparenzsoftware_corpus.py`.
+
 ## Pre-commit Hooks
 
 The project uses pre-commit hooks (via `.pre-commit-config.yaml`) to enforce code quality before each commit.
@@ -405,6 +426,41 @@ uv run prek install
    - Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh`
    - Ensure uv is in your PATH
 
+## Transparenzsoftware Parity
+
+The Transparenzsoftware (`test/resources/transparenzsoftware`, Java) is the reference.
+pyocmf must accept every record TPS accepts, and its Eichrecht results must match the
+outcome TPS reports. Read the TPS sources
+(`src/main/java/de/safe_ev/transparenzsoftware/verification/format/ocmf/`) and tests before
+changing parsing or compliance behaviour.
+
+**Parsing: accept, but warn on spec deviations**
+- TPS only requires the `OCMF|payload|signature` structure, a format version and an ECDSA
+  signature algorithm. It does not validate codes, lengths or mandatory fields.
+- Never reject such input in a model. Report it through `warn_spec()` from
+  `pyocmf.types.lenient`, which emits a `SpecWarning`, or raises `SpecViolationError` in
+  strict mode (`OCMF.from_string(..., strict=True)`, `OcmfContainer.from_xml(..., strict=True)`,
+  CLI `--strict`).
+- For code fields, use the `Lenient*` types in `types/lenient.py`: known values become enum
+  members, unknown values stay plain strings. Code reading those fields must handle both
+  (e.g. use `is_end_reason()` instead of `TX.is_end_reading()`).
+- Only reject input that TPS rejects too, or that cannot be represented at all (for
+  example unparseable timestamps or non-numeric reading values).
+
+**Compliance: match TPS outcomes**
+- Begin and end readings are chosen among law-relevant OBIS registers, preferring
+  loss-compensated ones, as TPS does (`registries/obis.py`).
+- Errors are for what TPS rejects. Spec rules that TPS does not enforce (e.g. cumulated
+  loss, time error flags, ID mismatches) are warnings.
+
+**Tests**
+- `test/test_compliance/test_transparenzsoftware_parity.py`,
+  `test/test_core/test_lenient_parsing.py` and
+  `test/integration/test_transparenzsoftware_corpus.py` port TPS tests and data. Name the
+  TPS test a case comes from in a comment.
+- Document a known divergence as `pytest.mark.xfail(strict=True, reason=...)` that asserts
+  the TPS behaviour, so fixing it surfaces immediately.
+
 ## Additional Notes
 
 **Python version compatibility:**
@@ -424,11 +480,13 @@ uv run prek install
 
 **OCMF format:**
 - OCMF strings follow the format: `OCMF|{payload_json}|{signature_json}`
-- The library handles both string and XML representations
-- See `spec/OCMF-Open-Charge-Metering-Format/` for format specification
+- The library handles plain, hex-encoded and XML representations
+- See `spec/OCMF-Open-Charge-Metering-Format/OCMF-en.md` for the format specification
+- Signature verification needs the exact original payload bytes, so only records parsed
+  with `OCMF.from_string()` can be verified
 
 **When adding new features:**
-- Add corresponding tests in `test/test_ocmf/`
+- Add corresponding tests in the matching `test/` subdirectory
 - Update type hints and ensure ty passes
 - Follow existing code organization patterns
 - Update exceptions in `exceptions.py` if adding new error types

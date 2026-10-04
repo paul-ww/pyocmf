@@ -1,3 +1,4 @@
+import base64
 import pathlib
 
 import pytest
@@ -43,6 +44,12 @@ class TestSignatureVerification:
     ) -> None:
         ocmf = OCMF.from_string(keba_ocmf_string_tampered)
         assert ocmf.verify_signature(keba_public_key) is False
+
+    def test_verify_with_base64_public_key(
+        self, keba_ocmf_string: str, keba_public_key: str
+    ) -> None:
+        base64_key = base64.b64encode(bytes.fromhex(keba_public_key)).decode("ascii")
+        assert OCMF.from_string(keba_ocmf_string).verify_signature(base64_key) is True
 
     def test_verify_wrong_public_key(self, transparency_xml_dir: pathlib.Path) -> None:
         xml_file = transparency_xml_dir / "test_ocmf_keba_kcp30.xml"

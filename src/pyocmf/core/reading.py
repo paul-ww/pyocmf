@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import decimal
 import warnings
 
@@ -138,7 +139,7 @@ class Reading(pydantic.BaseModel):
         return self
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> datetime.datetime:
         return self.TM.timestamp
 
     @property

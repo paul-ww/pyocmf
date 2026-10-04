@@ -13,7 +13,13 @@ from pyocmf.core.ocmf import OCMF
 from pyocmf.exceptions import PyOCMFError
 
 from .display import console, display_compliance_result, display_ocmf_structure, verify_signature
-from .utils import InputType, detect_input_type, load_ocmf, load_xml_container
+from .utils import (
+    InputType,
+    detect_input_type,
+    load_ocmf,
+    load_xml_container,
+    parse_ocmf_string,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -70,7 +76,7 @@ def all_checks(
             ocmf = record.ocmf
             key_to_use = _resolve_public_key(record, public_key)
         else:
-            ocmf = OCMF.from_string(ocmf_input, strict=strict)
+            ocmf = parse_ocmf_string(ocmf_input, strict=strict)
             key_to_use = public_key
 
         if key_to_use:
@@ -114,7 +120,7 @@ def verify(
         if input_type == InputType.XML:
             _verify_from_xml(ocmf_input, verbose, all_entries, public_key, strict=strict)
         else:
-            _verify_single_ocmf(OCMF.from_string(ocmf_input, strict=strict), verbose, public_key)
+            _verify_single_ocmf(parse_ocmf_string(ocmf_input, strict=strict), verbose, public_key)
 
 
 def check(
@@ -172,7 +178,7 @@ def inspect(
         if input_type == InputType.XML:
             _inspect_from_xml(ocmf_input, strict=strict)
         else:
-            display_ocmf_structure(OCMF.from_string(ocmf_input, strict=strict))
+            display_ocmf_structure(parse_ocmf_string(ocmf_input, strict=strict))
 
 
 def _verify_single_ocmf(ocmf: OCMF, verbose: bool, public_key: str | None) -> None:

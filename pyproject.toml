@@ -85,6 +85,10 @@ dev = [
 [tool.uv]
 default-groups = "all"
 
+[tool.ty.rules]
+# Opt-in rule: bare generics like `dict` hide what a value holds
+missing-type-argument = "error"
+
 [tool.poe.tasks]
 test = "pytest test -x"
 lint = "ruff check src test"

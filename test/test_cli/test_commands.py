@@ -245,6 +245,14 @@ class TestInspectCommand:
         assert "OCMF Structure:" in result.stdout
         assert "KEBA_KCP30" in result.stdout
 
+    def test_inspect_prints_spec_deviations(
+        self, cli_runner: CliRunner, transparency_xml_dir: pathlib.Path
+    ) -> None:
+        result = cli_runner.invoke(app, ["inspect", str(transparency_xml_dir / "VW_OCMF_load.xml")])
+
+        assert result.exit_code == 0
+        assert "⚠ ID value '5EEFE0C7F64B050E9FB95C' does not match" in result.stdout
+
     def test_inspect_strict_rejects_spec_deviation(
         self, cli_runner: CliRunner, transparency_xml_dir: pathlib.Path
     ) -> None:

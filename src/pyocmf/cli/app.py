@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import sys
-import warnings
-from typing import TextIO
 
 import typer
 
 from pyocmf.cli import commands
-from pyocmf.cli.display import console
 
 CMD = "ocmf"
 
@@ -26,21 +23,8 @@ app.command()(commands.check)
 app.command()(commands.inspect)
 
 
-def _print_warning(
-    message: Warning | str,
-    category: type[Warning],
-    filename: str,
-    lineno: int,
-    file: TextIO | None = None,
-    line: str | None = None,
-) -> None:
-    console.print(f"[yellow]⚠[/yellow] {message}")
-
-
 def main() -> None:
     """Run the CLI with default command handling."""
-    # ty treats module functions as non-assignable even with a matching signature
-    warnings.showwarning = _print_warning  # ty: ignore[invalid-assignment]
     if len(sys.argv) == 1:
         app(["--help"])
     elif (

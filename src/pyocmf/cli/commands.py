@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import sys
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 
@@ -13,6 +14,29 @@ from pyocmf.exceptions import PyOCMFError
 
 from .display import console, display_compliance_result, display_ocmf_structure, verify_signature
 from .utils import InputType, detect_input_type, load_ocmf, load_xml_container
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from pyocmf.utils.xml import OcmfRecord
+
+
+@contextlib.contextmanager
+def _exit_on_error() -> Generator[None]:
+    try:
+        yield
+    except PyOCMFError as e:
+        console.print(f"[red]✗[/red] OCMF parsing failed: {e}")
+        sys.exit(1)
+    except FileNotFoundError as e:
+        console.print(f"[red]✗[/red] File not found: {e}")
+        sys.exit(1)
+
+
+def _resolve_public_key(record: OcmfRecord, public_key: str | None) -> str | None:
+    if public_key:
+        return public_key
+    return record.public_key.key if record.public_key else None
 
 
 def all_checks(
@@ -30,15 +54,14 @@ def all_checks(
     ] = False,
 ) -> None:
     """Run both signature verification and compliance check (default command)."""
-    try:
+    with _exit_on_error():
         input_type = detect_input_type(ocmf_input)
 
-        # Parse OCMF and extract public key (for XML files)
         if input_type == InputType.XML:
             container = load_xml_container(ocmf_input)
             record = container[0]
             ocmf = record.ocmf
-            key_to_use = public_key or (record.public_key.key if record.public_key else None)
+            key_to_use = _resolve_public_key(record, public_key)
         else:
             ocmf = OCMF.from_string(ocmf_input)
             key_to_use = public_key
@@ -56,13 +79,6 @@ def all_checks(
 
         if verbose:
             display_ocmf_structure(ocmf)
-
-    except PyOCMFError as e:
-        console.print(f"[red]✗[/red] OCMF parsing failed: {e}")
-        sys.exit(1)
-    except FileNotFoundError as e:
-        console.print(f"[red]✗[/red] File not found: {e}")
-        sys.exit(1)
 
 
 def verify(
@@ -84,20 +100,13 @@ def verify(
     ] = False,
 ) -> None:
     """Verify cryptographic signature only (requires pyocmf[crypto])."""
-    try:
+    with _exit_on_error():
         input_type = detect_input_type(ocmf_input)
 
         if input_type == InputType.XML:
             _verify_from_xml(ocmf_input, verbose, all_entries, public_key)
         else:
             _verify_single_ocmf(OCMF.from_string(ocmf_input), verbose, public_key)
-
-    except PyOCMFError as e:
-        console.print(f"[red]✗[/red] OCMF parsing failed: {e}")
-        sys.exit(1)
-    except FileNotFoundError as e:
-        console.print(f"[red]✗[/red] File not found: {e}")
-        sys.exit(1)
 
 
 def check(
@@ -119,11 +128,11 @@ def check(
     Compliance checking requires transaction pairs (begin + end readings).
     For billing-relevant validation, provide both begin and end OCMF records.
     """
-    try:
-        ocmf1 = OCMF.from_string(_read_input(input1))
+    with _exit_on_error():
+        ocmf1 = load_ocmf(input1)
 
         if input2:
-            ocmf2 = OCMF.from_string(_read_input(input2))
+            ocmf2 = load_ocmf(input2)
             issues = ocmf1.check_eichrecht(other=ocmf2, errors_only=not verbose)
             is_compliant = not any(i.severity == IssueSeverity.ERROR for i in issues)
             label = "transaction pair"
@@ -140,13 +149,6 @@ def check(
 
         display_compliance_result(issues, is_compliant, label)
 
-    except PyOCMFError as e:
-        console.print(f"[red]✗[/red] OCMF parsing failed: {e}")
-        sys.exit(1)
-    except FileNotFoundError as e:
-        console.print(f"[red]✗[/red] File not found: {e}")
-        sys.exit(1)
-
 
 def inspect(
     ocmf_input: Annotated[
@@ -155,26 +157,13 @@ def inspect(
     ],
 ) -> None:
     """Display parsed OCMF structure."""
-    try:
+    with _exit_on_error():
         input_type = detect_input_type(ocmf_input)
 
         if input_type == InputType.XML:
             _inspect_from_xml(ocmf_input)
         else:
             display_ocmf_structure(OCMF.from_string(ocmf_input))
-
-    except PyOCMFError as e:
-        console.print(f"[red]✗[/red] OCMF parsing failed: {e}")
-        sys.exit(1)
-    except FileNotFoundError as e:
-        console.print(f"[red]✗[/red] File not found: {e}")
-        sys.exit(1)
-
-
-def _read_input(ocmf_input: str) -> str:
-    """Read OCMF data from string or file."""
-    ocmf = load_ocmf(ocmf_input)
-    return ocmf.to_string()
 
 
 def _verify_single_ocmf(ocmf: OCMF, verbose: bool, public_key: str | None) -> None:
@@ -204,7 +193,7 @@ def _verify_from_xml(
         if len(records_to_process) > 1:
             console.print(f"\n[bold cyan]Entry {i}/{len(records_to_process)}:[/bold cyan]")
 
-        key_to_use = public_key or (record.public_key.key if record.public_key else None)
+        key_to_use = _resolve_public_key(record, public_key)
         _verify_single_ocmf(record.ocmf, verbose, key_to_use)
 
 

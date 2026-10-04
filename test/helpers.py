@@ -18,55 +18,24 @@ if TYPE_CHECKING:
     from pyocmf.utils.xml import OcmfRecord
 
 
-def should_skip_xml_file(xml_file: pathlib.Path) -> tuple[bool, str | None]:
+def expects_parsing_error(xml_file: pathlib.Path) -> bool:
+    """Whether a Transparenzsoftware corpus file is not (valid) OCMF.
+
+    Covers other meter formats (EDL, metra, SML, RSA-signed OCMF) and deliberately
+    broken or template files.
+    """
     file_name_lower = xml_file.name.lower()
-    parent_dir = xml_file.parent.name
-
-    if "rsa" in file_name_lower:
-        return True, "Skipping unsupported OCMF feature file"
-
-    skip_keywords = ["metra", "edl", "isa-edl"]
-    skip_dirs = ["emh-emoc"]
-    skip_patterns = ["invalid", "mennekes", "wirelane", "template", "test_input_xml_two_values"]
-
-    if any(keyword in file_name_lower for keyword in skip_keywords):
-        return True, "File contains unsupported format"
-
-    if parent_dir in skip_dirs:
-        return True, f"Files in {parent_dir} directory are not supported"
-
-    if any(pattern in file_name_lower for pattern in skip_patterns):
-        return True, "File matches skip pattern"
-
-    return False, None
-
-
-def should_expect_parsing_error(xml_file: pathlib.Path) -> bool:
-    file_name_lower = xml_file.name.lower()
-    parent_dir = xml_file.parent.name
-
-    error_keywords = ["metra", "edl", "isa-edl"]
-    error_dirs = ["emh-emoc"]
-    error_patterns = ["invalid", "mennekes", "wirelane", "template", "test_input_xml_two_values"]
-
-    if any(keyword in file_name_lower for keyword in error_keywords):
-        return True
-
-    if parent_dir in error_dirs:
-        return True
-
-    return any(pattern in file_name_lower for pattern in error_patterns)
-
-
-def parse_xml_with_expected_behavior(xml_file: pathlib.Path) -> OcmfContainer | None:
-    if should_expect_parsing_error(xml_file):
-        try:
-            OcmfContainer.from_xml(xml_file)
-        except PyOCMFError:
-            return None
-        msg = f"Expected parsing error for {xml_file.name}, but parsing succeeded"
-        raise AssertionError(msg)
-    return OcmfContainer.from_xml(xml_file)
+    patterns = [
+        "rsa",
+        "metra",
+        "edl",
+        "invalid",
+        "mennekes",
+        "wirelane",
+        "template",
+        "test_input_xml_two_values",
+    ]
+    return xml_file.parent.name == "emh-emoc" or any(p in file_name_lower for p in patterns)
 
 
 def tm(timestamp_str: str) -> OCMFTimestamp:

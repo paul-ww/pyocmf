@@ -17,11 +17,13 @@ from pyocmf.types.lenient import (
 )
 from pyocmf.types.numbers import OCMFNumber
 
-# OCMF spec Table 11: E (energy) and t (time) are the only defined error flags
+# OCMF spec Table 7: E (energy) and t (time) are the only defined error flags
 _ERROR_FLAGS_PATTERN = re.compile(r"^[Et]*$")
 
 
 class Reading(pydantic.BaseModel):
+    """A meter reading (OCMF spec Table 7)."""
+
     # Re-validate on assignment so mutated readings keep parsed types (e.g. TM).
     # Extra keys (e.g. EI from pre-1.0 formats) survive parse/serialize roundtrips.
     model_config = pydantic.ConfigDict(validate_assignment=True, extra="allow")
@@ -91,10 +93,12 @@ class Reading(pydantic.BaseModel):
 
     @property
     def timestamp(self) -> datetime.datetime:
+        """Reading time (TM) without its time status."""
         return self.TM.timestamp
 
     @property
     def time_status(self) -> TimeStatus | str:
+        """Time status of TM; an unknown status stays a plain string."""
         return self.TM.status
 
 

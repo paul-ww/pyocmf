@@ -58,9 +58,9 @@ def verify_signature(
     signature_data: str,
     signature_method: SignatureMethod | str | None,
     signature_encoding: SignatureEncodingType | str | None,
-    public_key_hex: str,
+    public_key: str,
 ) -> bool:
-    """Verify ECDSA signature against payload using the provided public key.
+    """Verify ECDSA signature against payload using a hex or base64 DER public key.
 
     Requires the 'cryptography' package (install with: pip install pyocmf[crypto]).
 
@@ -76,7 +76,7 @@ def verify_signature(
     from pyocmf.models.public_key import PublicKey
 
     try:
-        public_key_info = PublicKey.from_string(public_key_hex)
+        public_key_info = PublicKey.from_string(public_key)
     except (PublicKeyError, EncodingError, ImportError) as e:
         msg = f"Failed to parse public key: {e}"
         raise SignatureVerificationError(msg) from e

@@ -17,12 +17,15 @@ from pyocmf.types.encoding import HexStr
 
 
 class PublicKey(pydantic.BaseModel):
+    """An elliptic curve public key in DER encoding, with its curve and size."""
+
     key: HexStr = pydantic.Field(description="Hex-encoded DER public key")
     curve: CurveType = pydantic.Field(description="Elliptic curve type")
     size: int = pydantic.Field(description="Key size in bits")
     block_length: int = pydantic.Field(description="Block length in bytes")
 
     def to_string(self, base64_encode: bool = False) -> str:
+        """Return the DER key as hex, or as base64 with ``base64_encode=True``."""
         if base64_encode:
             key_bytes = bytes.fromhex(self.key)
             return base64.b64encode(key_bytes).decode("ascii")
@@ -77,11 +80,13 @@ class PublicKey(pydantic.BaseModel):
 
     @property
     def key_type_identifier(self) -> KeyType:
+        """Key type of the curve, as listed in OCMF spec Table 23."""
         return KeyType.from_curve(self.curve)
 
     def matches_signature_algorithm(
         self, signature_algorithm: SignatureMethod | str | None
     ) -> bool:
+        """Whether the key uses the curve of the signature algorithm (SA)."""
         if not isinstance(signature_algorithm, SignatureMethod):
             return False
 

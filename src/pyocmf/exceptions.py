@@ -4,6 +4,8 @@ from typing import Any
 
 
 class PyOCMFError(Exception):
+    """Base class for all pyocmf errors; ``field`` names the OCMF field involved."""
+
     def __init__(
         self,
         message: str,
@@ -17,26 +19,28 @@ class PyOCMFError(Exception):
 
 
 class XmlParsingError(PyOCMFError):
-    pass
+    """The XML file is not well-formed."""
 
 
 class DataNotFoundError(PyOCMFError):
-    pass
+    """The XML file contains no OCMF data."""
 
 
 class OcmfFormatError(PyOCMFError):
-    pass
+    """The string is not structured as OCMF, or carries an appended key in strict mode."""
 
 
 class OcmfPayloadError(PyOCMFError):
-    pass
+    """The payload section is not valid JSON or fails validation."""
 
 
 class OcmfSignatureError(PyOCMFError):
-    pass
+    """The signature section is not valid JSON or fails validation."""
 
 
 class EncodingError(PyOCMFError, ValueError):
+    """Base class for errors decoding hex or base64 data."""
+
     def __init__(
         self,
         message: str,
@@ -50,14 +54,16 @@ class EncodingError(PyOCMFError, ValueError):
 
 
 class HexDecodingError(EncodingError):
-    pass
+    """Data is not valid hex."""
 
 
 class Base64DecodingError(EncodingError):
-    pass
+    """Data is not valid base64."""
 
 
 class EncodingTypeError(PyOCMFError, TypeError):
+    """Data to decode is not a string."""
+
     def __init__(
         self,
         message: str,
@@ -77,10 +83,12 @@ class SpecViolationError(PyOCMFError, ValueError):
 
 
 class CryptoError(PyOCMFError):
-    pass
+    """Base class for public key and signature verification errors."""
 
 
 class PublicKeyError(CryptoError):
+    """The public key cannot be parsed or uses an unsupported curve."""
+
     def __init__(
         self,
         message: str,
@@ -94,6 +102,12 @@ class PublicKeyError(CryptoError):
 
 
 class SignatureVerificationError(CryptoError):
+    """The signature cannot be checked, e.g. without a key or with a mismatching curve.
+
+    A signature that does not match the payload is not an error: verification
+    returns False.
+    """
+
     def __init__(
         self,
         message: str,

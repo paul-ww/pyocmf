@@ -20,10 +20,19 @@ from pyocmf.models.public_key import PublicKey
 
 @dataclass
 class OcmfRecord:
+    """An OCMF record from an XML file, with the public key stored next to it, if any."""
+
     ocmf: OCMF
     public_key: PublicKey | None = None
 
     def verify_signature(self) -> bool:
+        """Verify with the record's public key, or else a key embedded in the OCMF string.
+
+        Raises:
+            SignatureVerificationError: If no key is available or the signature cannot
+                be checked
+
+        """
         if self.public_key is None and self.ocmf.embedded_public_key is None:
             msg = "No public key available for signature verification"
             raise SignatureVerificationError(msg)
@@ -32,6 +41,12 @@ class OcmfRecord:
 
 
 class OcmfContainer:
+    """OCMF records read from a Transparenzsoftware XML file, in file order.
+
+    Records that occur more than once are kept once. Supports ``len()``, iteration
+    and indexing.
+    """
+
     def __init__(self, entries: list[OcmfRecord]) -> None:
         self._entries = entries
 
@@ -80,6 +95,7 @@ class OcmfContainer:
 
     @property
     def entries(self) -> list[OcmfRecord]:
+        """The records as a list."""
         return self._entries
 
     def __len__(self) -> int:

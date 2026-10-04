@@ -26,7 +26,10 @@ from pyocmf.utils.serialization import model_to_ocmf_json
 
 
 class OCMF(pydantic.BaseModel):
-    """OCMF data model with three pipe-separated sections: header, payload, and signature."""
+    """OCMF data model with three pipe-separated sections: header, payload, and signature.
+
+    A public key appended as a fourth section is kept as ``embedded_public_key``.
+    """
 
     header: Literal["OCMF"]
     payload: Payload
@@ -158,6 +161,12 @@ class OCMF(pydantic.BaseModel):
         Requires that the OCMF was parsed from a string (not constructed programmatically)
         because signature verification needs the exact original payload bytes.
 
+        Args:
+            public_key: Public key as a PublicKey, or a hex or base64 DER string
+
+        Returns:
+            Whether the signature matches the payload
+
         Raises:
             SignatureVerificationError: If no public key is given or embedded, or the
                 signature cannot be checked
@@ -180,7 +189,7 @@ class OCMF(pydantic.BaseModel):
             signature_data=self.signature.SD,
             signature_method=self.signature.SA,
             signature_encoding=self.signature.SE,
-            public_key_hex=key.key if isinstance(key, PublicKey) else key,
+            public_key=key.key if isinstance(key, PublicKey) else key,
         )
 
     def check_eichrecht(
@@ -188,10 +197,13 @@ class OCMF(pydantic.BaseModel):
     ) -> list[EichrechtIssue]:
         """Check German calibration law (Eichrecht) compliance.
 
-        Validates that OCMF data complies with German Eichrecht requirements
-        (MID 2014/32/EU and PTB) for billing-relevant meter readings.
+        Applies the rules of the Transparenzsoftware to the law-relevant readings,
+        preferring loss-compensated registers. Errors are what the Transparenzsoftware
+        rejects; spec rules it does not enforce are warnings.
 
-        Provide 'other' OCMF to check transaction pair (begin + end).
+        Without ``other``, this record is checked on its own, as a complete transaction
+        if it holds both the begin and the end reading. With ``other``, this record is
+        the begin and ``other`` the end of a transaction.
         Set errors_only=True to filter out warnings.
         """
         if other is None:
@@ -206,6 +218,7 @@ class OCMF(pydantic.BaseModel):
 
     @property
     def is_eichrecht_compliant(self) -> bool:
+        """Whether this record on its own passes the Eichrecht checks; warnings are ignored."""
         issues = self.check_eichrecht(errors_only=True)
         return len(issues) == 0
 

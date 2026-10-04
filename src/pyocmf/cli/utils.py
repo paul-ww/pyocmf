@@ -67,7 +67,7 @@ def load_xml_container(xml_path: str, *, strict: bool = False) -> OcmfContainer:
 
 
 def load_ocmf(ocmf_input: str, *, strict: bool = False) -> OCMF:
-    """Load OCMF from string or file, handling both formats."""
+    """Load OCMF from a plain or hex string, or the first record of an XML file."""
     input_type = detect_input_type(ocmf_input)
 
     if input_type == InputType.XML:

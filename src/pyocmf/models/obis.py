@@ -17,6 +17,8 @@ from pyocmf.registries.obis import (
 
 
 class OBIS(pydantic.BaseModel):
+    """OBIS code of a reading register (RI), with an optional suffix after ``*``."""
+
     model_config = pydantic.ConfigDict(frozen=True)
 
     code: str
@@ -24,6 +26,7 @@ class OBIS(pydantic.BaseModel):
 
     @classmethod
     def from_string(cls, obis_str: str) -> OBIS:
+        """Split an OBIS string into the code and the suffix after ``*``."""
         if not isinstance(obis_str, str):
             return obis_str
 
@@ -40,26 +43,32 @@ class OBIS(pydantic.BaseModel):
 
     @property
     def info(self) -> OBISInfo | None:
+        """Registry entry of a known code, else None."""
         return get_obis_info(self.code)
 
     @property
     def is_billing_relevant(self) -> bool:
+        """See ``pyocmf.registries.obis.is_billing_relevant``."""
         return is_billing_relevant(self.code)
 
     @property
     def is_law_relevant(self) -> bool:
+        """See ``pyocmf.registries.obis.is_law_relevant``."""
         return is_law_relevant(self.code)
 
     @property
     def is_loss_compensated(self) -> bool:
+        """Whether the register holds loss-compensated energy (98, B1, B3, C1, C3)."""
         return is_loss_compensated(self.code)
 
     @property
     def is_accumulation_register(self) -> bool:
+        """See ``pyocmf.registries.obis.is_accumulation_register``."""
         return is_accumulation_register(self.code)
 
     @property
     def is_transaction_register(self) -> bool:
+        """See ``pyocmf.registries.obis.is_transaction_register``."""
         return is_transaction_register(self.code)
 
     def __str__(self) -> str:

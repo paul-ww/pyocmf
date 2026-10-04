@@ -60,7 +60,7 @@ def all_checks(
     ],
     public_key: Annotated[
         str | None,
-        typer.Option("--public-key", "-k", help="Hex-encoded public key"),
+        typer.Option("--public-key", "-k", help="Public key, hex or base64"),
     ] = None,
     verbose: Annotated[
         bool,
@@ -96,6 +96,7 @@ def all_checks(
             display_ocmf_structure(ocmf)
 
 
+# Typer renders docstrings as Rich markup; the backslash keeps [crypto] from vanishing
 def verify(
     ocmf_input: Annotated[
         str,
@@ -103,7 +104,7 @@ def verify(
     ],
     public_key: Annotated[
         str | None,
-        typer.Option("--public-key", "-k", help="Hex-encoded public key"),
+        typer.Option("--public-key", "-k", help="Public key, hex or base64"),
     ] = None,
     verbose: Annotated[
         bool,
@@ -115,7 +116,7 @@ def verify(
     ] = False,
     strict: StrictOption = False,
 ) -> None:
-    """Verify cryptographic signature only (requires pyocmf[crypto])."""
+    r"""Verify cryptographic signature only (requires pyocmf\[crypto])."""
     with _exit_on_error():
         input_type = detect_input_type(ocmf_input)
 

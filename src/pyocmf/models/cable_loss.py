@@ -9,6 +9,11 @@ _MAX_NAMING_LENGTH = 20
 
 
 class CableLossCompensation(pydantic.BaseModel):
+    """Cable loss compensation parameters (OCMF spec Table 24).
+
+    The Transparenzsoftware ignores them, so the Eichrecht checks only warn about them.
+    """
+
     LN: str | None = pydantic.Field(default=None, description="Loss Compensation Naming (0..20)")
     LI: int | None = pydantic.Field(default=None, description="Loss Compensation Identification")
     LR: OCMFNumber | None = pydantic.Field(

@@ -16,6 +16,8 @@ from pyocmf.types.lenient import (
 
 
 class Signature(pydantic.BaseModel):
+    """Signature section of an OCMF record (OCMF spec Table 8)."""
+
     # OCMF spec reserves extension points (keys starting with U-Z and A-F) in the
     # signature section; allow them so they survive parse/serialize roundtrips.
     model_config = pydantic.ConfigDict(extra="allow")

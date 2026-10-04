@@ -6,8 +6,10 @@ lengths, so pyocmf accepts them too instead of failing to parse.
 
 from __future__ import annotations
 
+import contextlib
 import warnings
-from typing import Annotated
+from contextvars import ContextVar
+from typing import TYPE_CHECKING, Annotated
 
 import pydantic
 
@@ -20,10 +22,29 @@ from pyocmf.enums.identifiers import (
 )
 from pyocmf.enums.reading import MeterReadingReason, MeterStatus, ReadingType
 from pyocmf.enums.units import OCMFUnit, ResistanceUnit
-from pyocmf.exceptions import SpecWarning
+from pyocmf.exceptions import SpecViolationError, SpecWarning
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+# A ContextVar instead of a warnings filter keeps strict mode local to the current
+# thread or task
+_strict: ContextVar[bool] = ContextVar("pyocmf_strict", default=False)
+
+
+@contextlib.contextmanager
+def spec_mode(*, strict: bool) -> Generator[None]:
+    token = _strict.set(strict)
+    try:
+        yield
+    finally:
+        _strict.reset(token)
 
 
 def warn_spec(message: str) -> None:
+    """Report a spec deviation: a SpecWarning, or SpecViolationError in strict mode."""
+    if _strict.get():
+        raise SpecViolationError(message)
     warnings.warn(message, SpecWarning, stacklevel=2)
 
 

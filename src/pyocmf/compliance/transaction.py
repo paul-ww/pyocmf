@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from pyocmf.compliance.models import EichrechtIssue, IssueCode, IssueSeverity
 from pyocmf.compliance.reading import check_eichrecht_reading
 from pyocmf.enums.identifiers import UserAssignmentStatus
-from pyocmf.enums.reading import MeterReadingReason
+from pyocmf.enums.reading import MeterReadingReason, TimeStatus, is_end_reason
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -13,6 +14,8 @@ if TYPE_CHECKING:
     from pyocmf.core.ocmf import OCMF
     from pyocmf.core.payload import Payload
     from pyocmf.core.reading import Reading
+
+_PAGINATION_PATTERN = re.compile(r"^([TF])([0-9]+)$")
 
 _INVALID_ID_LEVELS = {
     UserAssignmentStatus.UID_MISMATCH,
@@ -60,7 +63,7 @@ def _select_transaction_readings(
 ) -> tuple[Reading | None, Reading | None, list[EichrechtIssue]]:
     relevant = _law_relevant_readings(readings)
     begins = [r for r in relevant if r.TX == MeterReadingReason.BEGIN]
-    ends = [r for r in relevant if r.TX is not None and r.TX.is_end_reading()]
+    ends = [r for r in relevant if is_end_reason(r.TX)]
 
     issues = []
     if not begins:
@@ -142,6 +145,14 @@ def _check_transaction_readings(begin: Reading, end: Reading) -> list[EichrechtI
         )
     if issue := _check_timestamp_ordering(begin, end):
         issues.append(issue)
+    if begin.time_status == TimeStatus.RELATIVE and end.time_status != TimeStatus.RELATIVE:
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.TIME_SYNC,
+                message=(f"Begin uses relative time ('R') but end does not ('{end.time_status}')"),
+                field="TM",
+            )
+        )
     return issues
 
 
@@ -159,7 +170,15 @@ def _check_identification_level(payload: Payload, context: str) -> EichrechtIssu
 
 
 def _check_pagination(begin: Payload, end: Payload) -> EichrechtIssue | None:
-    if begin.PG[0] != end.PG[0]:
+    begin_match = _PAGINATION_PATTERN.match(begin.PG or "")
+    end_match = _PAGINATION_PATTERN.match(end.PG or "")
+    # Malformed pagination is already reported as a SpecWarning when parsing
+    if begin_match is None or end_match is None:
+        return None
+
+    begin_context, begin_number = begin_match.groups()
+    end_context, end_number = end_match.groups()
+    if begin_context != end_context:
         return EichrechtIssue(
             code=IssueCode.PAGINATION_INCONSISTENT,
             message=(
@@ -170,7 +189,7 @@ def _check_pagination(begin: Payload, end: Payload) -> EichrechtIssue | None:
         )
 
     # The counter increments for every record, so intermediate records leave gaps
-    if int(end.PG[1:]) <= int(begin.PG[1:]):
+    if int(end_number) <= int(begin_number):
         return EichrechtIssue(
             code=IssueCode.PAGINATION_INCONSISTENT,
             message=f"End pagination should follow begin: begin='{begin.PG}', end='{end.PG}'",
@@ -182,9 +201,10 @@ def _check_pagination(begin: Payload, end: Payload) -> EichrechtIssue | None:
 
 def _contains_complete_transaction(payload: Payload) -> bool:
     return (
-        payload.PG.startswith("T")
+        payload.PG is not None
+        and payload.PG.startswith("T")
         and any(r.TX == MeterReadingReason.BEGIN for r in payload.RD)
-        and any(r.TX is not None and r.TX.is_end_reading() for r in payload.RD)
+        and any(is_end_reason(r.TX) for r in payload.RD)
     )
 
 

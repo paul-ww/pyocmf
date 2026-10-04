@@ -5,6 +5,7 @@ import datetime
 import pytest
 
 from pyocmf.enums.reading import TimeStatus
+from pyocmf.exceptions import SpecWarning
 from pyocmf.models.timestamp import OCMFTimestamp
 
 
@@ -30,9 +31,12 @@ class TestOCMFTimestamp:
         ts = OCMFTimestamp.from_string("2018-07-24T13:22:04,000+0200")
         assert ts.status == TimeStatus.UNKNOWN_OR_UNSYNCHRONIZED
 
-    def test_rejects_unknown_time_status(self) -> None:
-        with pytest.raises(ValueError, match="TimeStatus"):
-            OCMFTimestamp.from_string("2018-07-24T13:22:04,000+0200 Y")
+    def test_unknown_time_status_warns(self) -> None:
+        # The Transparenzsoftware treats unknown letters as "unknown" synchronicity
+        with pytest.warns(SpecWarning, match="Time status 'Y'"):
+            ts = OCMFTimestamp.from_string("2018-07-24T13:22:04,000+0200 Y")
+        assert ts.status == "Y"
+        assert str(ts) == "2018-07-24T13:22:04,000+0200 Y"
 
     def test_rejects_non_iso_datetime(self) -> None:
         with pytest.raises(ValueError, match="isoformat"):

@@ -141,6 +141,28 @@ except SignatureVerificationError as e:
     print(f"Signature verification error: {e}")
 ```
 
+## Spec Deviations
+
+pyocmf accepts every record the [Transparenzsoftware](https://www.safe-ev.de/de/transparenzsoftware.php)
+accepts. Values outside the OCMF specification, such as unknown codes, exceeded lengths
+or missing mandatory fields, are kept as-is and reported as a `SpecWarning` instead of
+failing to parse:
+
+```python
+import warnings
+
+from pyocmf import OCMF, SpecWarning
+
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always", SpecWarning)
+    ocmf = OCMF.from_string(ocmf_string)
+
+for warning in caught:
+    print(warning.message)
+```
+
+Use `warnings.simplefilter("error", SpecWarning)` to reject non-compliant records instead.
+
 ## About OCMF
 
 OCMF (Open Charge Metering Format) is a standardized format for metering data from electric vehicle charging stations. It ensures transparency and tamper-proof documentation of charging sessions, complying with legal requirements such as:

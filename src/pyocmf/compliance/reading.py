@@ -54,7 +54,7 @@ def check_eichrecht_reading(reading: Reading) -> list[EichrechtIssue]:
                 code=IssueCode.TIME_SYNC,
                 message=(
                     f"Time should be synchronized (status 'S') for billing, "
-                    f"got '{reading.time_status.value}'"
+                    f"got '{reading.time_status}'"
                 ),
                 field="TM",
                 severity=IssueSeverity.WARNING,

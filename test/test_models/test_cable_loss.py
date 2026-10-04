@@ -1,9 +1,9 @@
 import decimal
 
-import pydantic
 import pytest
 
 from pyocmf.enums.units import ResistanceUnit
+from pyocmf.exceptions import SpecWarning
 from pyocmf.models import CableLossCompensation
 
 
@@ -43,23 +43,16 @@ class TestCableLossCompensation:
         cable_loss = CableLossCompensation.model_validate(data)
         assert isinstance(cable_loss.LR, decimal.Decimal)
 
-    def test_ln_max_length_enforced(self) -> None:
-        data = {
-            "LN": "A" * 21,  # Too long
-            "LR": "1.0",
-            "LU": "mOhm",
-        }
-        with pytest.raises(pydantic.ValidationError) as exc_info:
+    def test_ln_max_length_warns(self) -> None:
+        with pytest.warns(SpecWarning, match="exceeds 20 characters"):
+            cable_loss = CableLossCompensation.model_validate({
+                "LN": "A" * 21,
+                "LR": "1.0",
+                "LU": "mOhm",
+            })
+        assert cable_loss.LN == "A" * 21
+
+    @pytest.mark.parametrize(("data", "missing"), [({"LU": "mOhm"}, "LR"), ({"LR": "1.5"}, "LU")])
+    def test_missing_required_fields_warn(self, data: dict, missing: str) -> None:
+        with pytest.warns(SpecWarning, match=rf"\({missing}\) is mandatory"):
             CableLossCompensation.model_validate(data)
-
-        errors = exc_info.value.errors()
-        assert any(
-            "max_length" in str(error) or "string_too_long" in str(error) for error in errors
-        )
-
-    def test_missing_required_fields(self) -> None:
-        with pytest.raises(pydantic.ValidationError):
-            CableLossCompensation.model_validate({"LU": "mOhm"})
-
-        with pytest.raises(pydantic.ValidationError):
-            CableLossCompensation.model_validate({"LR": "1.5"})

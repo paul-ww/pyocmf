@@ -1,18 +1,12 @@
 from __future__ import annotations
 
 import decimal
-import warnings
+import re
 
 import pydantic
 
 from pyocmf.core.reading import Reading
-from pyocmf.enums.identifiers import (
-    ChargePointIdentificationType,
-    IdentificationFlag,
-    IdentificationType,
-    UserAssignmentStatus,
-)
-from pyocmf.exceptions import ValidationError
+from pyocmf.enums.identifiers import IdentificationType
 from pyocmf.models.cable_loss import CableLossCompensation
 from pyocmf.types.identifiers import (
     EMAID,
@@ -23,8 +17,21 @@ from pyocmf.types.identifiers import (
     ISO15693,
     PHONE_NUMBER,
     IdentificationData,
-    PaginationString,
 )
+from pyocmf.types.lenient import (
+    LenientBool,
+    LenientChargePointIdentificationType,
+    LenientIdentificationFlag,
+    LenientIdentificationType,
+    LenientUserAssignmentStatus,
+    warn_spec,
+)
+
+# OCMF spec Table 2: context letter (T or F) and a number without leading zeros
+_PAGINATION_PATTERN = re.compile(r"^[TF](0|[1-9][0-9]*)$")
+_MAX_IDENTIFICATION_FLAGS = 4
+_MAX_TARIFF_TEXT_LENGTH = 250
+_MAX_CHARGE_CONTROLLER_FIRMWARE_LENGTH = 25
 
 
 class Payload(pydantic.BaseModel):
@@ -35,32 +42,32 @@ class Payload(pydantic.BaseModel):
     GS: str | None = pydantic.Field(default=None, description="Gateway Serial")
     GV: str | None = pydantic.Field(default=None, description="Gateway Version")
 
-    PG: PaginationString = pydantic.Field(description="Pagination")
+    PG: str | None = pydantic.Field(default=None, description="Pagination")
 
     MV: str | None = pydantic.Field(default=None, description="Meter Vendor")
     MM: str | None = pydantic.Field(default=None, description="Meter Model")
     MS: str | None = pydantic.Field(default=None, description="Meter Serial")
     MF: str | None = pydantic.Field(default=None, description="Meter Firmware")
 
-    IS: bool = pydantic.Field(description="Identification Status")
-    IL: UserAssignmentStatus | None = pydantic.Field(
+    IS: LenientBool | None = pydantic.Field(default=None, description="Identification Status")
+    IL: LenientUserAssignmentStatus | None = pydantic.Field(
         default=None, description="Identification Level"
     )
-    IF: list[IdentificationFlag] = pydantic.Field(
-        default=[], max_length=4, description="Identification Flags (0..4 per OCMF spec Table 4)"
+    IF: list[LenientIdentificationFlag] = pydantic.Field(
+        default=[], description="Identification Flags (0..4 per OCMF spec Table 4)"
     )
-    IT: IdentificationType | None = pydantic.Field(
+    IT: LenientIdentificationType | None = pydantic.Field(
         default=IdentificationType.NONE, description="Identification Type"
     )
     ID: IdentificationData | None = pydantic.Field(default=None, description="Identification Data")
-    TT: str | None = pydantic.Field(default=None, max_length=250, description="Tariff Text")
+    TT: str | None = pydantic.Field(default=None, description="Tariff Text (0..250)")
 
     CF: str | None = pydantic.Field(
-        default=None, max_length=25, description="Charge Controller Firmware Version"
+        default=None, description="Charge Controller Firmware Version (0..25)"
     )
     LC: CableLossCompensation | None = pydantic.Field(default=None, description="Loss Compensation")
 
-    CT: ChargePointIdentificationType | str | None = pydantic.Field(
+    CT: LenientChargePointIdentificationType | None = pydantic.Field(
         default=None, description="Charge Point Identification Type"
     )
     CI: str | None = pydantic.Field(default=None, description="Charge Point Identification")
@@ -104,15 +111,28 @@ class Payload(pydantic.BaseModel):
         return {**data, "RD": processed_readings}
 
     @pydantic.model_validator(mode="after")
-    def validate_serial_numbers(self) -> Payload:
-        """Either GS or MS must be present for signature component identification.
-
-        Per OCMF spec: GS is optional (0..1) but MS is mandatory (1..1).
-        However, at least one must be non-None (though can be empty string).
-        """
+    def warn_on_spec_deviations(self) -> Payload:
+        """Warn about OCMF spec violations the Transparenzsoftware tolerates."""
+        if self.PG is None or not _PAGINATION_PATTERN.match(self.PG):
+            warn_spec(f"Pagination (PG) '{self.PG}' must be 'T' or 'F' followed by a number")
+        if self.IS is None:
+            warn_spec("Identification Status (IS) is mandatory")
+        # GS is optional (0..1) and MS mandatory (1..1), but either one identifies the
+        # signature component
         if self.GS is None and self.MS is None:
-            msg = "Either Gateway Serial (GS) or Meter Serial (MS) must be provided"
-            raise ValidationError(msg)
+            warn_spec("Either Gateway Serial (GS) or Meter Serial (MS) must be provided")
+        if len(self.IF) > _MAX_IDENTIFICATION_FLAGS:
+            warn_spec(
+                f"At most {_MAX_IDENTIFICATION_FLAGS} identification flags (IF) are allowed, "
+                f"got {len(self.IF)}"
+            )
+        if self.TT is not None and len(self.TT) > _MAX_TARIFF_TEXT_LENGTH:
+            warn_spec(f"Tariff Text (TT) exceeds {_MAX_TARIFF_TEXT_LENGTH} characters")
+        if self.CF is not None and len(self.CF) > _MAX_CHARGE_CONTROLLER_FIRMWARE_LENGTH:
+            warn_spec(
+                f"Charge Controller Firmware (CF) exceeds "
+                f"{_MAX_CHARGE_CONTROLLER_FIRMWARE_LENGTH} characters"
+            )
         return self
 
     @pydantic.field_validator("FV", mode="before")
@@ -133,11 +153,9 @@ class Payload(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="after")
     def validate_id_format_by_type(self) -> Payload:
-        """Validate ID format based on the Identification Type (IT).
+        """Warn when the ID does not match the format of its Identification Type (IT).
 
         Types without a defined format (LOCAL, CENTRAL, KEY_CODE, ...) accept any value.
-        Mismatches raise ValidationError, except for ISO14443 and ISO15693, which only
-        warn because real-world RFID cards often use vendor-specific UID lengths.
         """
         if not self.ID or self.IT is None:
             return self
@@ -148,19 +166,10 @@ class Payload(pydantic.BaseModel):
 
         try:
             adapter.validate_python(self.ID)
-        except pydantic.ValidationError as e:
-            msg = (
+        except pydantic.ValidationError:
+            warn_spec(
                 f"ID value '{self.ID}' does not match expected format for identification "
-                f"type '{self.IT.value}'"
-            )
-            if self.IT not in _PERMISSIVE_ID_TYPES:
-                error_msg = f"{msg}: {e}"
-                raise ValidationError(error_msg) from e
-            warnings.warn(
-                f"{msg}. This may indicate non-standard RFID card format or vendor-specific "
-                f"implementation. Data will be accepted but may not be fully spec-compliant.",
-                UserWarning,
-                stacklevel=3,
+                f"type '{self.IT}'"
             )
         return self
 
@@ -174,5 +183,3 @@ _ID_FORMAT_ADAPTERS: dict[IdentificationType, pydantic.TypeAdapter] = {
     IdentificationType.ISO7812: pydantic.TypeAdapter(ISO7812),
     IdentificationType.PHONE_NUMBER: pydantic.TypeAdapter(PHONE_NUMBER),
 }
-
-_PERMISSIVE_ID_TYPES = {IdentificationType.ISO14443, IdentificationType.ISO15693}

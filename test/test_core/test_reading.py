@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import decimal
 
-import pydantic
 import pytest
 
 from pyocmf.core import Payload
 from pyocmf.core.reading import MeterReadingReason, MeterStatus, Reading
 from pyocmf.enums.identifiers import IdentificationType
 from pyocmf.enums.units import EnergyUnit
+from pyocmf.exceptions import SpecWarning
 
 from ..helpers import create_test_reading, decimal_value, obis, tm
 
@@ -96,8 +96,8 @@ class TestRIRUFieldGroup:
         assert reading.RI is None
         assert reading.RU is None
 
-    def test_rv_without_ru_fails(self) -> None:
-        with pytest.raises(ValueError, match=r"RU .* is required when RV .* is present"):
+    def test_rv_without_ru_warns(self) -> None:
+        with pytest.warns(SpecWarning, match=r"RU .* is required when RV .* is present"):
             Reading(
                 TM=tm("2023-01-01T12:00:00,000+0000 S"),
                 TX=MeterReadingReason.END,
@@ -105,27 +105,25 @@ class TestRIRUFieldGroup:
                 ST=MeterStatus.OK,
             )
 
-    def test_ri_without_ru_fails(self) -> None:
-        with pytest.raises(pydantic.ValidationError):
+    def test_ri_without_ru_warns(self) -> None:
+        with pytest.warns(SpecWarning, match=r"RI .* and RU .* must both be present"):
             Reading(
                 TM=tm("2023-01-01T12:00:00,000+0000 S"),
                 TX=MeterReadingReason.END,
                 RV=decimal.Decimal("100.0"),
                 RI=obis("01-00:01.08.00*FF"),  # RI present
-                RU=None,  # RU absent - should fail
+                RU=None,
                 ST=MeterStatus.OK,
             )
 
-    def test_ru_without_ri_fails(self) -> None:
-        with pytest.raises(
-            ValueError, match=r"RI .* and RU .* must both be present or both absent"
-        ):
+    def test_ru_without_ri_warns(self) -> None:
+        with pytest.warns(SpecWarning, match=r"RI .* and RU .* must both be present"):
             Reading(
                 TM=tm("2023-01-01T12:00:00,000+0000 S"),
                 TX=MeterReadingReason.END,
                 RV=decimal.Decimal("100.0"),
                 RI=None,  # RI absent
-                RU=EnergyUnit.KWH,  # RU present - should fail
+                RU=EnergyUnit.KWH,
                 ST=MeterStatus.OK,
             )
 

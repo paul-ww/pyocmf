@@ -12,7 +12,6 @@ from pyocmf.constants import OCMF_HEADER, OCMF_PREFIX, OCMF_SEPARATOR
 from pyocmf.core.payload import Payload
 from pyocmf.core.signature import Signature
 from pyocmf.crypto import verification
-from pyocmf.enums.reading import MeterReadingReason
 from pyocmf.exceptions import (
     HexDecodingError,
     OcmfFormatError,
@@ -129,22 +128,7 @@ class OCMF(pydantic.BaseModel):
         Set errors_only=True to filter out warnings.
         """
         if other is None:
-            if not self.payload.RD:
-                return [
-                    EichrechtIssue(
-                        code=compliance.IssueCode.NO_READINGS,
-                        message="No readings (RD) present in payload",
-                        field="RD",
-                    )
-                ]
-
-            issues = []
-            for i, reading in enumerate(self.payload.RD):
-                reading_issues = compliance.check_eichrecht_reading(
-                    reading,
-                    is_begin=(i == 0 and reading.TX == MeterReadingReason.BEGIN),
-                )
-                issues.extend(reading_issues)
+            issues = compliance.check_eichrecht_payload(self.payload)
         else:
             issues = compliance.check_eichrecht_transaction(self.payload, other.payload)
 

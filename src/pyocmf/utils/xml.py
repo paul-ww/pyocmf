@@ -36,11 +36,12 @@ class OcmfContainer:
         self._entries = entries
 
     @classmethod
-    def from_xml(cls, xml_path: pathlib.Path | str) -> OcmfContainer:
+    def from_xml(cls, xml_path: pathlib.Path | str, *, strict: bool = False) -> OcmfContainer:
         """Parse OCMF data from an XML file.
 
         Args:
             xml_path: Path to the XML file
+            strict: Reject OCMF records that deviate from the spec instead of warning
 
         Returns:
             OcmfContainer with parsed OCMF entries
@@ -66,7 +67,7 @@ class OcmfContainer:
             ocmf_str = _extract_ocmf_string(value_elem)
 
             if ocmf_str and ocmf_str not in seen_strings:
-                ocmf = OCMF.from_string(ocmf_str)
+                ocmf = OCMF.from_string(ocmf_str, strict=strict)
                 public_key = _extract_public_key(value_elem)
                 entries.append(OcmfRecord(ocmf=ocmf, public_key=public_key))
                 seen_strings.add(ocmf_str)

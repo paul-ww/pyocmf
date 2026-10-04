@@ -35,7 +35,8 @@ from pyocmf.exceptions import (
     PublicKeyError,
     PyOCMFError,
     SignatureVerificationError,
-    ValidationError,
+    SpecViolationError,
+    SpecWarning,
     XmlParsingError,
 )
 from pyocmf.models import OBIS, CableLossCompensation, OCMFTimestamp, PublicKey
@@ -85,7 +86,6 @@ __all__ = [  # ruff: ignore[unsorted-dunder-all]
     "OcmfPayloadError",
     "OcmfSignatureError",
     # Exceptions - Validation
-    "ValidationError",
     # Exceptions - Encoding
     "EncodingError",
     "EncodingTypeError",
@@ -97,5 +97,7 @@ __all__ = [  # ruff: ignore[unsorted-dunder-all]
     # Exceptions - Cryptography
     "CryptoError",
     "SignatureVerificationError",
+    "SpecViolationError",
+    "SpecWarning",
     "PublicKeyError",
 ]

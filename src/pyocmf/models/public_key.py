@@ -79,8 +79,10 @@ class PublicKey(pydantic.BaseModel):
     def key_type_identifier(self) -> KeyType:
         return KeyType.from_curve(self.curve)
 
-    def matches_signature_algorithm(self, signature_algorithm: SignatureMethod | None) -> bool:
-        if signature_algorithm is None:
+    def matches_signature_algorithm(
+        self, signature_algorithm: SignatureMethod | str | None
+    ) -> bool:
+        if not isinstance(signature_algorithm, SignatureMethod):
             return False
 
         return self.curve == signature_algorithm.curve

@@ -33,20 +33,20 @@ def detect_input_type(ocmf_input: str) -> InputType:
     return InputType.OCMF_STRING
 
 
-def load_xml_container(xml_path: str) -> OcmfContainer:
+def load_xml_container(xml_path: str, *, strict: bool = False) -> OcmfContainer:
     """Load and validate XML file, returning container with OCMF records."""
     path = pathlib.Path(xml_path)
     if not path.exists():
         raise FileNotFoundError(xml_path)
-    return OcmfContainer.from_xml(path)
+    return OcmfContainer.from_xml(path, strict=strict)
 
 
-def load_ocmf(ocmf_input: str) -> OCMF:
+def load_ocmf(ocmf_input: str, *, strict: bool = False) -> OCMF:
     """Load OCMF from string or file, handling both formats."""
     input_type = detect_input_type(ocmf_input)
 
     if input_type == InputType.XML:
-        container = load_xml_container(ocmf_input)
+        container = load_xml_container(ocmf_input, strict=strict)
         return container[0].ocmf
 
-    return OCMF.from_string(ocmf_input)
+    return OCMF.from_string(ocmf_input, strict=strict)

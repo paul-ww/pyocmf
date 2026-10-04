@@ -245,6 +245,18 @@ class TestInspectCommand:
         assert "OCMF Structure:" in result.stdout
         assert "KEBA_KCP30" in result.stdout
 
+    def test_inspect_strict_rejects_spec_deviation(
+        self, cli_runner: CliRunner, transparency_xml_dir: pathlib.Path
+    ) -> None:
+        xml_path = str(transparency_xml_dir / "VW_OCMF_load.xml")
+
+        assert cli_runner.invoke(app, ["inspect", xml_path]).exit_code == 0
+
+        result = cli_runner.invoke(app, ["inspect", "--strict", xml_path])
+        assert result.exit_code == 1
+        assert "OCMF parsing failed" in result.stdout
+        assert "ISO14443" in result.stdout
+
     def test_inspect_invalid_ocmf(self, cli_runner: CliRunner) -> None:
         result = cli_runner.invoke(app, ["inspect", "not_valid_hex"])
 

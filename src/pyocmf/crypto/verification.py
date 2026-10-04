@@ -33,7 +33,9 @@ def get_hash_algorithm(signature_method: SignatureMethod | None) -> type[hashes.
     return hash_class
 
 
-def decode_signature_data(signature_data: str, encoding: SignatureEncodingType | None) -> bytes:
+def decode_signature_data(
+    signature_data: str, encoding: SignatureEncodingType | str | None
+) -> bytes:
     if encoding == SignatureEncodingType.HEX or encoding is None:
         try:
             return bytes.fromhex(signature_data)
@@ -54,8 +56,8 @@ def decode_signature_data(signature_data: str, encoding: SignatureEncodingType |
 def verify_signature(
     payload_json: str,
     signature_data: str,
-    signature_method: SignatureMethod | None,
-    signature_encoding: SignatureEncodingType | None,
+    signature_method: SignatureMethod | str | None,
+    signature_encoding: SignatureEncodingType | str | None,
     public_key_hex: str,
 ) -> bool:
     """Verify ECDSA signature against payload using the provided public key.
@@ -66,6 +68,10 @@ def verify_signature(
     signature algorithm or if verification cannot be performed.
     """
     check_cryptography_available()
+
+    if not isinstance(signature_method, SignatureMethod):
+        msg = f"Unsupported signature algorithm: '{signature_method}'"
+        raise SignatureVerificationError(msg)
 
     from pyocmf.models.public_key import PublicKey
 

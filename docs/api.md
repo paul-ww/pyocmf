@@ -122,9 +122,11 @@ All exceptions inherit from `PyOCMFError`.
 
 ::: pyocmf.exceptions.OcmfSignatureError
 
-### Validation Errors
+### Spec Deviations
 
-::: pyocmf.exceptions.ValidationError
+::: pyocmf.exceptions.SpecWarning
+
+::: pyocmf.exceptions.SpecViolationError
 
 ### Encoding Errors
 

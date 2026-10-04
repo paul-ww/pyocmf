@@ -70,8 +70,8 @@ class EncodingTypeError(PyOCMFError, TypeError):
         self.expected_type = expected_type
 
 
-class ValidationError(PyOCMFError, ValueError):
-    pass
+class SpecViolationError(PyOCMFError, ValueError):
+    """Input deviates from the OCMF spec while parsing in strict mode."""
 
 
 class CryptoError(PyOCMFError):
@@ -102,3 +102,7 @@ class SignatureVerificationError(CryptoError):
     ) -> None:
         super().__init__(message, field=field, details=details)
         self.reason = reason
+
+
+class SpecWarning(UserWarning):
+    """Input deviates from the OCMF spec but is accepted, as the Transparenzsoftware does."""

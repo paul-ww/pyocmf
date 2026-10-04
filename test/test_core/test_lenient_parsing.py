@@ -205,6 +205,12 @@ class TestStrictMode:
         with pytest.raises(error, match=match):
             OCMF.from_string(ocmf_string, strict=True)
 
+    def test_error_names_the_spec_deviation(self) -> None:
+        with pytest.raises(
+            OcmfPayloadError, match=r"^Payload deviates from the OCMF spec: 'VERIFIED'"
+        ):
+            OCMF.from_string(ABL_OCMF, strict=True)
+
     def test_strict_mode_does_not_leak(self) -> None:
         with pytest.raises(OcmfPayloadError):
             OCMF.from_string(ABL_OCMF, strict=True)

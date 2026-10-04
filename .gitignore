@@ -30,3 +30,6 @@ TODO.md
 # Claude
 .claude
 .playwright-mcp
+
+# Built by `poe demo-wheel` for the browser demo
+docs/demo/wheels/

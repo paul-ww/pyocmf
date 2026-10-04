@@ -136,15 +136,17 @@ ocmf check 'OCMF|{...}|{...}' --verbose
 
 What is checked:
 - Meter status must be 'G' (OK)
-- No error flags present
+- No energy error flag ('E'); a time error flag ('t') is only a warning
 - Time synchronization status
 - Cable loss compensation (CL) validation
-- Transaction begin/end consistency (when checking pairs)
+- Exactly one begin and one end reading among the billing-relevant registers
+  (loss-compensated registers take precedence), for a pair or for a single record
+  holding a complete transaction
 - Meter serial number matching
 - OBIS code and unit consistency
 - Value progression (no regression)
 - User identification requirements
-- Pagination sequence
+- Pagination context; an end counter not above the begin counter is a warning
 
 ## Output Examples
 
@@ -172,7 +174,7 @@ Or when issues are detected:
 
 Errors (2):
   [ST] Meter status must be 'G' (OK) for billing-relevant readings, got 'N' (METER_STATUS)
-  [EF] Error flags must be empty for billing-relevant readings, got 'E01' (ERROR_FLAGS)
+  [EF] Energy error flag ('E') set on billing-relevant reading: 'E' (ERROR_FLAGS)
 
 Warnings (1):
   [TM] Time should be synchronized (status 'S') for billing, got 'U' (TIME_SYNC)

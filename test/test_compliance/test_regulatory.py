@@ -200,6 +200,11 @@ class TestEichrechtTransactionValidation:
         issues = check_eichrecht_transaction(begin, end)
         assert_has_issue(issues, IssueCode.TIME_REGRESSION)
 
+    def test_mixed_offset_timestamps_fail(self) -> None:
+        begin, end = create_transaction_pair(end_timestamp="2023-01-01T13:00:00,000 S")
+        issues = check_eichrecht_transaction(begin.payload, end.payload)
+        assert_has_issue(issues, IssueCode.TIME_REGRESSION, "UTC offset")
+
     def test_id_mismatch_warns(self) -> None:
         begin = create_test_payload(
             readings=[create_test_reading(tx=MeterReadingReason.BEGIN)],
@@ -223,9 +228,16 @@ class TestValidateTransactionPair:
         begin, end = create_transaction_pair()
         assert validate_transaction_pair(begin, end) is True
 
-    def test_pagination_not_consecutive_fails(self) -> None:
+    def test_pagination_gap_passes(self) -> None:
+        # Intermediate records (e.g. tariff changes) consume pagination numbers
         begin, end = create_transaction_pair(begin_pagination="T1", end_pagination="T5")
-        assert validate_transaction_pair(begin, end) is False
+        assert validate_transaction_pair(begin, end) is True
+
+    def test_pagination_not_increasing_warns(self) -> None:
+        begin, end = create_transaction_pair(begin_pagination="T5", end_pagination="T5")
+        issues = check_eichrecht_transaction(begin.payload, end.payload)
+        assert_no_errors(issues)
+        assert_has_issue(issues, IssueCode.PAGINATION_INCONSISTENT, "should follow")
 
     def test_pagination_consecutive_passes(self) -> None:
         begin, end = create_transaction_pair(begin_pagination="T3", end_pagination="T4")

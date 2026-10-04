@@ -1,15 +1,87 @@
 from __future__ import annotations
 
+import pytest
+
 from pyocmf.registries import (
     OBISCategory,
+    OBISGroups,
     OBISInfo,
     get_obis_info,
     is_accumulation_register,
     is_billing_relevant,
+    is_law_relevant,
+    is_loss_compensated,
     is_transaction_register,
     normalize_obis_code,
+    parse_obis,
     validate_obis_for_billing,
 )
+
+
+class TestParseObis:
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            # OBISTest.testSimple in the Transparenzsoftware
+            ("1-b:1.8.0", OBISGroups(1, 0xB, 1, 8, 0)),
+            ("01-00:01.08.00.FF", OBISGroups(1, 0, 1, 8, 0, 0xFF)),
+            ("01-00:B2.08.00*FF", OBISGroups(1, 0, 0xB2, 8, 0, 0xFF)),
+            ("1-0:98.8.0.FF", OBISGroups(1, 0, 0x98, 8, 0, 0xFF)),
+            ("1-0:1.8.0*198", OBISGroups(1, 0, 1, 8, 0, 0x198)),
+            ("1-b:1.8.e", OBISGroups(1, 0xB, 1, 8, 0xE)),
+        ],
+    )
+    def test_parses_hex_groups(self, code: str, expected: OBISGroups) -> None:
+        assert parse_obis(code) == expected
+
+    @pytest.mark.parametrize("code", ["", "1.8.0", "1-0:1.8", "01-00:G1.08.00", "garbage"])
+    def test_rejects_malformed_codes(self, code: str) -> None:
+        assert parse_obis(code) is None
+
+    def test_key_is_canonical_without_f_group(self) -> None:
+        groups = parse_obis("1-0:b2.8.0*ff")
+        assert groups is not None
+        assert groups.key == "01-00:B2.08.00"
+
+
+class TestLawRelevance:
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "1-b:1.8.0",
+            "1-0:1.8.0",
+            "01-00:01.08.00.FF",
+            "1-b:1.8.e",
+            "1-0:98.8.0.FF",
+            "1-0:9E.8.0",
+            "01-00:B0.08.00*FF",
+            "01-00:C7.08.00",
+        ],
+    )
+    def test_law_relevant_registers(self, code: str) -> None:
+        assert is_law_relevant(code) is True
+
+    @pytest.mark.parametrize(
+        "code", ["1-0:2.8.0", "1-b:1.9.0", "01-00:00.08.06*FF", "01-00:16.07.00", "2-0:1.8.0"]
+    )
+    def test_not_law_relevant_registers(self, code: str) -> None:
+        assert is_law_relevant(code) is False
+
+    @pytest.mark.parametrize(
+        ("code", "expected"),
+        [
+            ("1-0:98.8.0.FF", True),
+            ("01-00:B1.08.00", True),
+            ("01-00:B3.08.00", True),
+            ("01-00:C1.08.00", True),
+            ("01-00:C3.08.00", True),
+            ("01-00:B0.08.00", False),
+            ("01-00:B2.08.00", False),
+            ("1-0:1.8.0", False),
+        ],
+    )
+    def test_loss_compensated_registers(self, code: str, expected: bool) -> None:
+        assert is_loss_compensated(code) is expected
 
 
 class TestOBISNormalization:
@@ -81,6 +153,12 @@ class TestBillingRelevance:
         assert is_billing_relevant("01-00:00.08.06*FF") is False  # Time
         assert is_billing_relevant("01-00:16.07.00*FF") is False  # Power
 
+    @pytest.mark.parametrize(
+        "code", ["01-00:01.08.00.FF", "1-0:1.8.0", "1-b:1.8.e", "1-0:98.8.0.FF", "1-0:2.8.0"]
+    )
+    def test_alternative_notations(self, code: str) -> None:
+        assert is_billing_relevant(code) is True
+
     def test_pattern_matching_for_unknown_codes(self) -> None:
         # Unknown B/C registers should still be recognized
         assert is_billing_relevant("01-00:B1.08.00*99") is True
@@ -150,6 +228,11 @@ class TestGetObisInfo:
     def test_get_unknown_obis_info(self) -> None:
         info = get_obis_info("99-99:99.99.99*FF")
         assert info is None
+
+    def test_lookup_ignores_padding_and_f_group(self) -> None:
+        info = get_obis_info("1-0:1.8.0.FF")
+        assert info is not None
+        assert info.code == "01-00:01.08.00"
 
     def test_get_legacy_obis_info(self) -> None:
         info = get_obis_info("1-b:1.8.0")

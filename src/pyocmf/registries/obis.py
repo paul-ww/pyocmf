@@ -12,10 +12,57 @@ class OBISCategory(enum.StrEnum):
     OTHER = "other"
 
 
-# Regex patterns for OBIS code classification
-_ACCUMULATION_REGISTER_PATTERN = re.compile(r"01-00:[BC][0-3]\.08\.00$")
-_TRANSACTION_REGISTER_PATTERN = re.compile(r"01-00:[BC][23]\.08\.00$")
-_ACTIVE_ENERGY_PATTERN = re.compile(r"01-00:0[12]\.08\.00$")
+# A-B:C.D.E with an optional F group after "*" or "."; OCMF spec section
+# "Extension to Billing Relevant OBIS Representation" writes all groups in hex
+_OBIS_PATTERN = re.compile(
+    r"^(?P<a>[0-9a-f]{1,2})-(?P<b>[0-9a-f]{1,2}):(?P<c>[0-9a-f]{1,2})"
+    r"\.(?P<d>[0-9a-f]{1,2})\.(?P<e>[0-9a-f]{1,2})(?:[.*](?P<f>[0-9a-f]+))?$",
+    re.IGNORECASE,
+)
+
+_ELECTRICITY = 1
+_CUMULATIVE_ENERGY = 8
+_ACTIVE_EXPORT = 0x02
+# OCMF spec Table 25 reserves B0-C7 for billing-relevant energy. 01 is active import;
+# 98 (loss-compensated) and 9E are vendor registers the Transparenzsoftware accepts.
+_LAW_RELEVANT_C = {0x01, 0x98, 0x9E, *range(0xB0, 0xC8)}
+_LOSS_COMPENSATED_C = {0x98, 0xB1, 0xB3, 0xC1, 0xC3}
+_ACCUMULATION_C = {*range(0xB0, 0xB4), *range(0xC0, 0xC4)}
+_TRANSACTION_C = {0xB2, 0xB3, 0xC2, 0xC3}
+
+
+@dataclass(frozen=True)
+class OBISGroups:
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+    f: int | None = None
+
+    @property
+    def key(self) -> str:
+        """Canonical zero-padded form without the F group, e.g. ``01-00:B2.08.00``."""
+        return f"{self.a:02X}-{self.b:02X}:{self.c:02X}.{self.d:02X}.{self.e:02X}"
+
+    @property
+    def is_cumulative_energy(self) -> bool:
+        return self.a == _ELECTRICITY and self.d == _CUMULATIVE_ENERGY
+
+
+def parse_obis(obis_code: str) -> OBISGroups | None:
+    match = _OBIS_PATTERN.match(obis_code.strip())
+    if match is None:
+        return None
+    f = match["f"]
+    return OBISGroups(
+        a=int(match["a"], 16),
+        b=int(match["b"], 16),
+        c=int(match["c"], 16),
+        d=int(match["d"], 16),
+        e=int(match["e"], 16),
+        f=int(f, 16) if f is not None else None,
+    )
 
 
 def _normalize(obis_code: str) -> str:
@@ -35,14 +82,13 @@ class OBISInfo:
 
     @staticmethod
     def from_code(obis_code: str) -> OBISInfo | None:
-        normalized = _normalize(obis_code)
-        return ALL_KNOWN_OBIS.get(normalized)
+        return get_obis_info(obis_code)
 
     def is_accumulation_register(self) -> bool:
-        return bool(_ACCUMULATION_REGISTER_PATTERN.match(self.code))
+        return is_accumulation_register(self.code)
 
     def is_transaction_register(self) -> bool:
-        return bool(_TRANSACTION_REGISTER_PATTERN.match(self.code))
+        return is_transaction_register(self.code)
 
 
 BILLING_RELEVANT_OBIS = {
@@ -140,35 +186,61 @@ LEGACY_OBIS = {
 
 ALL_KNOWN_OBIS = {**BILLING_RELEVANT_OBIS, **COMMON_OBIS, **LEGACY_OBIS}
 
+_KNOWN_OBIS_BY_KEY = {
+    groups.key: info
+    for code, info in ALL_KNOWN_OBIS.items()
+    if (groups := parse_obis(code)) is not None
+}
+
 
 def normalize_obis_code(obis_code: str) -> str:
     return _normalize(obis_code)
 
 
 def get_obis_info(obis_code: str) -> OBISInfo | None:
-    return OBISInfo.from_code(obis_code)
+    groups = parse_obis(obis_code)
+    return _KNOWN_OBIS_BY_KEY.get(groups.key) if groups else None
 
 
 def is_billing_relevant(obis_code: str) -> bool:
-    normalized = _normalize(obis_code)
+    if (info := get_obis_info(obis_code)) is not None:
+        return info.billing_relevant
+    groups = parse_obis(obis_code)
+    return (
+        groups is not None
+        and groups.is_cumulative_energy
+        and (groups.c in _LAW_RELEVANT_C or groups.c == _ACTIVE_EXPORT)
+    )
 
-    if normalized in ALL_KNOWN_OBIS:
-        return ALL_KNOWN_OBIS[normalized].billing_relevant
 
-    if _ACCUMULATION_REGISTER_PATTERN.match(normalized):
-        return True
+def is_law_relevant(obis_code: str) -> bool:
+    """Whether the register is compared for a transaction, as in the Transparenzsoftware."""
+    groups = parse_obis(obis_code)
+    return groups is not None and groups.is_cumulative_energy and groups.c in _LAW_RELEVANT_C
 
-    return bool(_ACTIVE_ENERGY_PATTERN.match(normalized))
+
+def is_loss_compensated(obis_code: str) -> bool:
+    groups = parse_obis(obis_code)
+    return groups is not None and groups.is_cumulative_energy and groups.c in _LOSS_COMPENSATED_C
+
+
+def _is_reserved_register(obis_code: str, c_values: set[int]) -> bool:
+    groups = parse_obis(obis_code)
+    return (
+        groups is not None
+        and groups.is_cumulative_energy
+        and groups.b == 0
+        and groups.e == 0
+        and groups.c in c_values
+    )
 
 
 def is_accumulation_register(obis_code: str) -> bool:
-    normalized = _normalize(obis_code)
-    return bool(_ACCUMULATION_REGISTER_PATTERN.match(normalized))
+    return _is_reserved_register(obis_code, _ACCUMULATION_C)
 
 
 def is_transaction_register(obis_code: str) -> bool:
-    normalized = _normalize(obis_code)
-    return bool(_TRANSACTION_REGISTER_PATTERN.match(normalized))
+    return _is_reserved_register(obis_code, _TRANSACTION_C)
 
 
 def validate_obis_for_billing(obis_code: str | None) -> tuple[bool, str | None]:

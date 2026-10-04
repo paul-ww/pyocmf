@@ -8,9 +8,18 @@ from pyocmf.enums.identifiers import UserAssignmentStatus
 from pyocmf.enums.reading import MeterReadingReason
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from pyocmf.core.ocmf import OCMF
     from pyocmf.core.payload import Payload
     from pyocmf.core.reading import Reading
+
+_INVALID_ID_LEVELS = {
+    UserAssignmentStatus.UID_MISMATCH,
+    UserAssignmentStatus.CERT_INCORRECT,
+    UserAssignmentStatus.CERT_EXPIRED,
+    UserAssignmentStatus.CERT_UNVERIFIED,
+}
 
 
 def _check_field_match(
@@ -32,135 +41,124 @@ def _check_field_match(
     return None
 
 
+def _law_relevant_readings(readings: Sequence[Reading]) -> list[Reading]:
+    """Select the readings a transaction is billed on, as the Transparenzsoftware does.
+
+    Loss-compensated registers take precedence over the other law-relevant energy
+    registers. Falls back to all readings when no register is recognised, so
+    readings with unknown OBIS codes are still checked.
+    """
+    compensated = [r for r in readings if r.RI is not None and r.RI.is_loss_compensated]
+    if compensated:
+        return compensated
+    law_relevant = [r for r in readings if r.RI is not None and r.RI.is_law_relevant]
+    return law_relevant or list(readings)
+
+
+def _select_transaction_readings(
+    readings: Sequence[Reading],
+) -> tuple[Reading | None, Reading | None, list[EichrechtIssue]]:
+    relevant = _law_relevant_readings(readings)
+    begins = [r for r in relevant if r.TX == MeterReadingReason.BEGIN]
+    ends = [r for r in relevant if r.TX is not None and r.TX.is_end_reading()]
+
+    issues = []
+    if not begins:
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.BEGIN_TX,
+                message="No begin reading (TX='B') found",
+                field="TX",
+            )
+        )
+    elif len(begins) > 1:
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.MULTIPLE_BEGIN,
+                message=f"Expected exactly one begin reading, found {len(begins)}",
+                field="TX",
+            )
+        )
+    if not ends:
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.END_TX,
+                message="No end reading (TX in 'E', 'L', 'R', 'A', 'P') found",
+                field="TX",
+            )
+        )
+    elif len(ends) > 1:
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.MULTIPLE_END,
+                message=f"Expected exactly one end reading, found {len(ends)}",
+                field="TX",
+            )
+        )
+
+    begin = begins[0] if begins else None
+    end = ends[-1] if ends else None
+    return begin, end, issues
+
+
 def _check_timestamp_ordering(
     begin_reading: Reading, end_reading: Reading
 ) -> EichrechtIssue | None:
-    if not (begin_reading.TM and end_reading.TM):
-        return None
-
     try:
-        if end_reading.timestamp < begin_reading.timestamp:
-            return EichrechtIssue(
-                code=IssueCode.TIME_REGRESSION,
-                message=(
-                    f"End timestamp ({end_reading.TM}) must be >= "
-                    f"begin timestamp ({begin_reading.TM})"
-                ),
-                field="TM",
-            )
-    except ValueError as e:
+        regressed = end_reading.timestamp < begin_reading.timestamp
+    except TypeError:
         return EichrechtIssue(
             code=IssueCode.TIME_REGRESSION,
-            message=f"Failed to parse timestamps for comparison: {e}",
+            message=(
+                f"Cannot compare timestamps with and without UTC offset: "
+                f"begin='{begin_reading.timestamp}', end='{end_reading.timestamp}'"
+            ),
+            field="TM",
+        )
+    if regressed:
+        return EichrechtIssue(
+            code=IssueCode.TIME_REGRESSION,
+            message=(
+                f"End timestamp ({end_reading.TM}) must be >= begin timestamp ({begin_reading.TM})"
+            ),
             field="TM",
         )
     return None
 
 
-def _validate_transaction_types(
-    begin_reading: Reading,
-    end_reading: Reading,
-    end_reading_count: int,
-) -> list[EichrechtIssue]:
+def _check_transaction_readings(begin: Reading, end: Reading) -> list[EichrechtIssue]:
     issues = []
-    if begin_reading.TX != MeterReadingReason.BEGIN:
-        issues.append(
-            EichrechtIssue(
-                code=IssueCode.BEGIN_TX,
-                message=f"Begin reading must have TX='B', got '{begin_reading.TX}'",
-                field="RD[0].TX",
-            )
-        )
-    if end_reading.TX is None or not end_reading.TX.is_end_reading():
-        issues.append(
-            EichrechtIssue(
-                code=IssueCode.END_TX,
-                message=f"'{end_reading.TX}' is not a valid end reading type",
-                field=f"RD[{end_reading_count - 1}].TX",
-            )
-        )
-    return issues
-
-
-def _validate_identification_level(payload: Payload, context: str) -> EichrechtIssue | None:
-    if payload.IL is None:
-        return None
-
-    invalid_levels = {
-        UserAssignmentStatus.UID_MISMATCH,
-        UserAssignmentStatus.CERT_INCORRECT,
-        UserAssignmentStatus.CERT_EXPIRED,
-        UserAssignmentStatus.CERT_UNVERIFIED,
-    }
-
-    if payload.IL in invalid_levels:
-        return EichrechtIssue(
-            code=IssueCode.ID_LEVEL_INVALID,
-            message=(
-                f"Identification level '{payload.IL}' indicates error and is not "
-                f"acceptable for billing ({context})"
-            ),
-            field="IL",
-        )
-
-    return None
-
-
-def _validate_field_consistency(
-    begin: Payload,
-    end: Payload,
-    begin_reading: Reading,
-    end_reading: Reading,
-) -> list[EichrechtIssue]:
-    issues = []
-    begin_serial = begin.GS or begin.MS
-    end_serial = end.GS or end.MS
-    if issue := _check_field_match(
-        begin_serial, end_serial, "GS/MS", IssueCode.SERIAL_MISMATCH, "Serial numbers"
-    ):
+    if issue := _check_field_match(begin.RI, end.RI, "RI", IssueCode.OBIS_MISMATCH, "OBIS codes"):
         issues.append(issue)
-    if issue := _check_field_match(
-        begin_reading.RI, end_reading.RI, "RI", IssueCode.OBIS_MISMATCH, "OBIS codes"
-    ):
+    if issue := _check_field_match(begin.RU, end.RU, "RU", IssueCode.UNIT_MISMATCH, "Units"):
         issues.append(issue)
-    if issue := _check_field_match(
-        begin_reading.RU, end_reading.RU, "RU", IssueCode.UNIT_MISMATCH, "Units"
-    ):
-        issues.append(issue)
-    return issues
-
-
-def _validate_value_progression(
-    begin_reading: Reading,
-    end_reading: Reading,
-) -> list[EichrechtIssue]:
-    issues = []
-    if (
-        begin_reading.RV is not None
-        and end_reading.RV is not None
-        and end_reading.RV < begin_reading.RV
-    ):
+    if begin.RV is not None and end.RV is not None and end.RV < begin.RV:
         issues.append(
             EichrechtIssue(
                 code=IssueCode.VALUE_REGRESSION,
-                message=(
-                    f"End value ({end_reading.RV}) must be >= begin value ({begin_reading.RV})"
-                ),
+                message=f"End value ({end.RV}) must be >= begin value ({begin.RV})",
                 field="RV",
             )
         )
-    if timestamp_issue := _check_timestamp_ordering(begin_reading, end_reading):
-        issues.append(timestamp_issue)
+    if issue := _check_timestamp_ordering(begin, end):
+        issues.append(issue)
     return issues
 
 
-def _validate_pagination_consistency(
-    begin: Payload,
-    end: Payload,
-) -> EichrechtIssue | None:
-    if not (begin.PG and end.PG):
+def _check_identification_level(payload: Payload, context: str) -> EichrechtIssue | None:
+    if payload.IL not in _INVALID_ID_LEVELS:
         return None
+    return EichrechtIssue(
+        code=IssueCode.ID_LEVEL_INVALID,
+        message=(
+            f"Identification level '{payload.IL}' indicates error and is not "
+            f"acceptable for billing ({context})"
+        ),
+        field="IL",
+    )
 
+
+def _check_pagination(begin: Payload, end: Payload) -> EichrechtIssue | None:
     if begin.PG[0] != end.PG[0]:
         return EichrechtIssue(
             code=IssueCode.PAGINATION_INCONSISTENT,
@@ -171,23 +169,55 @@ def _validate_pagination_consistency(
             field="PG",
         )
 
-    try:
-        begin_num = int(begin.PG[1:])
-        end_num = int(end.PG[1:])
-        if end_num != begin_num + 1:
-            return EichrechtIssue(
-                code=IssueCode.PAGINATION_INCONSISTENT,
-                message=f"Pagination must be consecutive: begin='{begin.PG}', end='{end.PG}'",
-                field="PG",
-            )
-    except (ValueError, IndexError):
+    # The counter increments for every record, so intermediate records leave gaps
+    if int(end.PG[1:]) <= int(begin.PG[1:]):
         return EichrechtIssue(
             code=IssueCode.PAGINATION_INCONSISTENT,
-            message=f"Failed to parse pagination numbers: begin='{begin.PG}', end='{end.PG}'",
+            message=f"End pagination should follow begin: begin='{begin.PG}', end='{end.PG}'",
             field="PG",
+            severity=IssueSeverity.WARNING,
         )
-
     return None
+
+
+def _contains_complete_transaction(payload: Payload) -> bool:
+    return (
+        payload.PG.startswith("T")
+        and any(r.TX == MeterReadingReason.BEGIN for r in payload.RD)
+        and any(r.TX is not None and r.TX.is_end_reading() for r in payload.RD)
+    )
+
+
+def check_eichrecht_payload(payload: Payload) -> list[EichrechtIssue]:
+    """Check a single payload for Eichrecht compliance.
+
+    Every reading is checked individually. A payload holding a complete transaction
+    (begin and end reading in the transaction context) is additionally checked like a
+    begin/end pair.
+    """
+    if not payload.RD:
+        return [
+            EichrechtIssue(
+                code=IssueCode.NO_READINGS,
+                message="No readings (RD) present in payload",
+                field="RD",
+            )
+        ]
+
+    issues: list[EichrechtIssue] = []
+    for i, reading in enumerate(payload.RD):
+        is_begin = i == 0 and reading.TX == MeterReadingReason.BEGIN
+        issues.extend(check_eichrecht_reading(reading, is_begin=is_begin))
+
+    if _contains_complete_transaction(payload):
+        begin, end, selection_issues = _select_transaction_readings(payload.RD)
+        issues.extend(selection_issues)
+        if begin is not None and end is not None:
+            issues.extend(_check_transaction_readings(begin, end))
+        if issue := _check_identification_level(payload, "transaction"):
+            issues.append(issue)
+
+    return issues
 
 
 def check_eichrecht_transaction(
@@ -195,35 +225,34 @@ def check_eichrecht_transaction(
     end: Payload,
 ) -> list[EichrechtIssue]:
     """Check a complete charging transaction for Eichrecht compliance."""
-    issues: list[EichrechtIssue] = []
-
     if not begin.RD or not end.RD:
-        issues.append(
+        return [
             EichrechtIssue(
                 code=IssueCode.NO_READINGS,
                 message="Both begin and end payloads must contain readings (RD)",
                 field="RD",
             )
-        )
-        return issues
+        ]
 
-    begin_reading = begin.RD[0]
-    end_reading = end.RD[-1]
+    begin_reading, end_reading, issues = _select_transaction_readings([*begin.RD, *end.RD])
 
-    issues.extend(_validate_transaction_types(begin_reading, end_reading, len(end.RD)))
+    if begin_reading is not None:
+        issues.extend(check_eichrecht_reading(begin_reading, is_begin=True))
+    if end_reading is not None:
+        issues.extend(check_eichrecht_reading(end_reading, is_begin=False))
+    if begin_reading is not None and end_reading is not None:
+        issues.extend(_check_transaction_readings(begin_reading, end_reading))
 
-    issues.extend(check_eichrecht_reading(begin_reading, is_begin=True))
-    issues.extend(check_eichrecht_reading(end_reading, is_begin=False))
-
-    issues.extend(_validate_field_consistency(begin, end, begin_reading, end_reading))
-    issues.extend(_validate_value_progression(begin_reading, end_reading))
-
-    if issue := _validate_identification_level(begin, "begin"):
-        issues.append(issue)
-    if issue := _validate_identification_level(end, "end"):
+    if issue := _check_field_match(
+        begin.GS or begin.MS, end.GS or end.MS, "GS/MS", IssueCode.SERIAL_MISMATCH, "Serial numbers"
+    ):
         issues.append(issue)
 
-    if issue := _validate_pagination_consistency(begin, end):
+    for payload, context in ((begin, "begin"), (end, "end")):
+        if issue := _check_identification_level(payload, context):
+            issues.append(issue)
+
+    if issue := _check_pagination(begin, end):
         issues.append(issue)
 
     if issue := _check_field_match(

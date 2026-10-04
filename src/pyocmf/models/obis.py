@@ -6,9 +6,12 @@ import pydantic
 from pydantic import BeforeValidator
 
 from pyocmf.registries.obis import (
+    OBISInfo,
     get_obis_info,
     is_accumulation_register,
     is_billing_relevant,
+    is_law_relevant,
+    is_loss_compensated,
     is_transaction_register,
 )
 
@@ -36,12 +39,20 @@ class OBIS(pydantic.BaseModel):
         return str(self)
 
     @property
-    def info(self):
+    def info(self) -> OBISInfo | None:
         return get_obis_info(self.code)
 
     @property
     def is_billing_relevant(self) -> bool:
         return is_billing_relevant(self.code)
+
+    @property
+    def is_law_relevant(self) -> bool:
+        return is_law_relevant(self.code)
+
+    @property
+    def is_loss_compensated(self) -> bool:
+        return is_loss_compensated(self.code)
 
     @property
     def is_accumulation_register(self) -> bool:

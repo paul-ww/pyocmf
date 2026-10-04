@@ -34,6 +34,8 @@ Functions for validating OCMF data against German Eichrecht (calibration law) re
 
 ::: pyocmf.compliance.check_eichrecht_reading
 
+::: pyocmf.compliance.check_eichrecht_payload
+
 ::: pyocmf.compliance.check_eichrecht_transaction
 
 ::: pyocmf.compliance.validate_transaction_pair
@@ -81,6 +83,10 @@ Utilities for working with OBIS codes.
 ::: pyocmf.registries.obis.get_obis_info
 
 ::: pyocmf.registries.obis.is_billing_relevant
+
+::: pyocmf.registries.obis.is_law_relevant
+
+::: pyocmf.registries.obis.parse_obis
 
 ::: pyocmf.registries.obis.is_accumulation_register
 

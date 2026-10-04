@@ -30,14 +30,22 @@ def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[Ei
             )
         )
 
-    if reading.EF and reading.EF.strip():
+    if reading.EF and "E" in reading.EF:
         issues.append(
             EichrechtIssue(
                 code=IssueCode.ERROR_FLAGS,
-                message=(
-                    f"Error flags must be empty for billing-relevant readings, got '{reading.EF}'"
-                ),
+                message=f"Energy error flag ('E') set on billing-relevant reading: '{reading.EF}'",
                 field="EF",
+            )
+        )
+    # A time error does not invalidate the energy value, matching the Transparenzsoftware
+    if reading.EF and "t" in reading.EF:
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.ERROR_FLAGS,
+                message=f"Time error flag ('t') set on reading: '{reading.EF}'",
+                field="EF",
+                severity=IssueSeverity.WARNING,
             )
         )
 

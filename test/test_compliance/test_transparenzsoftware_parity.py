@@ -2,7 +2,6 @@
 
 Ports the cases of OCMFVerifiedDataTest and OCMFVerificationParserTest, plus the
 transaction outcomes the Transparenzsoftware reports for its XML corpus.
-Known divergences are strict xfails so fixing them surfaces immediately.
 """
 
 from __future__ import annotations
@@ -120,25 +119,18 @@ class TestTransactionPairLawChecks:
         issues = check_eichrecht_transaction(begin.payload, end.payload)
         assert_has_error(issues, IssueCode.ERROR_FLAGS)
 
-    @pytest.mark.xfail(strict=True, reason="Transparenzsoftware rejects multiple start readings")
     def test_multiple_start_values(self) -> None:
         begin, end = create_transaction_pair()
         begin.payload.RD.append(begin.payload.RD[0].model_copy())
-        assert_has_error(check_eichrecht_transaction(begin.payload, end.payload))
+        issues = check_eichrecht_transaction(begin.payload, end.payload)
+        assert_has_error(issues, IssueCode.MULTIPLE_BEGIN)
 
-    @pytest.mark.xfail(
-        strict=True, reason="Transparenzsoftware rejects a begin payload containing a stop reading"
-    )
     def test_begin_payload_containing_stop_reading(self) -> None:
         begin, end = create_transaction_pair()
         begin.payload.RD.append(end.payload.RD[0].model_copy())
-        assert_has_error(check_eichrecht_transaction(begin.payload, end.payload))
+        issues = check_eichrecht_transaction(begin.payload, end.payload)
+        assert_has_error(issues, IssueCode.MULTIPLE_END)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="pyocmf compares RD[0]/RD[-1]; Transparenzsoftware compares law-relevant "
-        "(energy import) readings only",
-    )
     def test_compares_law_relevant_readings_only(self) -> None:
         begin_readings = [
             create_test_reading(tx=MeterReadingReason.BEGIN, rv="10", ri=IMPORT_OBIS),
@@ -162,11 +154,6 @@ class TestTransactionPairLawChecks:
         end = create_test_payload(pagination="T2", readings=end_readings)
         assert_no_errors(check_eichrecht_transaction(begin, end))
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="Spec increments PG per record, so intermediate records leave gaps "
-        "between begin and end; pyocmf requires end == begin + 1",
-    )
     def test_pagination_gap_from_intermediate_records(self) -> None:
         begin, end = create_transaction_pair(begin_pagination="T1", end_pagination="T3")
         assert_no_errors(check_eichrecht_transaction(begin.payload, end.payload))
@@ -196,14 +183,19 @@ class TestSinglePayloadTransactionLawChecks:
     def test_law_ok(self) -> None:
         assert_no_errors(self._payload("1", "2").check_eichrecht())
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="check_eichrecht() without 'other' only checks readings individually; "
-        "Transparenzsoftware checks B/E ordering within one payload",
-    )
     def test_start_meter_more_than_stop(self) -> None:
         issues = self._payload("15", "5").check_eichrecht()
         assert_has_error(issues, IssueCode.VALUE_REGRESSION)
+
+    def test_multiple_start_values(self) -> None:
+        ocmf = self._payload("1", "2")
+        ocmf.payload.RD.insert(1, ocmf.payload.RD[0].model_copy())
+        assert_has_error(ocmf.check_eichrecht(), IssueCode.MULTIPLE_BEGIN)
+
+    def test_fiscal_context_is_not_a_transaction(self) -> None:
+        ocmf = self._payload("15", "5")
+        ocmf.payload.PG = "F1"
+        assert IssueCode.VALUE_REGRESSION not in _errors(ocmf.check_eichrecht())
 
 
 class TestErrorFlagTime:
@@ -213,11 +205,10 @@ class TestErrorFlagTime:
     def test_signature_verifies(self) -> None:
         assert OCMF.from_string(EF_T_OCMF).verify_signature(EF_T_PUBLIC_KEY) is True
 
-    @pytest.mark.xfail(
-        strict=True, reason="pyocmf treats any error flag as an error; only 'E' is law-relevant"
-    )
     def test_time_error_flag_is_not_an_error(self) -> None:
-        assert_no_errors(OCMF.from_string(EF_T_OCMF).check_eichrecht())
+        issues = OCMF.from_string(EF_T_OCMF).check_eichrecht()
+        assert_no_errors(issues)
+        assert_has_issue(issues, IssueCode.ERROR_FLAGS, "Time error flag")
 
 
 class TestCorpusTransactions:
@@ -246,11 +237,6 @@ class TestCorpusTransactions:
     ) -> None:
         assert expected_error in _pair_errors(transparency_xml_dir / xml_file)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="End record adds a charging-duration reading (00.08.06) after the energy "
-        "reading; pyocmf compares it against the begin energy reading",
-    )
     @pytest.mark.parametrize("xml_file", ["OCMF_Test_Data_00.xml", "ocmf_sec.xml"])
     def test_pair_with_trailing_duration_reading_passes(
         self, transparency_xml_dir: pathlib.Path, xml_file: str

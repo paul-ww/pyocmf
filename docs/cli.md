@@ -63,7 +63,8 @@ ocmf charging_session.xml --all
 
 ### `--public-key` / `-k`
 
-Provide a hex-encoded public key for signature verification:
+Provide a public key (hex or base64) for signature verification. Without it, the key from the
+XML file or a key appended to the OCMF string (`OCMF|{...}|{...}|key`) is used:
 
 ```bash
 ocmf 'OCMF|{...}|{...}' --public-key 3059301306072A8648CE3D020106082A8648CE3D03010703420004...

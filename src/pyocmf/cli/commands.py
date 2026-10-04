@@ -48,7 +48,9 @@ def _exit_on_error() -> Generator[None]:
 def _resolve_public_key(record: OcmfRecord, public_key: str | None) -> str | None:
     if public_key:
         return public_key
-    return record.public_key.key if record.public_key else None
+    if record.public_key:
+        return record.public_key.key
+    return record.ocmf.embedded_public_key
 
 
 def all_checks(
@@ -77,7 +79,7 @@ def all_checks(
             key_to_use = _resolve_public_key(record, public_key)
         else:
             ocmf = parse_ocmf_string(ocmf_input, strict=strict)
-            key_to_use = public_key
+            key_to_use = public_key or ocmf.embedded_public_key
 
         if key_to_use:
             verify_signature(ocmf, key_to_use)
@@ -120,7 +122,8 @@ def verify(
         if input_type == InputType.XML:
             _verify_from_xml(ocmf_input, verbose, all_entries, public_key, strict=strict)
         else:
-            _verify_single_ocmf(parse_ocmf_string(ocmf_input, strict=strict), verbose, public_key)
+            ocmf = parse_ocmf_string(ocmf_input, strict=strict)
+            _verify_single_ocmf(ocmf, verbose, public_key or ocmf.embedded_public_key)
 
 
 def check(

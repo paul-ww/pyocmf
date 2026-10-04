@@ -10,7 +10,6 @@ import pathlib
 import sys
 import tempfile
 import warnings
-from itertools import starmap
 from typing import TYPE_CHECKING, Any
 
 import pyocmf
@@ -40,7 +39,7 @@ def analyze_text(text: str, public_key: str | None, strict: bool) -> str:
     def parse() -> list[tuple[OCMF, str | None]]:
         return [(OCMF.from_string(text, strict=strict), public_key or None)]
 
-    return _analyze(parse)
+    return _analyze(parse, given_key_source="input")
 
 
 def analyze_xml(content: str, strict: bool) -> str:
@@ -54,10 +53,10 @@ def analyze_xml(content: str, strict: bool) -> str:
             for record in container
         ]
 
-    return _analyze(parse)
+    return _analyze(parse, given_key_source="file")
 
 
-def _analyze(parse: Callable[[], list[tuple[OCMF, str | None]]]) -> str:
+def _analyze(parse: Callable[[], list[tuple[OCMF, str | None]]], given_key_source: str) -> str:
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", SpecWarning)
         try:
@@ -66,7 +65,7 @@ def _analyze(parse: Callable[[], list[tuple[OCMF, str | None]]]) -> str:
             return json.dumps({"ok": False, "error": str(e), "errorType": type(e).__name__})
 
     deviations = _unique(str(w.message) for w in caught if issubclass(w.category, SpecWarning))
-    records = list(starmap(_record, parsed))
+    records = [_record(ocmf, key, given_key_source) for ocmf, key in parsed]
     return json.dumps({
         "ok": True,
         "records": records,
@@ -75,12 +74,15 @@ def _analyze(parse: Callable[[], list[tuple[OCMF, str | None]]]) -> str:
     })
 
 
-def _record(ocmf: OCMF, public_key: str | None) -> dict[str, Any]:
+def _record(ocmf: OCMF, public_key: str | None, given_key_source: str) -> dict[str, Any]:
     payload = ocmf.payload
     signature: dict[str, Any] = {"algorithm": _text(ocmf.signature.SA), "status": "unchecked"}
-    if public_key:
+    # A key appended to the OCMF string (as in QR codes) is used when none is given
+    key = public_key or ocmf.embedded_public_key
+    signature["keySource"] = given_key_source if public_key else "record" if key else None
+    if key:
         try:
-            valid = ocmf.verify_signature(public_key)
+            valid = ocmf.verify_signature(key)
             signature["status"] = "valid" if valid else "invalid"
         except (PyOCMFError, ImportError) as e:
             signature.update(status="error", message=str(e))

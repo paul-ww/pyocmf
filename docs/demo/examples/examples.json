@@ -8,6 +8,13 @@
     "publicKey": "3059301306072A8648CE3D020106082A8648CE3D030107034200043AEEB45C392357820A58FDFB0857BD77ADA31585C61C430531DFA53B440AFBFDD95AC887C658EA55260F808F55CA948DF235C2108A0D6DC7D4AB1A5E1A7955BE"
   },
   {
+    "id": "keba-qr",
+    "label": "KEBA · QR code with embedded key",
+    "kind": "qr",
+    "file": "keba-qr.png",
+    "description": "A QR code holding the record and its public key: scanned, parsed and verified in one go."
+  },
+  {
     "id": "ebee",
     "label": "eBee · begin and end records",
     "kind": "xml",

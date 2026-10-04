@@ -6,8 +6,7 @@
   --ink: #1d2740;
   --soft: #5b6478;
   --rule: #cfd5de;
-  --chart: #2f5bbf;
-  --chart-wash: rgb(47 91 191 / 10%);
+  --info: #2f5bbf;
   --ok: #1f7a4d;
   --warn: #a55d00;
   --error: #b42318;
@@ -24,8 +23,7 @@
     --ink: #e6e9f0;
     --soft: #9aa3b5;
     --rule: #2e3646;
-    --chart: #6a8fd8;
-    --chart-wash: rgb(106 143 216 / 12%);
+    --info: #8fb0ee;
     --ok: #4cc38a;
     --warn: #f0a54a;
     --error: #f2776b;
@@ -40,8 +38,7 @@
   --ink: #e6e9f0;
   --soft: #9aa3b5;
   --rule: #2e3646;
-  --chart: #6a8fd8;
-  --chart-wash: rgb(106 143 216 / 12%);
+  --info: #8fb0ee;
   --ok: #4cc38a;
   --warn: #f0a54a;
   --error: #f2776b;
@@ -428,6 +425,10 @@ button:disabled {
   color: var(--error);
 }
 
+.info {
+  color: var(--info);
+}
+
 .muted {
   color: var(--soft);
 }
@@ -444,54 +445,46 @@ button:disabled {
   text-wrap: balance;
 }
 
-.facts {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 4px 18px;
+.lede {
   margin: 0;
-}
-
-.facts dt {
   color: var(--soft);
+  font-size: 0.9rem;
+  max-width: 70ch;
 }
 
-.facts dd {
+.none {
   margin: 0;
-  font-family: var(--font-data);
-  font-size: 0.84rem;
-  overflow-wrap: anywhere;
-  font-variant-numeric: tabular-nums;
+  color: var(--ok);
+  font-size: 0.95rem;
 }
 
-.issues {
+.findings {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.issues li {
+.findings li {
   display: grid;
-  grid-template-columns: 1.1em 10em minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 12px;
   align-items: baseline;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
 }
 
-.issues code {
-  font-family: var(--font-data);
-  font-size: 0.75rem;
-  overflow-wrap: anywhere;
+.tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 @media (max-width: 520px) {
-  .issues li {
-    grid-template-columns: 1.1em minmax(0, 1fr);
-  }
-
-  .issues li > span:last-child {
-    grid-column: 2;
+  .findings li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 }
 
@@ -545,13 +538,9 @@ details.record > summary span {
   font-weight: 400;
 }
 
-details.record[open] > summary {
-  margin-bottom: 12px;
-}
-
-.record-body {
+details.record[open] {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .notice {
@@ -569,87 +558,6 @@ details.record[open] > summary {
   font-family: var(--font-data);
   font-size: 0.8rem;
   overflow-wrap: anywhere;
-}
-
-/* Chart */
-.chart {
-  position: relative;
-}
-
-.chart svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
-.chart .grid line {
-  stroke: var(--rule);
-  stroke-width: 1;
-}
-
-.chart .axis text {
-  fill: var(--soft);
-  font-family: var(--font-data);
-  font-size: 11px;
-}
-
-.chart .series-line {
-  fill: none;
-  stroke: var(--chart);
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.chart .series-area {
-  fill: var(--chart-wash);
-}
-
-.chart .marker {
-  fill: var(--chart);
-  stroke: var(--paper);
-  stroke-width: 2;
-}
-
-.chart .marker.active {
-  r: 6;
-}
-
-.chart .direct-label {
-  fill: var(--ink);
-  font-family: var(--font-data);
-  font-size: 11px;
-}
-
-.chart .crosshair {
-  stroke: var(--soft);
-  stroke-width: 1;
-}
-
-.chart-tooltip {
-  position: absolute;
-  pointer-events: none;
-  min-width: 11rem;
-  padding: 8px 10px;
-  border: 1px solid var(--rule);
-  background: var(--field);
-  color: var(--ink);
-  font-size: 0.82rem;
-  line-height: 1.4;
-  box-shadow: 0 4px 14px rgb(0 0 0 / 12%);
-}
-
-.chart-tooltip strong {
-  display: block;
-  font-family: var(--font-data);
-  font-size: 0.9rem;
-}
-
-.chart-caption {
-  margin: 0;
-  color: var(--soft);
-  font-size: 0.88rem;
 }
 
 /* Colophon */

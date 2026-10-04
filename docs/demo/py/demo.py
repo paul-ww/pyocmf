@@ -6,7 +6,6 @@ Each function returns a JSON string so the JavaScript side never handles Python 
 from __future__ import annotations
 
 import json
-import operator
 import pathlib
 import sys
 import tempfile
@@ -72,7 +71,6 @@ def _analyze(parse: Callable[[], list[tuple[OCMF, str | None]]]) -> str:
         "ok": True,
         "records": records,
         "transaction": _transaction([ocmf for ocmf, _ in parsed]),
-        "series": _series([ocmf for ocmf, _ in parsed]),
         "specDeviations": deviations,
     })
 
@@ -110,40 +108,6 @@ def _transaction(records: list[OCMF]) -> dict[str, Any] | None:
         "issues": _issues(check_eichrecht_transaction(begin, end)),
         "energy": _energy([*begin.RD, *end.RD]),
     }
-
-
-def _series(records: list[OCMF]) -> dict[str, Any] | None:
-    """Collect readings of the main law-relevant register over time for the chart.
-
-    Returns None below three points in time; two points are just a straight line.
-    """
-    readings = [
-        r
-        for o in records
-        for r in o.payload.RD
-        if r.RI is not None and r.RI.is_law_relevant and r.RV is not None
-    ]
-    if not readings:
-        return None
-    register = readings[0].RI
-    points: dict[tuple[float, str], dict[str, Any]] = {}
-    for r in readings:
-        if register != r.RI or r.RU != readings[0].RU:
-            continue
-        try:
-            epoch = r.timestamp.timestamp()
-        except (OverflowError, OSError, ValueError):
-            continue
-        points[epoch, str(r.RV)] = {
-            "epochMs": epoch * 1000,
-            "time": r.timestamp.isoformat(sep=" "),
-            "value": str(r.RV),
-            "tx": _text(r.TX),
-        }
-    ordered = sorted(points.values(), key=operator.itemgetter("epochMs"))
-    if len({p["epochMs"] for p in ordered}) < 3:
-        return None
-    return {"register": str(register), "unit": _text(readings[0].RU), "points": ordered}
 
 
 def _has_begin(payload: Payload) -> bool:

@@ -6,6 +6,19 @@
 (function () {
   "use strict";
 
+  const READING_REASONS = {
+    B: "Begin",
+    C: "Charging",
+    X: "Exception",
+    E: "End",
+    L: "Terminated locally",
+    R: "Terminated remotely",
+    A: "Aborted",
+    P: "Power failure",
+    S: "Suspended",
+    T: "Tariff change",
+  };
+
   const $ = (id) => document.getElementById(id);
   const ui = {
     status: $("runtimeStatus"),
@@ -19,7 +32,6 @@
     dropzone: $("dropzone"),
     exampleSelect: $("exampleSelect"),
     exampleDescription: $("exampleDescription"),
-    keyStep: $("keyStep"),
     publicKeyInput: $("publicKeyInput"),
     keyHint: $("keyHint"),
     strictInput: $("strictInput"),
@@ -36,7 +48,7 @@
       if (key === "className") node.className = value;
       else node.setAttribute(key, value === true ? "" : value);
     }
-    for (const child of children.flat()) {
+    for (const child of children.flat(Infinity)) {
       if (child === null || child === undefined || child === false) continue;
       node.append(child instanceof Node ? child : document.createTextNode(String(child)));
     }
@@ -53,9 +65,7 @@
     ui.xmlPanel.hidden = mode !== "xml";
     ui.publicKeyInput.disabled = mode === "xml";
     ui.keyHint.textContent =
-      mode === "xml"
-        ? "XML files carry their own public keys."
-        : "Without a key the record is parsed and checked, but its signature is not verified.";
+      mode === "xml" ? "XML files carry their own public keys." : "Without a key, the signature is not verified.";
     updateCheckButton();
   }
 
@@ -104,10 +114,6 @@
       ui.publicKeyInput.value = example.publicKey || "";
       setMode("text");
     }
-    requestCheck();
-  }
-
-  function requestCheck() {
     if (state.runtime) runCheck();
     else state.pendingCheck = true;
   }
@@ -130,12 +136,14 @@
       } catch (error) {
         report = { ok: false, error: String(error), errorType: "PythonError" };
       }
-      renderReport(report, strict);
+      renderReport(report);
       updateCheckButton();
     }, 20);
   }
 
   /* ---------- Report ---------- */
+
+  const ICONS = { ok: "✓", warn: "!", error: "✗", info: "~", muted: "–" };
 
   function plural(count, word) {
     return `${count} ${word}${count === 1 ? "" : "s"}`;
@@ -160,31 +168,32 @@
   function signatureVerdict(records) {
     const statuses = records.map((r) => r.signature.status);
     const count = (s) => statuses.filter((x) => x === s).length;
-    const algorithms = [...new Set(records.map((r) => r.signature.algorithm).filter(Boolean))].join(", ");
     if (count("invalid")) {
       return ["error", "Invalid", `${count("invalid")} of ${plural(records.length, "record")} fail`];
     }
     if (count("error")) {
       return ["error", "Not verified", records.find((r) => r.signature.status === "error").signature.message];
     }
-    if (count("valid") === records.length) return ["ok", "Valid", algorithms];
+    if (count("valid") === records.length) {
+      return ["ok", "Valid", [...new Set(records.map((r) => r.signature.algorithm))].join(", ")];
+    }
     if (count("valid")) return ["warn", "Partly checked", `${count("valid")} of ${records.length} records have a key`];
-    return ["muted", "Not checked", "No public key given"];
+    return ["muted", "Not checked", "No public key"];
   }
 
-  function eichrechtVerdict(issues) {
-    const errors = issues.filter((i) => i.severity === "error").length;
-    const warnings = issues.length - errors;
-    if (errors) return ["error", "Not compliant", `${plural(errors, "error")}, ${plural(warnings, "warning")}`];
-    return ["ok", "Compliant", warnings ? plural(warnings, "warning") : "No findings"];
+  function eichrechtVerdict(findings) {
+    const distinct = (severity) =>
+      new Set(findings.filter((f) => (f.severity === "error") === (severity === "error")).map((f) => f.message)).size;
+    const violations = distinct("error");
+    const notes = distinct("warning");
+    if (violations) return ["error", "Not compliant", `${plural(violations, "violation")}, ${plural(notes, "note")}`];
+    return ["ok", "Compliant", notes ? plural(notes, "note") : "No notes"];
   }
 
   function specVerdict(deviations) {
     if (!deviations.length) return ["ok", "Conforms", "No deviations"];
-    return ["warn", "Deviates", plural(deviations.length, "deviation")];
+    return ["info", "Deviates", plural(deviations.length, "deviation")];
   }
-
-  const ICONS = { ok: "✓", warn: "!", error: "✗", muted: "–" };
 
   function verdictCell(label, [tone, value, detail]) {
     return h(
@@ -196,41 +205,50 @@
     );
   }
 
-  function issueList(issues) {
-    if (!issues.length) return h("p", { className: "hint" }, "No findings.");
+  function section(title, lede, ...content) {
+    return h("section", { className: "block" }, h("h3", {}, title), h("p", { className: "lede" }, lede), content);
+  }
+
+  function findingList(items) {
+    // Reading-level checks repeat the same finding for every reading; show it once
+    const grouped = new Map();
+    for (const item of items) {
+      const key = `${item.tag}|${item.message}`;
+      const entry = grouped.get(key);
+      if (entry) entry.count += 1;
+      else grouped.set(key, { ...item, count: 1 });
+    }
     return h(
       "ul",
-      { className: "issues" },
-      issues.map((issue) => {
-        const tone = issue.severity === "error" ? "error" : "warn";
-        return h(
+      { className: "findings" },
+      [...grouped.values()].map(({ tone, tag, message, code, count }) =>
+        h(
           "li",
-          {},
-          h("span", { className: tone, "aria-label": issue.severity }, ICONS[tone]),
-          h("code", { className: tone }, issue.code),
-          h("span", {}, issue.message),
-        );
-      }),
+          { title: code || null },
+          h("span", { className: `tag ${tone}` }, tag),
+          h("span", {}, count > 1 ? `${message} (${count} readings)` : message),
+        ),
+      ),
     );
   }
 
-  function facts(rows) {
-    return h(
-      "dl",
-      { className: "facts" },
-      rows.filter(([, value]) => value).flatMap(([term, value]) => [h("dt", {}, term), h("dd", {}, value)]),
+  function eichrechtFindings(report) {
+    const { records, transaction } = report;
+    if (transaction) return transaction.issues;
+    if (records.length === 1) return records[0].issues;
+    return records.flatMap((record, index) =>
+      record.issues.map((issue) => ({ ...issue, message: `Record ${index + 1}: ${issue.message}` })),
     );
   }
 
   function readingsTable(readings) {
-    const columns = ["TX", "Time", "Sync", "Value", "Unit", "Register", "ST", "EF"];
     return h(
       "div",
       { className: "table-wrap" },
       h(
         "table",
         {},
-        h("thead", {}, h("tr", {}, columns.map((c) => h("th", { className: c === "Value" ? "number" : null }, c)))),
+        h("thead", {}, h("tr", {}, h("th", {}, "TX"), h("th", {}, "Time"), h("th", { className: "number" }, "Value"), h("th", {}, "Register"), h("th", {}, "ST"))),
         h(
           "tbody",
           {},
@@ -240,12 +258,9 @@
               {},
               h("td", { title: READING_REASONS[r.tx] || null }, r.tx ?? "–"),
               h("td", {}, r.time),
-              h("td", {}, r.sync ?? "–"),
-              h("td", { className: "number" }, r.value ?? "–"),
-              h("td", {}, r.unit ?? "–"),
+              h("td", { className: "number" }, r.value === null ? "–" : `${r.value} ${r.unit ?? ""}`),
               h("td", {}, r.register ?? "–"),
               h("td", {}, r.status ?? "–"),
-              h("td", {}, r.errorFlags ?? ""),
             ),
           ),
         ),
@@ -253,110 +268,105 @@
     );
   }
 
-  const SIGNATURE_TEXT = { valid: "valid", invalid: "invalid", error: "could not be verified", unchecked: "not checked" };
+  function recordSummary(record) {
+    return [record.gateway, record.pagination, energyText(record.energy)].filter(Boolean).join(" · ");
+  }
 
-  function recordBody(record) {
+  function recordsSection(records) {
+    if (records.length === 1) {
+      return h(
+        "section",
+        { className: "block" },
+        h("h3", {}, "Record"),
+        h("p", { className: "lede" }, recordSummary(records[0])),
+        readingsTable(records[0].readings),
+      );
+    }
     return h(
-      "div",
-      { className: "record-body" },
-      facts([
-        ["Gateway", record.gateway],
-        ["Meter", record.meter],
-        ["Pagination", record.pagination],
-        ["Identification", record.identification],
-        ["Signature", `${record.signature.algorithm || "unknown algorithm"} · ${SIGNATURE_TEXT[record.signature.status]}`],
-        ["Energy", energyText(record.energy)],
-      ]),
-      h("div", { className: "block" }, h("span", { className: "label" }, "Findings"), issueList(record.issues)),
-      readingsTable(record.readings),
+      "section",
+      { className: "block" },
+      h("h3", {}, `Records (${records.length})`),
+      records.map((record, index) => {
+        const reasons = [...new Set(record.readings.map((r) => READING_REASONS[r.tx]).filter(Boolean))].join(", ");
+        return h(
+          "details",
+          { className: "record" },
+          h("summary", {}, `Record ${index + 1}`, h("span", {}, ` · ${[record.pagination, reasons, `signature ${record.signature.status}`].filter(Boolean).join(" · ")}`)),
+          h("p", { className: "lede" }, recordSummary(record)),
+          readingsTable(record.readings),
+        );
+      }),
     );
   }
 
-  function renderReport(report, strict) {
+  function renderReport(report) {
     ui.result.replaceChildren();
 
     if (!report.ok) {
+      const deviation = /^(Payload|Signature) deviates from the OCMF spec: (.*)$/s.exec(report.error);
+      if (deviation) {
+        ui.result.append(
+          h(
+            "div",
+            { className: "verdicts" },
+            verdictCell("Signature", ["muted", "Not checked", null]),
+            verdictCell("Eichrecht", ["muted", "Not checked", null]),
+            verdictCell("OCMF spec", ["error", "Rejected", "Strict mode"]),
+          ),
+          section(
+            "OCMF spec",
+            "Strict mode rejects records that deviate from the specification. Turn it off to check the record anyway.",
+            findingList([{ tone: "error", tag: "Rejected", message: deviation[2] }]),
+          ),
+        );
+        return;
+      }
       ui.result.append(
-        h(
-          "div",
-          { className: "notice" },
-          h("p", {}, h("strong", {}, "The record could not be read")),
-          h("code", {}, report.error),
-          strict
-            ? h("p", { className: "hint" }, "Strict mode is on. Turn it off to read records that deviate from the spec and list the deviations as warnings.")
-            : null,
-        ),
+        h("div", { className: "notice" }, h("p", {}, h("strong", {}, "The record could not be read")), h("code", {}, report.error)),
       );
       return;
     }
 
-    const { records, transaction, series, specDeviations } = report;
-    const issues = transaction ? transaction.issues : records.flatMap((r) => r.issues);
+    const findings = eichrechtFindings(report);
+    const deviations = report.specDeviations;
+    const transaction = report.transaction;
 
     ui.result.append(
       h(
         "div",
         { className: "verdicts" },
-        verdictCell("Signature", signatureVerdict(records)),
-        verdictCell("Eichrecht", eichrechtVerdict(issues)),
-        verdictCell("Spec", specVerdict(specDeviations)),
+        verdictCell("Signature", signatureVerdict(report.records)),
+        verdictCell("Eichrecht", eichrechtVerdict(findings)),
+        verdictCell("OCMF spec", specVerdict(deviations)),
       ),
     );
 
-    if (transaction) {
-      ui.result.append(
-        h(
-          "section",
-          { className: "block" },
-          h("h3", {}, `Transaction ${transaction.pagination[0]} → ${transaction.pagination[1]}`),
-          facts([["Energy", energyText(transaction.energy)]]),
-          issueList(transaction.issues),
-        ),
-      );
-    }
-
-    if (series) {
-      const block = h(
-        "section",
-        { className: "block" },
-        h("h3", {}, "Meter reading over time"),
-        h("p", { className: "chart-caption" }, `Register ${series.register} in ${series.unit}. Hover or focus the chart for each reading.`),
-      );
-      ui.result.append(block);
-      renderChart(block, series);
-    }
-
-    if (specDeviations.length) {
-      ui.result.append(
-        h(
-          "section",
-          { className: "block" },
-          h("h3", {}, "Spec deviations"),
-          h(
-            "ul",
-            { className: "issues" },
-            specDeviations.map((message) =>
-              h("li", {}, h("span", { className: "warn", "aria-hidden": "true" }, "!"), h("code", { className: "warn" }, "SPEC"), h("span", {}, message)),
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (records.length === 1) {
-      ui.result.append(h("section", { className: "block" }, h("h3", {}, "Record"), recordBody(records[0])));
-      return;
-    }
-    records.forEach((record, index) => {
-      ui.result.append(
-        h(
-          "details",
-          { className: "record", open: records.length <= 2 },
-          h("summary", {}, `Record ${index + 1} of ${records.length} `, h("span", {}, record.pagination || "")),
-          recordBody(record),
-        ),
-      );
-    });
+    ui.result.append(
+      section(
+        "Eichrecht",
+        transaction
+          ? `Billing rules for the transaction ${transaction.pagination[0]} → ${transaction.pagination[1]}${transaction.energy ? ` (${energyText(transaction.energy)})` : ""}, as the Transparenzsoftware applies them.`
+          : "Billing rules under German calibration law, as the Transparenzsoftware applies them.",
+        findings.length
+          ? findingList(
+              findings.map((f) => ({
+                tone: f.severity === "error" ? "error" : "warn",
+                tag: f.severity === "error" ? "Violation" : "Note",
+                message: f.message,
+                code: f.code,
+              })),
+            )
+          : h("p", { className: "none" }, "No violations or notes."),
+      ),
+      section(
+        "OCMF spec",
+        "Format conformance. Deviations are accepted, as by the Transparenzsoftware, unless strict mode is on.",
+        deviations.length
+          ? findingList(deviations.map((message) => ({ tone: "info", tag: "Deviation", message })))
+          : h("p", { className: "none" }, "Follows the specification."),
+      ),
+      recordsSection(report.records),
+    );
   }
 
   /* ---------- Wiring ---------- */

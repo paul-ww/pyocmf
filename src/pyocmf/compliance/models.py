@@ -16,6 +16,7 @@ class IssueCode(enum.StrEnum):
     TIME_SYNC = "TIME_SYNC"
     CL_BEGIN = "CL_BEGIN"
     CL_NEGATIVE = "CL_NEGATIVE"
+    CL_REGISTER = "CL_REGISTER"
 
     # Transaction-level issues
     NO_READINGS = "NO_READINGS"

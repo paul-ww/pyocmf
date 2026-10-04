@@ -2,15 +2,14 @@ from __future__ import annotations
 
 from pyocmf.compliance.models import EichrechtIssue, IssueCode, IssueSeverity
 from pyocmf.core.reading import Reading
-from pyocmf.enums.reading import MeterStatus, TimeStatus
+from pyocmf.enums.reading import MeterReadingReason, MeterStatus, TimeStatus
 
 
-def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[EichrechtIssue]:
+def check_eichrecht_reading(reading: Reading) -> list[EichrechtIssue]:
     """Check a single reading for Eichrecht compliance.
 
     Args:
         reading: The reading to check
-        is_begin: Whether this is a transaction begin reading (affects CL checking)
 
     Returns:
         List of compliance issues (empty if compliant)
@@ -62,22 +61,46 @@ def check_eichrecht_reading(reading: Reading, is_begin: bool = False) -> list[Ei
             )
         )
 
-    if reading.CL is not None:
-        if is_begin and reading.CL != 0:
-            issues.append(
-                EichrechtIssue(
-                    code=IssueCode.CL_BEGIN,
-                    message=f"Cumulated loss (CL) must be 0 at transaction begin, got {reading.CL}",
-                    field="CL",
-                )
-            )
-        if reading.CL < 0:
-            issues.append(
-                EichrechtIssue(
-                    code=IssueCode.CL_NEGATIVE,
-                    message=f"Cumulated loss (CL) must be non-negative, got {reading.CL}",
-                    field="CL",
-                )
-            )
+    issues.extend(_check_cumulated_loss(reading))
 
+    return issues
+
+
+def _check_cumulated_loss(reading: Reading) -> list[EichrechtIssue]:
+    # OCMF spec rules for CL; warnings only because the Transparenzsoftware ignores
+    # CL and still verifies such records
+    if reading.CL is None:
+        return []
+
+    issues = []
+    if reading.RI is None or not reading.RI.is_accumulation_register:
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.CL_REGISTER,
+                message=(
+                    f"Cumulated loss (CL) should only appear on accumulation registers "
+                    f"(B0-B3, C0-C3), got RI '{reading.RI}'"
+                ),
+                field="CL",
+                severity=IssueSeverity.WARNING,
+            )
+        )
+    if reading.TX == MeterReadingReason.BEGIN and reading.CL != 0:
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.CL_BEGIN,
+                message=f"Cumulated loss (CL) should be 0 at transaction begin, got {reading.CL}",
+                field="CL",
+                severity=IssueSeverity.WARNING,
+            )
+        )
+    if reading.CL < 0:
+        issues.append(
+            EichrechtIssue(
+                code=IssueCode.CL_NEGATIVE,
+                message=f"Cumulated loss (CL) should be non-negative, got {reading.CL}",
+                field="CL",
+                severity=IssueSeverity.WARNING,
+            )
+        )
     return issues

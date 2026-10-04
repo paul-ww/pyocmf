@@ -32,20 +32,6 @@ class TestCLValidators:
         )
         assert decimal_value("0.2") == reading.CL
 
-    def test_cl_rejected_with_non_accumulation_register(self) -> None:
-        with pytest.raises(
-            ValueError, match="can only appear when RI indicates an accumulation register"
-        ):
-            Reading(
-                TM=tm("2023-01-01T12:00:00,000+0000 S"),
-                TX=MeterReadingReason.END,
-                RV=decimal.Decimal("100.5"),
-                RI=obis("01-00:01.08.00*FF"),  # Not a B0-B3 or C0-C3 register
-                RU=EnergyUnit.KWH,
-                ST=MeterStatus.OK,
-                CL=decimal.Decimal("0.5"),  # Should fail
-            )
-
     def test_cl_must_be_zero_at_transaction_begin(self) -> None:
         # Valid: CL=0 at begin
         reading = Reading(
@@ -59,29 +45,18 @@ class TestCLValidators:
         )
         assert decimal.Decimal(0) == reading.CL
 
-    def test_cl_rejected_when_nonzero_at_begin(self) -> None:
-        with pytest.raises(ValueError, match="must be 0 when TX=B"):
-            Reading(
-                TM=tm("2023-01-01T12:00:00,000+0000 S"),
-                TX=MeterReadingReason.BEGIN,
-                RV=decimal.Decimal("50.0"),
-                RI=obis("01-00:B3.08.00*FF"),
-                RU=EnergyUnit.KWH,
-                ST=MeterStatus.OK,
-                CL=decimal.Decimal("0.5"),  # Should fail - must be 0 at begin
-            )
-
-    def test_cl_must_be_non_negative(self) -> None:
-        with pytest.raises(ValueError, match="must be non-negative"):
-            Reading(
-                TM=tm("2023-01-01T12:00:00,000+0000 S"),
-                TX=MeterReadingReason.END,
-                RV=decimal.Decimal("100.0"),
-                RI=obis("01-00:B0.08.00*FF"),
-                RU=EnergyUnit.KWH,
-                ST=MeterStatus.OK,
-                CL=decimal.Decimal("-0.5"),  # Should fail
-            )
+    @pytest.mark.parametrize(
+        ("tx", "ri", "cl"),
+        [
+            (MeterReadingReason.END, "01-00:01.08.00*FF", "0.5"),  # Not an accumulation register
+            (MeterReadingReason.BEGIN, "01-00:B3.08.00*FF", "0.5"),  # Non-zero at begin
+            (MeterReadingReason.END, "01-00:B0.08.00*FF", "-0.5"),  # Negative
+        ],
+    )
+    def test_spec_violating_cl_is_accepted(self, tx: MeterReadingReason, ri: str, cl: str) -> None:
+        # The Transparenzsoftware ignores CL; violations are compliance warnings instead
+        reading = create_test_reading(tx=tx, ri=ri, cl=decimal_value(cl))
+        assert decimal_value(cl) == reading.CL
 
     def test_cl_none_is_allowed(self) -> None:
         reading = Reading(

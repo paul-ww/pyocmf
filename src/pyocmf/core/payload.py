@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import decimal
 import warnings
-from typing import ClassVar
 
 import pydantic
 
@@ -83,7 +82,7 @@ class Payload(pydantic.BaseModel):
         if not readings_data:
             return data
 
-        if readings_data and isinstance(readings_data[0], Reading):
+        if isinstance(readings_data[0], Reading):
             return data
 
         inheritable_fields = ["TM", "TX", "RI", "RU", "RT", "EF", "ST"]
@@ -132,88 +131,48 @@ class Payload(pydantic.BaseModel):
             return str(v)
         return v
 
-    # ClassVar keeps these lookup tables out of pydantic's private attributes,
-    # which would otherwise be deep-copied per instance and break model equality
-    _ID_FORMAT_VALIDATORS: ClassVar[dict[str, object]] = {
-        IdentificationType.ISO14443.value: ISO14443,
-        IdentificationType.ISO15693.value: ISO15693,
-        IdentificationType.EMAID.value: EMAID,
-        IdentificationType.EVCCID.value: EVCCID,
-        IdentificationType.EVCOID.value: EVCOID,
-        IdentificationType.ISO7812.value: ISO7812,
-        IdentificationType.PHONE_NUMBER.value: PHONE_NUMBER,
-    }
-
-    # Types that accept any string value without validation
-    _UNRESTRICTED_TYPES: ClassVar[set[str]] = {
-        IdentificationType.LOCAL.value,
-        IdentificationType.LOCAL_1.value,
-        IdentificationType.LOCAL_2.value,
-        IdentificationType.CENTRAL.value,
-        IdentificationType.CENTRAL_1.value,
-        IdentificationType.CENTRAL_2.value,
-        IdentificationType.CARD_TXN_NR.value,
-        IdentificationType.KEY_CODE.value,
-        IdentificationType.UNDEFINED.value,
-        IdentificationType.NONE.value,
-        IdentificationType.DENIED.value,
-    }
-
-    # Types that validate with warnings instead of errors (permissive mode)
-    _PERMISSIVE_TYPES: ClassVar[set[str]] = {
-        IdentificationType.ISO14443.value,
-        IdentificationType.ISO15693.value,
-    }
-
-    def _validate_id_format(self, it_value: str, id_value: str, *, strict: bool = True) -> None:
-        """Validate ID format, either strictly (raise) or permissively (warn).
-
-        Args:
-            it_value: Identification type value
-            id_value: Identification data value
-            strict: If True, raise ValidationError on mismatch. If False, emit warning.
-
-        """
-        if it_value not in self._ID_FORMAT_VALIDATORS:
-            return
-
-        try:
-            pydantic.TypeAdapter(self._ID_FORMAT_VALIDATORS[it_value]).validate_python(id_value)
-        except pydantic.ValidationError as e:
-            msg = (
-                f"ID value '{id_value}' does not match expected format for identification "
-                f"type '{it_value}'"
-            )
-
-            if strict:
-                error_msg = f"{msg}: {e}"
-                raise ValidationError(error_msg) from e
-            else:
-                warnings.warn(
-                    f"{msg}. This may indicate non-standard RFID card format or vendor-specific "
-                    f"implementation. Data will be accepted but may not be fully spec-compliant.",
-                    UserWarning,
-                    stacklevel=4,
-                )
-
     @pydantic.model_validator(mode="after")
     def validate_id_format_by_type(self) -> Payload:
         """Validate ID format based on the Identification Type (IT).
 
-        For most types, validation is strict (raises ValidationError).
-        For ISO14443 and ISO15693, validation emits warnings but allows non-standard formats,
-        as real-world RFID cards may have vendor-specific implementations.
+        Types without a defined format (LOCAL, CENTRAL, KEY_CODE, ...) accept any value.
+        Mismatches raise ValidationError, except for ISO14443 and ISO15693, which only
+        warn because real-world RFID cards often use vendor-specific UID lengths.
         """
-        if not self.ID or not self.IT:
+        if not self.ID or self.IT is None:
             return self
 
-        it_value = self.IT.value if isinstance(self.IT, IdentificationType) else str(self.IT)
-        id_value = self.ID
-
-        if it_value in self._UNRESTRICTED_TYPES:
+        adapter = _ID_FORMAT_ADAPTERS.get(self.IT)
+        if adapter is None:
             return self
 
-        # Use permissive validation (warn) for ISO types, strict for others
-        strict = it_value not in self._PERMISSIVE_TYPES
-        self._validate_id_format(it_value, id_value, strict=strict)
+        try:
+            adapter.validate_python(self.ID)
+        except pydantic.ValidationError as e:
+            msg = (
+                f"ID value '{self.ID}' does not match expected format for identification "
+                f"type '{self.IT.value}'"
+            )
+            if self.IT not in _PERMISSIVE_ID_TYPES:
+                error_msg = f"{msg}: {e}"
+                raise ValidationError(error_msg) from e
+            warnings.warn(
+                f"{msg}. This may indicate non-standard RFID card format or vendor-specific "
+                f"implementation. Data will be accepted but may not be fully spec-compliant.",
+                UserWarning,
+                stacklevel=3,
+            )
         return self
+
+
+_ID_FORMAT_ADAPTERS: dict[IdentificationType, pydantic.TypeAdapter] = {
+    IdentificationType.ISO14443: pydantic.TypeAdapter(ISO14443),
+    IdentificationType.ISO15693: pydantic.TypeAdapter(ISO15693),
+    IdentificationType.EMAID: pydantic.TypeAdapter(EMAID),
+    IdentificationType.EVCCID: pydantic.TypeAdapter(EVCCID),
+    IdentificationType.EVCOID: pydantic.TypeAdapter(EVCOID),
+    IdentificationType.ISO7812: pydantic.TypeAdapter(ISO7812),
+    IdentificationType.PHONE_NUMBER: pydantic.TypeAdapter(PHONE_NUMBER),
+}
+
+_PERMISSIVE_ID_TYPES = {IdentificationType.ISO14443, IdentificationType.ISO15693}

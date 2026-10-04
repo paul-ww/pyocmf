@@ -86,8 +86,7 @@ def verify_signature(
     hash_algorithm = get_hash_algorithm(signature_method)
     payload_bytes = payload_json.encode("utf-8")
 
-    key_bytes = bytes.fromhex(public_key_hex)
-    crypto_public_key = serialization.load_der_public_key(key_bytes)
+    crypto_public_key = serialization.load_der_public_key(bytes.fromhex(public_key_info.key))
 
     try:
         crypto_public_key.verify(

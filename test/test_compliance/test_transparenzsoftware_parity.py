@@ -6,6 +6,7 @@ transaction outcomes the Transparenzsoftware reports for its XML corpus.
 
 from __future__ import annotations
 
+import decimal
 import pathlib
 import warnings
 
@@ -196,6 +197,17 @@ class TestSinglePayloadTransactionLawChecks:
         ocmf = self._payload("15", "5")
         ocmf.payload.PG = "F1"
         assert IssueCode.VALUE_REGRESSION not in _errors(ocmf.check_eichrecht())
+
+
+class TestCumulatedLoss:
+    """The Transparenzsoftware ignores CL, so CL violations must not fail a transaction."""
+
+    def test_nonzero_cl_at_begin_does_not_fail_transaction(self) -> None:
+        begin, end = create_transaction_pair()
+        begin.payload.RD[0].CL = decimal.Decimal("0.5")
+        issues = check_eichrecht_transaction(begin.payload, end.payload)
+        assert_no_errors(issues)
+        assert_has_issue(issues, IssueCode.CL_BEGIN)
 
 
 class TestErrorFlagTime:

@@ -3,9 +3,10 @@ import pathlib
 import pytest
 
 from pyocmf.core import OCMF, Payload, Signature
+from pyocmf.exceptions import PyOCMFError
 from pyocmf.utils.xml import OcmfContainer
 
-from ..helpers import parse_xml_with_expected_behavior, should_skip_xml_file
+from ..helpers import expects_parsing_error
 
 try:
     from pyocmf.crypto.availability import CRYPTOGRAPHY_AVAILABLE
@@ -46,15 +47,12 @@ def test_ocmf_roundtrip(xml_file: pathlib.Path) -> None:
        the identical string (canonical form is a fixed point)
     5. Invalid/non-OCMF files raise appropriate exceptions
     """
-    should_skip, skip_reason = should_skip_xml_file(xml_file)
-    if should_skip:
-        pytest.skip(skip_reason or "File should be skipped")
-
-    container = parse_xml_with_expected_behavior(xml_file)
-
-    if container is None:
+    if expects_parsing_error(xml_file):
+        with pytest.raises(PyOCMFError):
+            OcmfContainer.from_xml(xml_file)
         return
 
+    container = OcmfContainer.from_xml(xml_file)
     assert len(container) > 0, f"Expected OCMF data in {xml_file.name}"
 
     for entry in container:

@@ -19,6 +19,7 @@ from pyocmf.crypto.availability import CRYPTOGRAPHY_AVAILABLE
 from pyocmf.enums.identifiers import UserAssignmentStatus
 from pyocmf.enums.reading import MeterReadingReason, MeterStatus
 from pyocmf.enums.units import EnergyUnit
+from pyocmf.exceptions import SpecWarning
 from pyocmf.utils.xml import OcmfContainer
 
 from ..helpers import (
@@ -197,6 +198,74 @@ class TestSinglePayloadTransactionLawChecks:
         ocmf = self._payload("15", "5")
         ocmf.payload.PG = "F1"
         assert IssueCode.VALUE_REGRESSION not in _errors(ocmf.check_eichrecht())
+
+
+class TestLawRelevantReadingsOnly:
+    """The Transparenzsoftware only judges law-relevant readings (filterLawRelevantReadings)."""
+
+    @staticmethod
+    def _transaction_with_export_register(export_status: MeterStatus) -> OCMF:
+        readings = [
+            create_test_reading(tx=MeterReadingReason.BEGIN, rv="10", ri=IMPORT_OBIS),
+            create_test_reading(
+                tx=MeterReadingReason.BEGIN, rv="4", ri=EXPORT_OBIS, st=export_status
+            ),
+            create_test_reading(
+                timestamp="2023-01-01T13:00:00,000+0000 S",
+                tx=MeterReadingReason.END,
+                rv="20",
+                ri=IMPORT_OBIS,
+            ),
+            create_test_reading(
+                timestamp="2023-01-01T13:00:00,000+0000 S",
+                tx=MeterReadingReason.END,
+                rv="4",
+                ri=EXPORT_OBIS,
+                st=export_status,
+            ),
+        ]
+        return OCMF(
+            header="OCMF", payload=create_test_payload(readings=readings), signature={"SD": "00"}
+        )
+
+    def test_export_register_status_is_ignored(self) -> None:
+        ocmf = self._transaction_with_export_register(MeterStatus.OTHER_ERROR)
+        assert_no_errors(ocmf.check_eichrecht())
+
+    def test_import_register_status_still_fails(self) -> None:
+        ocmf = self._transaction_with_export_register(MeterStatus.OK)
+        ocmf.payload.RD[0].ST = MeterStatus.OTHER_ERROR
+        assert_has_error(ocmf.check_eichrecht(), IssueCode.METER_STATUS)
+
+    def test_non_transaction_payload_checks_law_relevant_readings(self) -> None:
+        readings = [
+            create_test_reading(tx=MeterReadingReason.BEGIN, ri=IMPORT_OBIS),
+            create_test_reading(
+                tx=MeterReadingReason.BEGIN, ri=DURATION_OBIS, st=MeterStatus.TIMEOUT
+            ),
+        ]
+        ocmf = OCMF(
+            header="OCMF", payload=create_test_payload(readings=readings), signature={"SD": "00"}
+        )
+        assert_no_errors(ocmf.check_eichrecht())
+
+    def test_unknown_registers_are_still_checked(self) -> None:
+        reading = create_test_reading(ri="01-00:63.08.00*FF", st=MeterStatus.TIMEOUT)
+        ocmf = OCMF(
+            header="OCMF", payload=create_test_payload(readings=[reading]), signature={"SD": "00"}
+        )
+        assert_has_error(ocmf.check_eichrecht(), IssueCode.METER_STATUS)
+
+    def test_vw_record_notes_cover_import_register_only(
+        self, transparency_xml_dir: pathlib.Path
+    ) -> None:
+        # Begin/end on 1-0:1.8.0 and 1-0:2.8.0, all with relative time ('R')
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SpecWarning)
+            record = OcmfContainer.from_xml(transparency_xml_dir / "VW_OCMF_load.xml")[0]
+        issues = record.ocmf.check_eichrecht()
+        assert {str(i.field) for i in issues} == {"TM"}
+        assert len(issues) == 2
 
 
 class TestCumulatedLoss:

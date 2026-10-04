@@ -70,10 +70,6 @@ class EncodingTypeError(PyOCMFError, TypeError):
         self.expected_type = expected_type
 
 
-class ValidationError(PyOCMFError, ValueError):
-    pass
-
-
 class CryptoError(PyOCMFError):
     pass
 

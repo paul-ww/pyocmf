@@ -113,25 +113,43 @@
   }
 
   function handleQrText(raw) {
-    const text = raw.trim();
-    if (/^https?:\/\//i.test(text)) {
+    const qr = classifyQrText(raw);
+    if (qr.kind === "url") {
       setQrStatus(
         "This QR code contains a link, not OCMF data. The demo cannot fetch it: ",
-        h("a", { href: text, target: "_blank", rel: "noopener" }, text),
+        h("a", { href: qr.value, target: "_blank", rel: "noopener" }, qr.value),
       );
       return;
     }
-    if (text.startsWith("<")) {
-      state.xml = { name: "XML from QR code", content: text };
+    setQrStatus("Point the camera at a QR code with OCMF data, or open a photo of one.");
+
+    if (qr.kind === "key") {
+      // Keys are often printed separately, e.g. on the charger; the record comes from elsewhere
+      ui.publicKeyInput.value = qr.value;
+      setMode("text");
+      if (ui.ocmfInput.value.trim()) {
+        requestCheck();
+      } else {
+        ui.keyHint.textContent = "Public key read from the QR code. Now add the record: paste it or scan its QR code.";
+        ui.ocmfInput.focus();
+      }
+      return;
+    }
+
+    if (qr.kind === "xml") {
+      state.xml = { name: "XML from QR code", content: qr.value };
       ui.xmlName.textContent = state.xml.name;
       setMode("xml");
     } else {
-      ui.ocmfInput.value = text;
-      // A key left over from earlier input would override the key in the scanned record
-      ui.publicKeyInput.value = "";
+      ui.ocmfInput.value = qr.value;
+      // Only a record carrying its own key replaces a key entered or scanned before
+      if (qr.hasKey) ui.publicKeyInput.value = "";
       setMode("text");
     }
-    setQrStatus("Point the camera at a QR code with OCMF data, or open a photo of one.");
+    requestCheck();
+  }
+
+  function requestCheck() {
     if (state.runtime) runCheck();
     else state.pendingCheck = true;
   }
@@ -206,8 +224,7 @@
       ui.publicKeyInput.value = example.publicKey || "";
       setMode("text");
     }
-    if (state.runtime) runCheck();
-    else state.pendingCheck = true;
+    requestCheck();
   }
 
   /* ---------- Check ---------- */

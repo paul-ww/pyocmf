@@ -482,7 +482,8 @@ changing parsing or compliance behaviour.
 
 **Optional extras:**
 - `pyocmf[cli]`: Installs `rich` and `typer` for the `ocmf` CLI command
-- `pyocmf[crypto]`: Installs `cryptography` for signature verification
+- `pyocmf[crypto]`: Installs `cryptography` for signature verification, plus `ecdsa` for
+  secp192k1, which `cryptography` does not support (`crypto/fallback.py`)
 - `pyocmf[all]`: Installs all optional dependencies
 
 **OCMF format:**

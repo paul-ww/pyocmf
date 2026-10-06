@@ -51,7 +51,8 @@ async function bootRuntime(onProgress) {
   onProgress("Installing pyocmf…");
   const wheel = await localWheel();
   const micropip = pyodide.pyimport("micropip");
-  await micropip.install(wheel ? wheel.url : "pyocmf");
+  // ecdsa verifies secp192k1, which cryptography lacks
+  await micropip.install([wheel ? wheel.url : "pyocmf", "ecdsa"]);
 
   const source = await (await fetch("py/demo.py")).text();
   const namespace = pyodide.globals.get("dict")();

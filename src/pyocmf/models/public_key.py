@@ -11,9 +11,12 @@ from pyocmf.crypto.availability import (
     ec,
     serialization,
 )
+from pyocmf.crypto.fallback import fallback_curve
 from pyocmf.enums.crypto import CurveType, KeyType, SignatureMethod
 from pyocmf.exceptions import Base64DecodingError, PublicKeyError
 from pyocmf.types.encoding import HexStr
+
+_CURVE_SIZES = {CurveType.SECP192K1: 192}
 
 
 class PublicKey(pydantic.BaseModel):
@@ -72,8 +75,12 @@ class PublicKey(pydantic.BaseModel):
                 block_length=block_length,
             )
         except UnsupportedAlgorithm as e:
-            msg = f"Unsupported elliptic curve in public key: {e}"
-            raise PublicKeyError(msg) from e
+            curve = fallback_curve(key_bytes)
+            if curve is None:
+                msg = f"Unsupported elliptic curve in public key: {e}"
+                raise PublicKeyError(msg) from e
+            size = _CURVE_SIZES[curve]
+            return cls(key=key_hex, curve=curve, size=size, block_length=size // 8)
         except (ValueError, TypeError) as e:
             msg = f"Failed to parse public key: {e}"
             raise PublicKeyError(msg) from e

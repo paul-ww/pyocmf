@@ -165,8 +165,8 @@ PyOCMF supports the ECDSA signature algorithms defined in the OCMF specification
 - **brainpool256r1**, **brainpoolP256r1**, **brainpool384r1** - Brainpool curves
 - **SHA256** and **SHA512** hash functions
 
-secp192k1 is defined by the specification but cannot be verified, because the
-`cryptography` package does not support this curve.
+The `cryptography` package does not support secp192k1, so pyocmf verifies it with the
+pure-Python `ecdsa` package, which `pyocmf[crypto]` also installs.
 
 ## Error Handling
 

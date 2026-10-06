@@ -4,8 +4,9 @@ import pathlib
 import pytest
 
 from pyocmf.core import OCMF
+from pyocmf.enums.crypto import CurveType
 from pyocmf.exceptions import SignatureVerificationError
-from pyocmf.utils.xml import OcmfContainer
+from pyocmf.utils.xml import OcmfContainer, OcmfRecord
 
 try:
     from pyocmf.crypto.availability import CRYPTOGRAPHY_AVAILABLE
@@ -98,3 +99,34 @@ class TestSignatureVerification:
             match=r"Public key curve mismatch.*secp256r1.*secp192r1",
         ):
             ocmf.verify_signature(secp192r1_public_key)
+
+
+class TestSecp192k1Fallback:
+    """secp192k1 is verified with the ecdsa package, as OpenSSL lacks the curve."""
+
+    @staticmethod
+    def _record(transparency_xml_dir: pathlib.Path) -> OcmfRecord:
+        return OcmfContainer.from_xml(
+            transparency_xml_dir / "test_ocmf_transaction_two_values.xml"
+        )[0]
+
+    def test_public_key_metadata(self, transparency_xml_dir: pathlib.Path) -> None:
+        public_key = self._record(transparency_xml_dir).public_key
+        assert public_key is not None
+        assert public_key.curve == CurveType.SECP192K1
+        assert public_key.size == 192
+        assert public_key.block_length == 24
+
+    def test_valid_signature(self, transparency_xml_dir: pathlib.Path) -> None:
+        assert self._record(transparency_xml_dir).verify_signature() is True
+
+    def test_tampered_payload(self, transparency_xml_dir: pathlib.Path) -> None:
+        record = self._record(transparency_xml_dir)
+        tampered = record.ocmf.to_string().replace('"RV":3.51824', '"RV":4.51824')
+        assert OCMF.from_string(tampered).verify_signature(record.public_key) is False
+
+    def test_malformed_signature(self, transparency_xml_dir: pathlib.Path) -> None:
+        record = self._record(transparency_xml_dir)
+        signature = record.ocmf.to_string().rsplit('"SD":"', 1)[0]
+        broken = OCMF.from_string(f'{signature}"SD":"3001"}}')
+        assert broken.verify_signature(record.public_key) is False

@@ -48,6 +48,7 @@ cli = [
 ]
 crypto = [
     "cryptography>=44",
+    "ecdsa>=0.19",
 ]
 all = [
     "pyocmf[cli,crypto]",
@@ -60,6 +61,7 @@ cli = [
 ]
 crypto = [
     "cryptography>=44",
+    "ecdsa>=0.19",
 ]
 test = [
     "pytest>=9.0",

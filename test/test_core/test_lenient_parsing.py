@@ -9,7 +9,9 @@ import pytest
 
 from pyocmf.compliance import IssueCode, check_eichrecht_transaction
 from pyocmf.core import OCMF
+from pyocmf.core.payload import Payload
 from pyocmf.crypto.availability import CRYPTOGRAPHY_AVAILABLE
+from pyocmf.enums.reading import MeterReadingReason
 from pyocmf.exceptions import (
     OcmfFormatError,
     OcmfPayloadError,
@@ -141,6 +143,24 @@ class TestUnknownCodes:
         )
         with pytest.raises(SignatureVerificationError, match="Unsupported signature algorithm"):
             ocmf.verify_signature(ABL_PUBLIC_KEY)
+
+
+class TestSurroundingWhitespace:
+    """Reading.isStartTransaction() and checkLawIntegrityForReadings() trim TX and IL."""
+
+    def test_tx_is_trimmed(self) -> None:
+        ocmf = _parse_with_spec_warning(_abl_with('"TX":"B"', '"TX":" B "'), "whitespace for TX")
+        assert ocmf.payload.RD[0].TX == MeterReadingReason.BEGIN
+
+    def test_il_is_trimmed(self) -> None:
+        begin, end = create_transaction_pair()
+        with pytest.warns(SpecWarning, match="whitespace for IL"):
+            payload = Payload.model_validate({
+                **begin.payload.model_dump(mode="json"),
+                "IL": " MISMATCH",
+            })
+        issues = check_eichrecht_transaction(payload, end.payload)
+        assert_has_error(issues, IssueCode.ID_LEVEL_INVALID)
 
 
 class TestExceededLimits:

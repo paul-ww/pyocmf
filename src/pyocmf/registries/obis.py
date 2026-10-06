@@ -27,6 +27,9 @@ _ACTIVE_EXPORT = 0x02
 # 98 (loss-compensated) and 9E are vendor registers the Transparenzsoftware accepts.
 _LAW_RELEVANT_C = {0x01, 0x98, 0x9E, *range(0xB0, 0xC8)}
 _LOSS_COMPENSATED_C = {0x98, 0xB1, 0xB3, 0xC1, 0xC3}
+# F groups the Transparenzsoftware accepts for law-relevant registers. It reads F as hex
+# like pyocmf, so the decimal spellings "200" and "255" become 0x200 and 0x255.
+_LAW_RELEVANT_F = {0x00, 0x200, 0x255, 0xFF}
 _ACCUMULATION_C = {*range(0xB0, 0xB4), *range(0xC0, 0xC4)}
 _TRANSACTION_C = {0xB2, 0xB3, 0xC2, 0xC3}
 
@@ -228,9 +231,16 @@ def is_law_relevant(obis_code: str) -> bool:
 
     These are cumulative energy registers for active import (01), the vendor registers
     98 (loss-compensated) and 9E, and the range B0-C7 that OCMF spec Table 25 reserves.
+    An F group, if present, must be 0 or FF (or 200/255, which the Transparenzsoftware
+    also accepts).
     """
     groups = parse_obis(obis_code)
-    return groups is not None and groups.is_cumulative_energy and groups.c in _LAW_RELEVANT_C
+    return (
+        groups is not None
+        and groups.is_cumulative_energy
+        and groups.c in _LAW_RELEVANT_C
+        and (groups.f is None or groups.f in _LAW_RELEVANT_F)
+    )
 
 
 def is_loss_compensated(obis_code: str) -> bool:

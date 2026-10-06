@@ -56,15 +56,25 @@ def _warn_if_unknown(value: object, info: pydantic.ValidationInfo) -> object:
     return value
 
 
+def _strip_whitespace(value: object, info: pydantic.ValidationInfo) -> object:
+    # The Transparenzsoftware trims TX and IL before comparing them
+    if isinstance(value, str) and value != value.strip():
+        field = f" for {info.field_name}" if info.field_name else ""
+        warn_spec(f"'{value}' has leading or trailing whitespace{field}")
+        return value.strip()
+    return value
+
+
 # Try the enum first and fall back to the raw string instead of rejecting it
 _LENIENT = (pydantic.Field(union_mode="left_to_right"), pydantic.AfterValidator(_warn_if_unknown))
+_STRIPPED = pydantic.BeforeValidator(_strip_whitespace)
 
 LenientBool = Annotated[bool | str, *_LENIENT]
-LenientUserAssignmentStatus = Annotated[UserAssignmentStatus | str, *_LENIENT]
+LenientUserAssignmentStatus = Annotated[UserAssignmentStatus | str, *_LENIENT, _STRIPPED]
 LenientIdentificationFlag = Annotated[IdentificationFlag | str, *_LENIENT]
 LenientIdentificationType = Annotated[IdentificationType | str, *_LENIENT]
 LenientChargePointIdentificationType = Annotated[ChargePointIdentificationType | str, *_LENIENT]
-LenientMeterReadingReason = Annotated[MeterReadingReason | str, *_LENIENT]
+LenientMeterReadingReason = Annotated[MeterReadingReason | str, *_LENIENT, _STRIPPED]
 LenientMeterStatus = Annotated[MeterStatus | str, *_LENIENT]
 LenientReadingType = Annotated[ReadingType | str, *_LENIENT]
 LenientUnit = Annotated[OCMFUnit | str, *_LENIENT]

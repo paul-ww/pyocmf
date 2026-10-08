@@ -108,8 +108,9 @@ loss-compensated registers. Errors (the record cannot be billed):
 
 - Meter status other than 'G' (OK)
 - Energy error flag ('E')
-- No readings, or not exactly one begin and one end reading
+- No law-relevant readings, or not exactly one begin and one end reading among them
 - Mismatching meter serial numbers, OBIS codes or units
+- Mismatching event counters (EI) in records before format version 0.5
 - Decreasing reading values or timestamps
 - Relative time ('R') at the begin but not at the end
 - Invalid identification level

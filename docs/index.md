@@ -14,7 +14,7 @@ Python library for parsing, validating, and verifying OCMF (Open Charge Metering
 
 - Parse OCMF strings into validated Python objects
 - Verify cryptographic signatures for data integrity
-- Support for ECDSA with multiple curves (secp256k1, secp192r1, secp256r1, secp384r1, secp521r1, brainpool variants)
+- Support for ECDSA with multiple curves (secp192k1, secp256k1, secp192r1, secp256r1, secp384r1, secp521r1, brainpool variants)
 - Type-safe models using Pydantic
 - Accepts every record the Transparenzsoftware accepts, reports spec deviations as warnings, and offers an optional strict mode
 - Eichrecht compliance checks aligned with the Transparenzsoftware
@@ -119,11 +119,11 @@ See the [CLI Reference](cli.md) for details.
     issues = OCMF.from_string(record_string).check_eichrecht(errors_only=True)
     ```
 
-    The checks follow the Transparenzsoftware. They compare the billing-relevant begin and end
-    readings (loss-compensated registers take precedence) and report errors for a meter status
-    other than OK, an energy error flag, a missing or repeated begin or end reading,
-    decreasing values or timestamps, mismatching OBIS codes, units, serial numbers or
-    pagination contexts, and invalid identification levels. Time synchronization, time error
+    The checks follow the Transparenzsoftware. They compare the begin and end readings on
+    law-relevant registers (loss-compensated registers take precedence) and report errors for a
+    meter status other than OK, an energy error flag, a missing or repeated begin or end reading,
+    decreasing values or timestamps, mismatching OBIS codes, units, serial numbers, event counters
+    (format versions before 0.5) or pagination contexts, and invalid identification levels. Time synchronization, time error
     flags, cable loss, identification data mismatches and pagination gaps are reported as
     warnings.
 

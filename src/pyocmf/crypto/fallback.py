@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from ecdsa import BadSignatureError, VerifyingKey, der
     from ecdsa.curves import Curve
     from ecdsa.ellipticcurve import CurveFp, PointJacobi
+    from ecdsa.errors import MalformedPointError
     from ecdsa.util import sigdecode_der
 
     ECDSA_AVAILABLE = True
@@ -25,6 +26,7 @@ else:
         from ecdsa import BadSignatureError, VerifyingKey, der
         from ecdsa.curves import Curve
         from ecdsa.ellipticcurve import CurveFp, PointJacobi
+        from ecdsa.errors import MalformedPointError
         from ecdsa.util import sigdecode_der
 
         ECDSA_AVAILABLE = True
@@ -87,7 +89,8 @@ def verify_signature(
     try:
         _, point = _split_public_key(der_key)
         key = VerifyingKey.from_string(point, curve=_secp192k1(), hashfunc=_HASHES[hash_algorithm])
-    except (der.UnexpectedDER, ValueError) as e:
+    # MalformedPointError (a point off the curve) subclasses AssertionError, not ValueError
+    except (der.UnexpectedDER, MalformedPointError, ValueError) as e:
         msg = f"Failed to parse public key: {e}"
         raise PublicKeyError(msg) from e
     try:

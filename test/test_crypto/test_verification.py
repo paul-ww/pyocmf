@@ -130,3 +130,11 @@ class TestSecp192k1Fallback:
         signature = record.ocmf.to_string().rsplit('"SD":"', 1)[0]
         broken = OCMF.from_string(f'{signature}"SD":"3001"}}')
         assert broken.verify_signature(record.public_key) is False
+
+    def test_point_off_curve(self, transparency_xml_dir: pathlib.Path) -> None:
+        record = self._record(transparency_xml_dir)
+        assert record.public_key is not None
+        key = bytes.fromhex(record.public_key.key)
+        off_curve = (key[:-1] + bytes([key[-1] ^ 1])).hex()
+        with pytest.raises(SignatureVerificationError, match="Failed to parse public key"):
+            record.ocmf.verify_signature(off_curve)

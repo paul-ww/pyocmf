@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-10-08
+
+secp192k1 signatures can be verified, and more Eichrecht checks match the Transparenzsoftware.
+
+### Added
+
+- **secp192k1 verification**: `cryptography` cannot load secp192k1 keys, so they are verified with
+  the pure-Python `ecdsa` package, which `pyocmf[crypto]` now installs too. `PublicKey` reports
+  their curve and size. The browser demo installs `ecdsa` as well.
+- **Event counter check**: a transaction whose end reading has a different event counter (`EI`)
+  from its begin reading fails with the new `EVENT_COUNTER_MISMATCH` error. As in the
+  Transparenzsoftware, only records with a format version below 0.5 are checked.
+
+### Changed
+
+- **Law-relevant readings only**: when no reading is on a law-relevant register, the Eichrecht
+  checks no longer fall back to all readings. The transaction fails with no begin or end
+  reading, as in the Transparenzsoftware.
+- An OBIS code is law-relevant only with an F group of 0, FF, 200 or 255, or none
+  (`is_law_relevant()`, `OBIS.is_law_relevant`). `OBIS.is_law_relevant` now takes the part
+  after `*` into account.
+- Leading and trailing whitespace in `TX` and `IL` is stripped with a `SpecWarning`, as the
+  Transparenzsoftware trims both before comparing
+
 ## [0.5.0] - 2026-10-04
 
 XML files are checked transaction by transaction, as the Transparenzsoftware does.
@@ -163,6 +187,7 @@ Initial public release.
 - Optional `cryptography` package for signature verification
 - Optional `typer` and `rich` packages for CLI
 
+[0.6.0]: https://github.com/paul-ww/pyocmf/releases/tag/v0.6.0
 [0.5.0]: https://github.com/paul-ww/pyocmf/releases/tag/v0.5.0
 [0.4.0]: https://github.com/paul-ww/pyocmf/releases/tag/v0.4.0
 [0.3.0]: https://github.com/paul-ww/pyocmf/releases/tag/v0.3.0

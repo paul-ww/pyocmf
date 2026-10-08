@@ -28,7 +28,8 @@ S.A.F.E. e.V. is the reference implementation and the bar for behaviour; see
   - `core/`: `OCMF` (parsing, serialization, verification entry points), `Payload`,
     `Reading`, `Signature`
   - `compliance/`: Eichrecht checks for readings, single payloads and transaction pairs
-  - `crypto/`: Signature verification and optional `cryptography` handling
+  - `crypto/`: Signature verification, optional `cryptography` handling and the `ecdsa`
+    fallback for secp192k1 (`fallback.py`)
   - `models/`: Value objects (`OBIS`, `OCMFTimestamp`, `PublicKey`, cable loss)
   - `registries/`: OBIS code parsing and classification (billing/law relevance)
   - `enums/`: Code tables from the OCMF spec
@@ -456,7 +457,8 @@ changing parsing or compliance behaviour.
 
 **Compliance: match TPS outcomes**
 - Begin and end readings are chosen among law-relevant OBIS registers, preferring
-  loss-compensated ones, as TPS does (`registries/obis.py`).
+  loss-compensated ones, as TPS does (`registries/obis.py`). Readings on other registers
+  are ignored, so a transaction without law-relevant readings fails.
 - Errors are for what TPS rejects. Spec rules that TPS does not enforce (e.g. cumulated
   loss, time error flags, ID mismatches) are warnings.
 
@@ -482,7 +484,8 @@ changing parsing or compliance behaviour.
 
 **Optional extras:**
 - `pyocmf[cli]`: Installs `rich` and `typer` for the `ocmf` CLI command
-- `pyocmf[crypto]`: Installs `cryptography` for signature verification
+- `pyocmf[crypto]`: Installs `cryptography` for signature verification, plus `ecdsa` for
+  secp192k1, which `cryptography` does not support (`crypto/fallback.py`)
 - `pyocmf[all]`: Installs all optional dependencies
 
 **OCMF format:**

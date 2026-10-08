@@ -54,7 +54,7 @@ class OBIS(pydantic.BaseModel):
     @property
     def is_law_relevant(self) -> bool:
         """See ``pyocmf.registries.obis.is_law_relevant``."""
-        return is_law_relevant(self.code)
+        return is_law_relevant(str(self))
 
     @property
     def is_loss_compensated(self) -> bool:

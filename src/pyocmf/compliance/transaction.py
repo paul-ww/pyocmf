@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import decimal
 import re
 from typing import TYPE_CHECKING
 
@@ -23,6 +24,9 @@ _INVALID_ID_LEVELS = {
     UserAssignmentStatus.CERT_EXPIRED,
     UserAssignmentStatus.CERT_UNVERIFIED,
 }
+
+# Readings carry an event counter (EI) only before format version 0.5
+_EVENT_COUNTER_MAX_VERSION = decimal.Decimal("0.5")
 
 
 def _check_field_match(
@@ -48,14 +52,12 @@ def _law_relevant_readings(readings: Sequence[Reading]) -> list[Reading]:
     """Select the readings a transaction is billed on, as the Transparenzsoftware does.
 
     Loss-compensated registers take precedence over the other law-relevant energy
-    registers. Falls back to all readings when no register is recognised, so
-    readings with unknown OBIS codes are still checked.
+    registers. Readings without a law-relevant register are ignored.
     """
     compensated = [r for r in readings if r.RI is not None and r.RI.is_loss_compensated]
     if compensated:
         return compensated
-    law_relevant = [r for r in readings if r.RI is not None and r.RI.is_law_relevant]
-    return law_relevant or list(readings)
+    return [r for r in readings if r.RI is not None and r.RI.is_law_relevant]
 
 
 def _select_transaction_readings(
@@ -70,7 +72,7 @@ def _select_transaction_readings(
         issues.append(
             EichrechtIssue(
                 code=IssueCode.BEGIN_TX,
-                message="No begin reading (TX='B') found",
+                message="No law-relevant begin reading (TX='B') found",
                 field="TX",
             )
         )
@@ -86,7 +88,7 @@ def _select_transaction_readings(
         issues.append(
             EichrechtIssue(
                 code=IssueCode.END_TX,
-                message="No end reading (TX in 'E', 'L', 'R', 'A', 'P') found",
+                message="No law-relevant end reading (TX in 'E', 'L', 'R', 'A', 'P') found",
                 field="TX",
             )
         )
@@ -129,7 +131,42 @@ def _check_timestamp_ordering(
     return None
 
 
-def _check_transaction_readings(begin: Reading, end: Reading) -> list[EichrechtIssue]:
+def _event_counter(reading: Reading, payload: Payload) -> decimal.Decimal | str | None:
+    # The Transparenzsoftware only reads EI from pre-0.5 records and ignores it later on
+    try:
+        if decimal.Decimal(payload.FV or "") >= _EVENT_COUNTER_MAX_VERSION:
+            return None
+    except decimal.InvalidOperation:
+        return None
+    value = (reading.model_extra or {}).get("EI")
+    if value is None:
+        return None
+    try:
+        return decimal.Decimal(str(value))
+    except decimal.InvalidOperation:
+        return str(value)
+
+
+def _check_event_counter(
+    begin: Reading, end: Reading, begin_payload: Payload, end_payload: Payload
+) -> EichrechtIssue | None:
+    begin_counter = _event_counter(begin, begin_payload)
+    end_counter = _event_counter(end, end_payload)
+    if end_counter is None or end_counter == begin_counter:
+        return None
+    return EichrechtIssue(
+        code=IssueCode.EVENT_COUNTER_MISMATCH,
+        message=(
+            f"Event counter (EI) of begin and end reading differs: "
+            f"begin='{begin_counter}', end='{end_counter}'"
+        ),
+        field="EI",
+    )
+
+
+def _check_transaction_readings(
+    begin: Reading, end: Reading, begin_payload: Payload, end_payload: Payload
+) -> list[EichrechtIssue]:
     issues = []
     if issue := _check_field_match(begin.RI, end.RI, "RI", IssueCode.OBIS_MISMATCH, "OBIS codes"):
         issues.append(issue)
@@ -153,6 +190,8 @@ def _check_transaction_readings(begin: Reading, end: Reading) -> list[EichrechtI
                 field="TM",
             )
         )
+    if issue := _check_event_counter(begin, end, begin_payload, end_payload):
+        issues.append(issue)
     return issues
 
 
@@ -237,7 +276,7 @@ def check_eichrecht_payload(payload: Payload) -> list[EichrechtIssue]:
         if reading is not None:
             issues.extend(check_eichrecht_reading(reading))
     if begin is not None and end is not None:
-        issues.extend(_check_transaction_readings(begin, end))
+        issues.extend(_check_transaction_readings(begin, end, payload, payload))
     if issue := _check_identification_level(payload, "transaction"):
         issues.append(issue)
     return issues
@@ -264,7 +303,7 @@ def check_eichrecht_transaction(
     if end_reading is not None:
         issues.extend(check_eichrecht_reading(end_reading))
     if begin_reading is not None and end_reading is not None:
-        issues.extend(_check_transaction_readings(begin_reading, end_reading))
+        issues.extend(_check_transaction_readings(begin_reading, end_reading, begin, end))
 
     if issue := _check_field_match(
         begin.GS or begin.MS, end.GS or end.MS, "GS/MS", IssueCode.SERIAL_MISMATCH, "Serial numbers"

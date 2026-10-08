@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "pyocmf"
-version = "0.5.0"
+version = "0.6.0"
 description = "Python library for parsing and verifying OCMF (Open Charge Metering Format) signatures from electric vehicle charging stations"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -48,6 +48,7 @@ cli = [
 ]
 crypto = [
     "cryptography>=44",
+    "ecdsa>=0.19",
 ]
 all = [
     "pyocmf[cli,crypto]",
@@ -60,6 +61,7 @@ cli = [
 ]
 crypto = [
     "cryptography>=44",
+    "ecdsa>=0.19",
 ]
 test = [
     "pytest>=9.0",

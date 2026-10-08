@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 
+from pyocmf.crypto import fallback
 from pyocmf.crypto.availability import (
     InvalidSignature,
     check_cryptography_available,
@@ -89,9 +90,20 @@ def verify_signature(
         raise SignatureVerificationError(msg)
 
     signature_bytes = decode_signature_data(signature_data, signature_encoding)
-    hash_algorithm = get_hash_algorithm(signature_method)
     payload_bytes = payload_json.encode("utf-8")
 
+    if public_key_info.curve in fallback.FALLBACK_CURVES:
+        try:
+            return fallback.verify_signature(
+                bytes.fromhex(public_key_info.key),
+                signature_bytes,
+                payload_bytes,
+                signature_method.hash_algorithm,
+            )
+        except (PublicKeyError, ImportError) as e:
+            raise SignatureVerificationError(str(e)) from e
+
+    hash_algorithm = get_hash_algorithm(signature_method)
     crypto_public_key = serialization.load_der_public_key(bytes.fromhex(public_key_info.key))
 
     try:

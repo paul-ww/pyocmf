@@ -252,12 +252,26 @@ class TestLawRelevantReadingsOnly:
         )
         assert_no_errors(ocmf.check_eichrecht())
 
-    def test_unknown_registers_are_still_checked(self) -> None:
+    def test_unknown_registers_are_ignored(self) -> None:
         reading = create_test_reading(ri="01-00:63.08.00*FF", st=MeterStatus.TIMEOUT)
         ocmf = OCMF(
             header="OCMF", payload=create_test_payload(readings=[reading]), signature={"SD": "00"}
         )
-        assert_has_error(ocmf.check_eichrecht(), IssueCode.METER_STATUS)
+        assert ocmf.check_eichrecht() == []
+
+    @pytest.mark.parametrize("obis", ["01-00:63.08.00*FF", "01-00:01.08.00*01"])
+    def test_transaction_without_law_relevant_register_fails(self, obis: str) -> None:
+        # filterLawRelevantReadings() leaves no readings: "Cannot verify contains no start
+        # values in reading"
+        begin, end = create_transaction_pair(obis_code=obis)
+        issues = check_eichrecht_transaction(begin.payload, end.payload)
+        assert _errors(issues) == {IssueCode.BEGIN_TX, IssueCode.END_TX}
+
+    @pytest.mark.parametrize("f_group", ["", "*FF", "*ff", ".255", "*200", "*0"])
+    def test_law_relevant_f_groups(self, f_group: str) -> None:
+        # isLawRelevant() accepts F = 0, 0x200, 0x255 and 0xFF
+        begin, end = create_transaction_pair(obis_code=f"01-00:01.08.00{f_group}")
+        assert_no_errors(check_eichrecht_transaction(begin.payload, end.payload))
 
     def test_vw_record_notes_cover_import_register_only(
         self, transparency_xml_dir: pathlib.Path
@@ -269,6 +283,57 @@ class TestLawRelevantReadingsOnly:
         issues = record.ocmf.check_eichrecht()
         assert {str(i.field) for i in issues} == {"TM"}
         assert len(issues) == 2
+
+
+class TestEventCounter:
+    """checkLawIntegrityForReadings(): EI of the stop reading must match the start reading.
+
+    Only pre-0.5 readings (v02.Reading) carry EI; later formats always report it as null.
+    """
+
+    @staticmethod
+    def _pair(
+        begin_counter: object, end_counter: object, version: str = "0.1"
+    ) -> list[EichrechtIssue]:
+        begin, end = create_transaction_pair()
+        for ocmf, counter in ((begin, begin_counter), (end, end_counter)):
+            ocmf.payload.FV = version
+            if counter is not None:
+                ocmf.payload.RD[0] = ocmf.payload.RD[0].model_copy(update={"EI": counter})
+        return check_eichrecht_transaction(begin.payload, end.payload)
+
+    def test_same_counter_passes(self) -> None:
+        assert_no_errors(self._pair(567, decimal.Decimal("567.0")))
+
+    def test_different_counter_fails(self) -> None:
+        assert_has_error(self._pair(567, 568), IssueCode.EVENT_COUNTER_MISMATCH)
+
+    def test_counter_only_at_stop_fails(self) -> None:
+        assert_has_error(self._pair(None, 568), IssueCode.EVENT_COUNTER_MISMATCH)
+
+    def test_counter_only_at_start_passes(self) -> None:
+        assert_no_errors(self._pair(567, None))
+
+    def test_ignored_from_version_0_5(self) -> None:
+        assert_no_errors(self._pair(567, 568, version="1.0"))
+
+    def test_single_payload_transaction(self) -> None:
+        readings = [
+            create_test_reading(tx=MeterReadingReason.BEGIN, ri=IMPORT_OBIS).model_copy(
+                update={"EI": 1}
+            ),
+            create_test_reading(
+                timestamp="2023-01-01T13:00:00,000+0000 S",
+                tx=MeterReadingReason.END,
+                rv="60",
+                ri=IMPORT_OBIS,
+            ).model_copy(update={"EI": 2}),
+        ]
+        ocmf = OCMF(
+            header="OCMF", payload=create_test_payload(readings=readings), signature={"SD": "00"}
+        )
+        ocmf.payload.FV = "0.1"
+        assert_has_error(ocmf.check_eichrecht(), IssueCode.EVENT_COUNTER_MISMATCH)
 
 
 class TestCumulatedLoss:
@@ -313,7 +378,8 @@ class TestCorpusTransactions:
         ("xml_file", "expected_error"),
         [
             ("test_ocmf_ebee_02.xml", IssueCode.VALUE_REGRESSION),
-            ("20211007-device-with-evt-ocmf-sss-ses.xml", IssueCode.METER_STATUS),
+            # RI 1-0:1.8.0*198 has an F group isLawRelevant() rejects, so no start value
+            ("20211007-device-with-evt-ocmf-sss-ses.xml", IssueCode.BEGIN_TX),
         ],
     )
     def test_pair_fails(
@@ -408,7 +474,10 @@ class TestXmlTransactionPairing:
             ("OCMF_Test_Data_00.xml", set()),
             ("ocmf_sec.xml", set()),
             ("test_ocmf_ebee_02.xml", {IssueCode.VALUE_REGRESSION}),
-            ("20211007-device-with-evt-ocmf-sss-ses.xml", {IssueCode.METER_STATUS}),
+            (
+                "20211007-device-with-evt-ocmf-sss-ses.xml",
+                {IssueCode.BEGIN_TX, IssueCode.END_TX},
+            ),
         ],
     )
     def test_corpus_transactions(

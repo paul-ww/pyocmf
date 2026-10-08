@@ -51,6 +51,8 @@ EXPECTED_SIGNATURES: dict[str, SignatureOutcome] = {
     "test_ocmf_ebee_02.xml": SignatureOutcome(valid=1, invalid=1),
     "test_ocmf_keba_kcp30.xml": SignatureOutcome(valid=1),
     "test_ocmf_keba_kcp30_fail.xml": SignatureOutcome(valid=0, invalid=1),
+    # secp192k1, verified with the ecdsa fallback (OCMFVerifierTest)
+    "test_ocmf_transaction_two_values.xml": SignatureOutcome(valid=2),
 }
 
 
@@ -74,16 +76,6 @@ def test_signature_outcomes_match_transparenzsoftware(
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         assert _verify_all(transparency_xml_dir / xml_file) == expected
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="secp192k1 is not supported by the cryptography package; "
-    "Transparenzsoftware verifies this file (OCMFVerifierTest)",
-)
-def test_secp192k1_transaction_verifies(transparency_xml_dir: pathlib.Path) -> None:
-    xml_path = transparency_xml_dir / "test_ocmf_transaction_two_values.xml"
-    assert _verify_all(xml_path) == SignatureOutcome(valid=2)
 
 
 def test_every_corpus_file_with_keys_has_expectation(
